@@ -1,0 +1,14 @@
+{
+  "name": "klampis-depo",
+  "version": "1.0.0",
+  "description": "Klampis Depo Monorepo",
+  "scripts": {
+    "start": "concurrently \"npm run start:api\" \"npm run start:web\"",
+    "start:api": "cd api && go run main.go",
+    "start:web": "cd web && npm start",
+    "install:all": "npm install && cd web && npm install && cd ../api && go mod tidy"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

@@ -1,0 +1,17 @@
+# Dependency directories
+node_modules/
+
+# Build outputs
+build/
+dist/
+api/main
+api/main.exe
+
+# Environment
+.env
+.env.local
+
+# IDEs and OS
+.vscode/
+.idea/
+.DS_Store
