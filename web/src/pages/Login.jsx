@@ -10,10 +10,22 @@ export default function Login() {
   const [error, setError] = useState("");
   const navigate = useNavigate();
 
+  const getRedirectPath = (token) => {
+    try {
+      const payload = JSON.parse(atob(token.split(".")[1]));
+      if (payload.role === "owner") return "/dashboard";
+      if (payload.role === "admin") return "/cash-sessions";
+      if (payload.role === "cashier") return "/transactions";
+      return "/dashboard";
+    } catch {
+      return "/dashboard";
+    }
+  };
+
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (token) {
-      navigate("/dashboard", { replace: true });
+      navigate(getRedirectPath(token), { replace: true });
     }
   }, [navigate]);
 
@@ -24,7 +36,8 @@ export default function Login() {
     const result = await login(username, password);
 
     if (result.success) {
-      navigate("/dashboard", { replace: true });
+      const token = localStorage.getItem("token");
+      navigate(getRedirectPath(token), { replace: true });
     } else {
       setError(result.error);
     }

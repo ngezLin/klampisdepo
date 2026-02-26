@@ -13,18 +13,20 @@ type ItemListResponse struct {
 
 type CreateItemInput struct {
 	Name        string  `json:"name" binding:"required"`
-	Description *string `json:"description"`
-	Stock       int     `json:"stock"`
-	BuyPrice    float64 `json:"buy_price"`
+	Description    *string `json:"description"`
+	Stock          int     `json:"stock"`
+	IsStockManaged *bool   `json:"is_stock_managed"`
+	BuyPrice       float64 `json:"buy_price"`
 	Price       float64 `json:"price" binding:"required"`
 	ImageURL    *string `json:"image_url"`
 }
 
 type UpdateItemInput struct {
 	Name        string  `json:"name"`
-	Description *string `json:"description"`
-	Stock       int     `json:"stock"`
-	BuyPrice    float64 `json:"buy_price"`
+	Description    *string `json:"description"`
+	Stock          int     `json:"stock"`
+	IsStockManaged *bool   `json:"is_stock_managed"`
+	BuyPrice       float64 `json:"buy_price"`
 	Price       float64 `json:"price"`
 	ImageURL    *string `json:"image_url"`
 }

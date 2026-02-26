@@ -14,7 +14,13 @@ export default function ProductCard({ item }) {
     >
       <div className="relative overflow-hidden">
         <img
-          src={item?.image_url || placeholder}
+          src={
+            item?.image_url
+              ? String(item?.image_url).startsWith("http")
+                ? item.image_url
+                : `${process.env.REACT_APP_API_URL || "http://localhost:8080"}${item.image_url}`
+              : placeholder
+          }
           alt={item?.name || "Produk"}
           className="w-full h-48 object-cover transition-transform duration-500 group-hover:scale-110"
         />

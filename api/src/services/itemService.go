@@ -92,13 +92,20 @@ func (s *itemService) CreateItem(input dtos.CreateItemInput, userID *uint, clien
 		return nil, errors.New("Item dengan nama ini sudah ada")
 	}
 
+	// DB default is true, but to be sure we can set a pointer
+	defaultStockManaged := true
 	item := models.Item{
-		Name:        input.Name,
-		Description: input.Description,
-		Stock:       input.Stock,
-		BuyPrice:    input.BuyPrice,
-		Price:       input.Price,
-		ImageURL:    input.ImageURL,
+		Name:           input.Name,
+		Description:    input.Description,
+		Stock:          input.Stock,
+		BuyPrice:       input.BuyPrice,
+		Price:          input.Price,
+		ImageURL:       input.ImageURL,
+		IsStockManaged: &defaultStockManaged,
+	}
+
+	if input.IsStockManaged != nil {
+		item.IsStockManaged = input.IsStockManaged
 	}
 
 	err := config.DB.Transaction(func(tx *gorm.DB) error {
@@ -121,7 +128,7 @@ func (s *itemService) CreateItem(input dtos.CreateItemInput, userID *uint, clien
 		}
 
 		// Inventory Log (Initial Stock)
-		if item.Stock > 0 {
+		if item.Stock > 0 && item.IsStockManaged != nil && *item.IsStockManaged {
 			invService := NewInventoryService()
 			if err := invService.LogStockChange(tx, item.ID, item.Stock, "restock", "INITIAL", userID, "Initial stock"); err != nil {
 				return err
@@ -156,6 +163,9 @@ func (s *itemService) UpdateItem(id string, input dtos.UpdateItemInput, userID *
 		oldItem.Name = input.Name
 		oldItem.Description = input.Description
 		oldItem.Stock = input.Stock
+		if input.IsStockManaged != nil {
+			oldItem.IsStockManaged = input.IsStockManaged
+		}
 		oldItem.BuyPrice = input.BuyPrice
 		oldItem.Price = input.Price
 		oldItem.ImageURL = input.ImageURL
@@ -180,7 +190,7 @@ func (s *itemService) UpdateItem(id string, input dtos.UpdateItemInput, userID *
 
 		// Inventory Log (Stock Adjustment)
 		stockChange := oldItem.Stock - oldCopy.Stock
-		if stockChange != 0 {
+		if stockChange != 0 && oldItem.IsStockManaged != nil && *oldItem.IsStockManaged {
 			invService := NewInventoryService()
 			if err := invService.LogStockChange(tx, oldItem.ID, stockChange, "adjustment", "MANUAL", userID, "Manual stock update"); err != nil {
 				return err
@@ -257,7 +267,7 @@ func (s *itemService) BulkCreateItems(inputs dtos.BulkCreateItemInput, userID *u
 			}
 
 			// Inventory Log
-			if item.Stock > 0 {
+			if item.Stock > 0 && item.IsStockManaged != nil && *item.IsStockManaged {
 				invService := NewInventoryService()
 				if err := invService.LogStockChange(tx, item.ID, item.Stock, "restock", "BULK_IMPORT", userID, "Bulk import initial stock"); err != nil {
 					return err
@@ -301,11 +311,17 @@ func formatItemCSVRow(item models.Item, role string) []string {
 	desc := common.GetStringValue(item.Description)
 	img := common.GetStringValue(item.ImageURL)
 
+	isStockManagedStr := "Yes"
+	if item.IsStockManaged != nil && !*item.IsStockManaged {
+		isStockManagedStr = "No"
+	}
+
 	if role == "cashier" {
 		return []string{
 			fmt.Sprintf("%d", item.ID),
 			item.Name,
 			desc,
+			isStockManagedStr,
 			fmt.Sprintf("%d", item.Stock),
 			fmt.Sprintf("%.2f", item.Price),
 			img,
@@ -316,6 +332,7 @@ func formatItemCSVRow(item models.Item, role string) []string {
 		fmt.Sprintf("%d", item.ID),
 		item.Name,
 		desc,
+		isStockManagedStr,
 		fmt.Sprintf("%d", item.Stock),
 		fmt.Sprintf("%.2f", item.BuyPrice),
 		fmt.Sprintf("%.2f", item.Price),
@@ -325,7 +342,7 @@ func formatItemCSVRow(item models.Item, role string) []string {
 
 func getCSVHeaders(role string) []string {
 	if role == "cashier" {
-		return []string{"id", "name", "description", "stock", "price", "image_url"}
+		return []string{"id", "name", "description", "is_stock_managed", "stock", "price", "image_url"}
 	}
-	return []string{"id", "name", "description", "stock", "buy_price", "price", "image_url"}
+	return []string{"id", "name", "description", "is_stock_managed", "stock", "buy_price", "price", "image_url"}
 }

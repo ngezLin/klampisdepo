@@ -117,20 +117,22 @@ func (s *transactionService) CreateTransaction(input dtos.CreateTransactionInput
 					return err
 				}
 
-				if item.Stock < tItem.Quantity {
-					localWarnings = append(localWarnings,
-						fmt.Sprintf(
-							"Warning: Item '%s' stock insufficient (current: %d, required: %d)",
-							item.Name, item.Stock, tItem.Quantity,
-						),
-					)
-					item.Stock = 0
-				} else {
-					item.Stock -= tItem.Quantity
-				}
+				if item.IsStockManaged != nil && *item.IsStockManaged {
+					if item.Stock < tItem.Quantity {
+						localWarnings = append(localWarnings,
+							fmt.Sprintf(
+								"Warning: Item '%s' stock insufficient (current: %d, required: %d)",
+								item.Name, item.Stock, tItem.Quantity,
+							),
+						)
+						item.Stock = 0
+					} else {
+						item.Stock -= tItem.Quantity
+					}
 
-				if err := tx.Save(&item).Error; err != nil {
-					return err
+					if err := tx.Save(&item).Error; err != nil {
+						return err
+					}
 				}
 			}
 		}
@@ -143,13 +145,18 @@ func (s *transactionService) CreateTransaction(input dtos.CreateTransactionInput
 		if input.Status == "completed" {
 			invService := NewInventoryService()
 			for _, tItem := range transactionItems {
-				// We need the ID, but we already have item.Stock updated.
-				// Change is negative.
-				change := -tItem.Quantity
-				ref := fmt.Sprintf("TX-%d", transaction.ID)
-				note := "Sold in transaction"
-				
-				if err := invService.LogStockChange(tx, tItem.ItemID, change, "sale", ref, userID, note); err != nil {
+				var item models.Item
+				if err := tx.First(&item, tItem.ItemID).Error; err == nil {
+					if item.IsStockManaged != nil && *item.IsStockManaged {
+						change := -tItem.Quantity
+						ref := fmt.Sprintf("TX-%d", transaction.ID)
+						note := "Sold in transaction"
+						
+						if err := invService.LogStockChange(tx, tItem.ItemID, change, "sale", ref, userID, note); err != nil {
+							return err
+						}
+					}
+				} else {
 					return err
 				}
 			}
@@ -393,16 +400,18 @@ func (s *transactionService) RefundTransaction(id string, userID *uint, clientIP
 	for _, tItem := range transaction.Items {
 		var item models.Item
 		if err := config.DB.First(&item, tItem.ItemID).Error; err == nil {
-			item.Stock += tItem.Quantity
-			config.DB.Save(&item)
+			if item.IsStockManaged != nil && *item.IsStockManaged {
+				item.Stock += tItem.Quantity
+				config.DB.Save(&item)
 
-			// Inventory Log (Refund)
-			invService := NewInventoryService()
-			change := tItem.Quantity // Refund is positive (stock returns)
-			ref := fmt.Sprintf("TX-%d (REFUND)", transaction.ID)
-			note := "Refunded transaction"
+				// Inventory Log (Refund)
+				invService := NewInventoryService()
+				change := tItem.Quantity // Refund is positive (stock returns)
+				ref := fmt.Sprintf("TX-%d (REFUND)", transaction.ID)
+				note := "Refunded transaction"
 
-			invService.LogStockChange(config.DB, tItem.ItemID, change, "refund", ref, userID, note)
+				invService.LogStockChange(config.DB, tItem.ItemID, change, "refund", ref, userID, note)
+			}
 		}
 	}
 

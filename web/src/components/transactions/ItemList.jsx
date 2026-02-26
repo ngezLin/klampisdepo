@@ -104,7 +104,13 @@ export default function ItemList({ addToCart }) {
                   >
                     <td className="px-4 py-3">
                       <img
-                        src={item.image_url || placeholder}
+                        src={
+                          item.image_url
+                            ? String(item.image_url).startsWith("http")
+                              ? item.image_url
+                              : `${process.env.REACT_APP_API_URL || "http://localhost:8080"}${item.image_url}`
+                            : placeholder
+                        }
                         alt={item.name}
                         className="w-16 h-16 object-cover rounded"
                       />
@@ -115,11 +121,11 @@ export default function ItemList({ addToCart }) {
                     <td className="px-4 py-3 text-sm text-gray-600 max-w-xs line-clamp-2">
                       {item.description || "Deskripsi tidak tersedia."}
                     </td>
-                    <td className="px-4 py-3 text-sm font-semibold text-gray-800">
+                    <td className="px-4 py-3 text-sm font-semibold text-gray-800 whitespace-nowrap">
                       Rp {item.price.toLocaleString()}
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-600">
-                      {item.stock}
+                      {item.is_stock_managed ? item.stock : "-"}
                     </td>
                   </tr>
                 ))}

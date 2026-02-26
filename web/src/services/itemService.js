@@ -44,7 +44,7 @@ export const getPublicItems = async (page = 1, pageSize = 100) => {
 export const searchPublicItemsByName = async (
   name,
   page = 1,
-  pageSize = 100
+  pageSize = 100,
 ) => {
   const res = await api.get("/public/items/search", {
     params: { name, page, page_size: pageSize },
@@ -62,4 +62,16 @@ export const exportItemsCSV = async () => {
     responseType: "blob",
   });
   return res.data;
+};
+
+export const uploadImage = async (file) => {
+  const formData = new FormData();
+  formData.append("image", file);
+
+  const res = await api.post("/upload/image", formData, {
+    headers: {
+      "Content-Type": "multipart/form-data",
+    },
+  });
+  return res.data; // e.g., { url: "/uploads/img_x.jpg" }
 };

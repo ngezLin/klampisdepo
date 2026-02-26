@@ -13,31 +13,31 @@ export const navigationItems = [
     label: "Dashboard",
     path: "/dashboard",
     icon: <FaTachometerAlt />,
-    roles: ["admin"],
+    roles: ["owner"],
   },
   {
     label: "Cash Session",
     path: "/cash-sessions",
     icon: <FaWallet />,
-    roles: ["cashier", "admin"],
+    roles: ["admin", "owner"],
   },
   {
     label: "Items",
     path: "/items",
     icon: <FaBox />,
-    roles: ["cashier", "admin"],
+    roles: ["admin", "owner"],
   },
   {
     label: "Transactions",
     path: "/transactions",
     icon: <FaReceipt />,
-    roles: ["cashier", "admin"],
+    roles: ["cashier", "admin", "owner"],
   },
   {
     label: "History",
     path: "/history",
     icon: <FaHistory />,
-    roles: ["cashier", "admin"],
+    roles: ["cashier", "admin", "owner"],
   },
   {
     label: "Inventory History",
@@ -51,18 +51,18 @@ export const navigationItems = [
     // Actually, let's use FaHistory but distinguish it.
     // Or add FaWarehouse to imports.
     // For now, to avoid import errors without checking available icons in react-icons/fa (though standard), I'll use FaBox.
-    roles: ["cashier", "admin"],
+    roles: ["owner"],
   },
   {
     label: "Attendance",
     path: "/attendance",
     icon: <FaCalendarCheck />,
-    roles: ["admin"],
+    roles: ["owner"],
   },
   {
     label: "Audit Logs",
     path: "/audit-logs",
     icon: <FaClipboardList />,
-    roles: ["admin"],
+    roles: ["owner"],
   },
 ];

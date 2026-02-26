@@ -26,7 +26,7 @@ export default function AppRoutes() {
       <Route
         path="/dashboard"
         element={
-          <ProtectedRoute roles={["cashier", "admin"]}>
+          <ProtectedRoute roles={["owner"]}>
             <Layout>
               <Dashboard />
             </Layout>
@@ -36,7 +36,7 @@ export default function AppRoutes() {
       <Route
         path="/items"
         element={
-          <ProtectedRoute roles={["cashier", "admin"]}>
+          <ProtectedRoute roles={["admin", "owner"]}>
             <Layout>
               <Items />
             </Layout>
@@ -46,7 +46,7 @@ export default function AppRoutes() {
       <Route
         path="/transactions"
         element={
-          <ProtectedRoute roles={["cashier", "admin"]}>
+          <ProtectedRoute roles={["cashier", "admin", "owner"]}>
             <Layout>
               <Transactions />
             </Layout>
@@ -56,7 +56,7 @@ export default function AppRoutes() {
       <Route
         path="/history"
         element={
-          <ProtectedRoute roles={["cashier", "admin"]}>
+          <ProtectedRoute roles={["cashier", "admin", "owner"]}>
             <Layout>
               <History />
             </Layout>
@@ -66,7 +66,7 @@ export default function AppRoutes() {
       <Route
         path="/inventory-history"
         element={
-          <ProtectedRoute roles={["cashier", "admin"]}>
+          <ProtectedRoute roles={["owner"]}>
             <Layout>
               <InventoryHistory />
             </Layout>
@@ -76,7 +76,7 @@ export default function AppRoutes() {
       <Route
         path="/attendance"
         element={
-          <ProtectedRoute roles={["admin"]}>
+          <ProtectedRoute roles={["owner"]}>
             <Layout>
               <Attendance />
             </Layout>
@@ -86,7 +86,7 @@ export default function AppRoutes() {
       <Route
         path="/audit-logs"
         element={
-          <ProtectedRoute roles={["admin"]}>
+          <ProtectedRoute roles={["owner"]}>
             <Layout>
               <AuditLogs />
             </Layout>
@@ -96,7 +96,7 @@ export default function AppRoutes() {
       <Route
         path="/cash-sessions"
         element={
-          <ProtectedRoute roles={["cashier", "admin"]}>
+          <ProtectedRoute roles={["admin", "owner"]}>
             <Layout>
               <CashSessions />
             </Layout>
