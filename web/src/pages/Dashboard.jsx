@@ -21,6 +21,8 @@ import {
   Package,
   AlertCircle,
   CalendarRange,
+  Coins,
+  BadgeDollarSign,
 } from "lucide-react";
 
 export default function Dashboard() {
@@ -28,6 +30,8 @@ export default function Dashboard() {
     top_selling_items: [],
     today_profit: 0,
     monthly_profit: 0,
+    today_omzet: 0,
+    monthly_omzet: 0,
     today_transactions: 0,
     low_stock: 0,
   });
@@ -97,21 +101,21 @@ export default function Dashboard() {
       </div>
 
       {/* SUMMARY CARDS */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 mb-8">
         <DashboardCard
-          title="Today's Profit"
+          title="Daily Omzet"
+          value={formatCurrency(data.today_omzet)}
+          icon={Coins}
+          gradient="from-fuchsia-500 to-pink-500"
+          shadowColor="shadow-fuchsia-200"
+          delay={0.1}
+        />
+        <DashboardCard
+          title="Daily Profit"
           value={formatCurrency(data.today_profit)}
           icon={Wallet}
           gradient="from-emerald-500 to-teal-400"
           shadowColor="shadow-emerald-200"
-          delay={0.1}
-        />
-        <DashboardCard
-          title="Monthly Profit"
-          value={formatCurrency(data.monthly_profit)}
-          icon={CalendarRange}
-          gradient="from-blue-600 to-indigo-500"
-          shadowColor="shadow-blue-200"
           delay={0.2}
         />
         <DashboardCard
@@ -123,13 +127,29 @@ export default function Dashboard() {
           delay={0.3}
         />
         <DashboardCard
+          title="Monthly Omzet"
+          value={formatCurrency(data.monthly_omzet)}
+          icon={BadgeDollarSign}
+          gradient="from-violet-500 to-purple-500"
+          shadowColor="shadow-violet-200"
+          delay={0.4}
+        />
+        <DashboardCard
+          title="Monthly Profit"
+          value={formatCurrency(data.monthly_profit)}
+          icon={CalendarRange}
+          gradient="from-blue-600 to-indigo-500"
+          shadowColor="shadow-blue-200"
+          delay={0.5}
+        />
+        <DashboardCard
           title="Low Stock Warning"
           value={data.low_stock}
           subtitle="Items < 5"
           icon={AlertCircle}
           gradient="from-rose-500 to-red-500"
           shadowColor="shadow-rose-200"
-          delay={0.4}
+          delay={0.6}
         />
       </div>
 

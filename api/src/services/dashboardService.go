@@ -20,6 +20,8 @@ func NewDashboardService() DashboardService {
 func (s *dashboardService) GetDashboardStats() (*dtos.DashboardStats, error) {
 	var todayProfit float64
 	var monthlyProfit float64
+	var todayOmzet float64
+	var monthlyOmzet float64
 	var todayTransactions int64
 	var lowStock int64
 	var topItems []dtos.TopItem
@@ -39,6 +41,7 @@ func (s *dashboardService) GetDashboardStats() (*dtos.DashboardStats, error) {
 	for _, t := range todayTransactionsData {
 		for _, ti := range t.Items {
 			todayProfit += float64(ti.Quantity) * (ti.Price - ti.Item.BuyPrice)
+			todayOmzet += float64(ti.Quantity) * ti.Price
 		}
 	}
 
@@ -52,6 +55,7 @@ func (s *dashboardService) GetDashboardStats() (*dtos.DashboardStats, error) {
 	for _, t := range monthlyTransactionsData {
 		for _, ti := range t.Items {
 			monthlyProfit += float64(ti.Quantity) * (ti.Price - ti.Item.BuyPrice)
+			monthlyOmzet += float64(ti.Quantity) * ti.Price
 		}
 	}
 
@@ -90,6 +94,8 @@ func (s *dashboardService) GetDashboardStats() (*dtos.DashboardStats, error) {
 	return &dtos.DashboardStats{
 		TodayProfit:       todayProfit,
 		MonthlyProfit:     monthlyProfit,
+		TodayOmzet:        todayOmzet,
+		MonthlyOmzet:      monthlyOmzet,
 		TodayTransactions: todayTransactions,
 		LowStock:          lowStock,
 		TopSellingItems:   topItems,

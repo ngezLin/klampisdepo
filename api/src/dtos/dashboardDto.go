@@ -9,6 +9,8 @@ type TopItem struct {
 type DashboardStats struct {
 	TodayProfit       float64   `json:"today_profit"`
 	MonthlyProfit     float64   `json:"monthly_profit"`
+	TodayOmzet        float64   `json:"today_omzet"`
+	MonthlyOmzet      float64   `json:"monthly_omzet"`
 	TodayTransactions int64     `json:"today_transactions"`
 	LowStock          int64     `json:"low_stock"`
 	TopSellingItems   []TopItem `json:"top_selling_items"`
