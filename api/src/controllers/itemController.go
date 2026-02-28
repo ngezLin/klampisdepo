@@ -16,6 +16,10 @@ import (
 func GetItems(c *gin.Context) {
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "10"))
+	
+	if pageSize > 100 {
+		pageSize = 100 // Hard cap to prevent memory exhaustion
+	}
 
 	service := services.NewItemService()
 	response, err := service.GetItems(dtos.ItemFilter{
@@ -44,6 +48,10 @@ func GetItemsByName(c *gin.Context) {
 
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "10"))
+
+	if pageSize > 100 {
+		pageSize = 100
+	}
 
 	service := services.NewItemService()
 	response, err := service.GetItems(dtos.ItemFilter{

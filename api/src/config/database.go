@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"time"
 
 	"kd-api/src/models"
 
@@ -27,6 +28,21 @@ func ConnectDatabase() {
 	if err != nil {
 		log.Fatal("Failed to connect to database: ", err)
 	}
+
+	// Retrieve the underlying sql.DB to set connection pool settings
+	sqlDB, err := db.DB()
+	if err != nil {
+		log.Fatal("Failed to get underlying sql.DB: ", err)
+	}
+
+	// SetMaxIdleConns sets the maximum number of connections in the idle connection pool.
+	sqlDB.SetMaxIdleConns(5)
+
+	// SetMaxOpenConns sets the maximum number of open connections to the database.
+	sqlDB.SetMaxOpenConns(20)
+
+	// SetConnMaxLifetime sets the maximum amount of time a connection may be reused.
+	sqlDB.SetConnMaxLifetime(time.Hour)
 
 	err = db.AutoMigrate(
 		&models.Item{},

@@ -119,8 +119,10 @@ func GetTransactionByID(c *gin.Context) {
 		// This deletes the draft immediately after viewing? 
 		// I will replicate this behavior via service if needed, but maybe I should expose a method for it.
 		// For now I'll call DeleteDraft in a goroutine ignoring errors as per original fire-and-forget.
+		userID := common.GetUserID(c)
+		clientIP := c.ClientIP()
 		go func() {
-			_ = service.DeleteDraft(id, common.GetUserID(c), c.ClientIP())
+			_ = service.DeleteDraft(id, userID, clientIP)
 		}()
 		return
 	}
