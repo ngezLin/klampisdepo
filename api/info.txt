@@ -1,0 +1,22 @@
+Command 'pm2' not found, did you mean:
+  command 'pmg' from deb python3-pymatgen (2023.06.23+dfsg1-2build1)
+  command 'wm2' from deb wm2 (4+svn20090216-4build1)
+  command 'pmw' from deb pmw (1:5.22-1)
+  command 'pom2' from deb libpod-pom-perl (2.01-4)
+  command 'pms' from deb pms (0.42-1.1)
+  command 'pm' from deb powerman (2.3.27-4)
+  command 'tpm2' from deb tpm2-tools (5.4-1)
+  command 'pmc' from deb linuxptp (4.0-1ubuntu1.1)
+  command 'gm2' from deb gm2 (4:13.2.0-2ubuntu1)
+Try: apt install <deb name>
+tcp6       0      0 :::8080                 :::*                    LISTEN      146931/./kd-api     
+root      146931  0.0  1.9 1248728 19552 ?       Sl   06:03   0:03 ./kd-api
+root      204288  0.0  0.2   6544  2304 pts/0    S+   10:12   0:00 grep --color=auto kd-api
+networkd-dispatcher.service                  enabled         enabled
+systemd-fsckd.service                        static          -
+systemd-networkd-wait-online.service         disabled        enabled
+systemd-networkd-wait-online@.service        disabled        enabled
+systemd-networkd.service                     enabled         enabled
+systemd-fsckd.socket                         static          -
+systemd-networkd.socket                      enabled         enabled
+blockdev@.target                             static          -

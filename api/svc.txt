@@ -1,0 +1,6 @@
+lrwxrwxrwx 1 root root 44 Apr 23  2024 /etc/systemd/system/dbus-org.freedesktop.ModemManager1.service -> /usr/lib/systemd/system/ModemManager.service
+lrwxrwxrwx 1 root root 40 Apr 26  2024 /etc/systemd/system/dbus-org.freedesktop.thermald.service -> /usr/lib/systemd/system/thermald.service
+lrwxrwxrwx 1 root root 49 Apr 23  2024 /etc/systemd/system/dbus-org.freedesktop.timesync1.service -> /usr/lib/systemd/system/systemd-timesyncd.service
+lrwxrwxrwx 1 root root 42 Apr 23  2024 /etc/systemd/system/iscsi.service -> /usr/lib/systemd/system/open-iscsi.service
+lrwxrwxrwx 1 root root 39 Apr 23  2024 /etc/systemd/system/syslog.service -> /usr/lib/systemd/system/rsyslog.service
+lrwxrwxrwx 1 root root 45 Apr 23  2024 /etc/systemd/system/vmtoolsd.service -> /usr/lib/systemd/system/open-vm-tools.service

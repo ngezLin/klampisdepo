@@ -19,12 +19,15 @@ func NewDashboardService() DashboardService {
 
 func (s *dashboardService) GetDashboardStats() (*dtos.DashboardStats, error) {
 	var todayProfit float64
+	var monthlyProfit float64
 	var todayTransactions int64
 	var lowStock int64
 	var topItems []dtos.TopItem
 
 	today := time.Now().Format("2006-01-02")
+	thisMonth := time.Now().Format("2006-01")
 	var todayTransactionsData []models.Transaction
+	var monthlyTransactionsData []models.Transaction
 
 	// Calculate today's profit
 	if err := config.DB.Preload("Items.Item").
@@ -36,6 +39,19 @@ func (s *dashboardService) GetDashboardStats() (*dtos.DashboardStats, error) {
 	for _, t := range todayTransactionsData {
 		for _, ti := range t.Items {
 			todayProfit += float64(ti.Quantity) * (ti.Price - ti.Item.BuyPrice)
+		}
+	}
+
+	// Calculate monthly profit
+	if err := config.DB.Preload("Items.Item").
+		Where("status = ? AND DATE_FORMAT(created_at, '%Y-%m') = ?", "completed", thisMonth).
+		Find(&monthlyTransactionsData).Error; err != nil {
+		return nil, err
+	}
+
+	for _, t := range monthlyTransactionsData {
+		for _, ti := range t.Items {
+			monthlyProfit += float64(ti.Quantity) * (ti.Price - ti.Item.BuyPrice)
 		}
 	}
 
@@ -73,6 +89,7 @@ func (s *dashboardService) GetDashboardStats() (*dtos.DashboardStats, error) {
 
 	return &dtos.DashboardStats{
 		TodayProfit:       todayProfit,
+		MonthlyProfit:     monthlyProfit,
 		TodayTransactions: todayTransactions,
 		LowStock:          lowStock,
 		TopSellingItems:   topItems,
