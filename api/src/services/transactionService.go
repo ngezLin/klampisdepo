@@ -11,6 +11,7 @@ import (
 	"kd-api/src/utils/log"
 
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type TransactionService interface {
@@ -48,7 +49,7 @@ func (s *transactionService) CreateTransaction(input dtos.CreateTransactionInput
 
 		for _, i := range input.Items {
 			var item models.Item
-			if err := tx.First(&item, i.ItemID).Error; err != nil {
+			if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&item, i.ItemID).Error; err != nil {
 				return fmt.Errorf("item %d not found", i.ItemID)
 			}
 
@@ -151,7 +152,7 @@ func (s *transactionService) CreateTransaction(input dtos.CreateTransactionInput
 						change := -tItem.Quantity
 						ref := fmt.Sprintf("TX-%d", transaction.ID)
 						note := "Sold in transaction"
-						
+
 						if err := invService.LogStockChange(tx, tItem.ItemID, change, "sale", ref, userID, note); err != nil {
 							return err
 						}
@@ -192,65 +193,114 @@ func (s *transactionService) CreateTransaction(input dtos.CreateTransactionInput
 }
 
 func (s *transactionService) UpdateTransactionStatus(id string, input dtos.UpdateTransactionInput, userID *uint, clientIP string) (*models.Transaction, error) {
+	var warnings []string
 	var transaction models.Transaction
-	if err := config.DB.Preload("Items").First(&transaction, id).Error; err != nil {
-		return nil, errors.New("transaction not found")
-	}
 
-	oldCopy := transaction
-
-	if input.Status != "" {
-		if input.Status != "draft" && input.Status != "completed" {
-			return nil, errors.New("invalid status")
-		}
-		transaction.Status = input.Status
-	}
-
-	if input.Note != nil {
-		transaction.Note = input.Note
-	}
-
-	if input.TransactionType != nil {
-		transaction.TransactionType = *input.TransactionType
-	}
-
-	if input.Discount != nil {
-		if *input.Discount < 0 {
-			transaction.Discount = 0
-		} else {
-			transaction.Discount = *input.Discount
+	err := config.DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Preload("Items.Item").First(&transaction, id).Error; err != nil {
+			return errors.New("transaction not found")
 		}
 
-		var total float64
-		for _, item := range transaction.Items {
-			total += item.Subtotal
+		oldCopy := transaction
+		oldStatus := transaction.Status
+
+		if input.Status != "" {
+			if input.Status != "draft" && input.Status != "completed" {
+				return errors.New("invalid status")
+			}
+			transaction.Status = input.Status
 		}
 
-		finalTotal := total - transaction.Discount
-		if finalTotal < 0 {
-			finalTotal = 0
+		if input.Note != nil {
+			transaction.Note = input.Note
 		}
-		transaction.Total = finalTotal
-	}
 
-	if err := config.DB.Save(&transaction).Error; err != nil {
+		if input.TransactionType != nil {
+			transaction.TransactionType = *input.TransactionType
+		}
+
+		if input.Discount != nil {
+			if *input.Discount < 0 {
+				transaction.Discount = 0
+			} else {
+				transaction.Discount = *input.Discount
+			}
+
+			var total float64
+			for _, item := range transaction.Items {
+				total += item.Subtotal
+			}
+
+			finalTotal := total - transaction.Discount
+			if finalTotal < 0 {
+				finalTotal = 0
+			}
+			transaction.Total = finalTotal
+		}
+
+		if oldStatus == "draft" && transaction.Status == "completed" {
+			for _, tItem := range transaction.Items {
+				var item models.Item
+				if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&item, tItem.ItemID).Error; err != nil {
+					return err
+				}
+
+				if item.IsStockManaged != nil && *item.IsStockManaged {
+					if item.Stock < tItem.Quantity {
+						warnings = append(warnings,
+							fmt.Sprintf(
+								"Warning: Item '%s' stock insufficient (current: %d, required: %d)",
+								item.Name, item.Stock, tItem.Quantity,
+							),
+						)
+						item.Stock = 0
+					} else {
+						item.Stock -= tItem.Quantity
+					}
+
+					if err := tx.Save(&item).Error; err != nil {
+						return err
+					}
+
+					invService := NewInventoryService()
+					change := -tItem.Quantity
+					ref := fmt.Sprintf("TX-%d", transaction.ID)
+					note := "Sold in transaction (Draft to Completed)"
+
+					if err := invService.LogStockChange(tx, tItem.ItemID, change, "sale", ref, userID, note); err != nil {
+						return err
+					}
+				}
+			}
+		}
+
+		if err := tx.Save(&transaction).Error; err != nil {
+			return err
+		}
+
+		description := fmt.Sprintf("Transaction #%d updated", transaction.ID)
+		if err := log.CreateTransactionAuditLog(
+			tx,
+			"update",
+			transaction.ID,
+			&oldCopy,
+			&transaction,
+			userID,
+			clientIP,
+			description,
+		); err != nil {
+			return errors.New("failed to create audit log")
+		}
+
+		return nil
+	})
+
+	if err != nil {
 		return nil, err
 	}
 
-	description := fmt.Sprintf("Transaction #%d updated", transaction.ID)
-	if err := log.CreateTransactionAuditLog(
-		config.DB,
-		"update",
-		transaction.ID,
-		&oldCopy,
-		&transaction,
-		userID,
-		clientIP,
-		description,
-	); err != nil {
-		return nil, errors.New("failed to create audit log")
-	}
-
+	// We might want to handle warnings in the controller for this endpoint as well in the future,
+	// but for now we just return the transaction successfully.
 	return &transaction, nil
 }
 
@@ -311,7 +361,7 @@ func (s *transactionService) GetTransactionHistory(filter dtos.TransactionFilter
 		end := start.Add(24 * time.Hour)
 		db = db.Where("created_at >= ? AND created_at < ?", start, end)
 	}
-	
+
 	// Support for history by date specifically if Date is set but StartDate isn't
 	if filter.Date != "" && filter.StartDate == "" {
 		start, _ := time.Parse("2006-01-02", filter.Date)
@@ -389,37 +439,54 @@ func (s *transactionService) DeleteDraft(id string, userID *uint, clientIP strin
 
 func (s *transactionService) RefundTransaction(id string, userID *uint, clientIP string) (*models.Transaction, error) {
 	var transaction models.Transaction
-	if err := config.DB.Preload("Items.Item").First(&transaction, id).Error; err != nil {
-		return nil, errors.New("transaction not found")
-	}
+	
+	err := config.DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Preload("Items.Item").First(&transaction, id).Error; err != nil {
+			return errors.New("transaction not found")
+		}
 
-	if transaction.Status != "completed" {
-		return nil, errors.New("only completed transactions can be refunded")
-	}
+		if transaction.Status != "completed" {
+			return errors.New("only completed transactions can be refunded")
+		}
 
-	for _, tItem := range transaction.Items {
-		var item models.Item
-		if err := config.DB.First(&item, tItem.ItemID).Error; err == nil {
-			if item.IsStockManaged != nil && *item.IsStockManaged {
-				item.Stock += tItem.Quantity
-				config.DB.Save(&item)
+		for _, tItem := range transaction.Items {
+			var item models.Item
+			if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&item, tItem.ItemID).Error; err == nil {
+				if item.IsStockManaged != nil && *item.IsStockManaged {
+					item.Stock += tItem.Quantity
+					if err := tx.Save(&item).Error; err != nil {
+						return err
+					}
 
-				// Inventory Log (Refund)
-				invService := NewInventoryService()
-				change := tItem.Quantity // Refund is positive (stock returns)
-				ref := fmt.Sprintf("TX-%d (REFUND)", transaction.ID)
-				note := "Refunded transaction"
+					// Inventory Log (Refund)
+					invService := NewInventoryService()
+					change := tItem.Quantity // Refund is positive (stock returns)
+					ref := fmt.Sprintf("TX-%d (REFUND)", transaction.ID)
+					note := "Refunded transaction"
 
-				invService.LogStockChange(config.DB, tItem.ItemID, change, "refund", ref, userID, note)
+					if err := invService.LogStockChange(tx, tItem.ItemID, change, "refund", ref, userID, note); err != nil {
+						return err
+					}
+				}
+			} else {
+				// If we can't find the item during refund, we might still want to proceed or fail.
+				// Fail safe approach: return error
+				return err
 			}
 		}
-	}
 
-	transaction.Status = "refunded"
-	transaction.Payment = nil
-	transaction.Change = nil
+		transaction.Status = "refunded"
+		transaction.Payment = nil
+		transaction.Change = nil
 
-	if err := config.DB.Save(&transaction).Error; err != nil {
+		if err := tx.Save(&transaction).Error; err != nil {
+			return err
+		}
+
+		return nil
+	})
+
+	if err != nil {
 		return nil, err
 	}
 

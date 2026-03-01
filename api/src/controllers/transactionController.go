@@ -113,17 +113,6 @@ func GetTransactionByID(c *gin.Context) {
 
 	if transaction.Status == "draft" {
 		c.JSON(http.StatusOK, transaction)
-		// Keeping the logic to delete draft after view? That seems odd in the original code but preserving behavior.
-		// Wait, original code:
-		// go func() { config.DB.Delete(&models.Transaction{}, id) }()
-		// This deletes the draft immediately after viewing? 
-		// I will replicate this behavior via service if needed, but maybe I should expose a method for it.
-		// For now I'll call DeleteDraft in a goroutine ignoring errors as per original fire-and-forget.
-		userID := common.GetUserID(c)
-		clientIP := c.ClientIP()
-		go func() {
-			_ = service.DeleteDraft(id, userID, clientIP)
-		}()
 		return
 	}
 
