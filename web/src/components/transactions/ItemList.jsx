@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { getItems, searchItemsByName } from "../../services/itemService";
+import { BASE_URL } from "../../services/api";
 import Pagination from "../common/Pagination";
 
 export default function ItemList({ addToCart }) {
@@ -68,70 +69,70 @@ export default function ItemList({ addToCart }) {
         </div>
       </div>
 
-      {/* Table */}
+      {/* Grid view replacing table */}
       {items.length === 0 ? (
         <p className="text-gray-500 text-center py-10">No items found.</p>
       ) : (
-        <div className="bg-white rounded-lg shadow overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-100 border-b">
-                <tr>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">
-                    Image
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">
-                    Name
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">
-                    Description
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">
-                    Price
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">
-                    Stock
-                  </th>
-                </tr>
-              </thead>
-
-              <tbody className="divide-y divide-gray-200">
-                {items.map((item) => (
-                  <tr
-                    key={item.id}
-                    onClick={() => addToCart(item)}
-                    className="hover:bg-blue-50 cursor-pointer transition duration-150"
-                  >
-                    <td className="px-4 py-3">
-                      <img
-                        src={
-                          item.image_url
-                            ? String(item.image_url).startsWith("http")
-                              ? item.image_url
-                              : `${process.env.REACT_APP_API_URL || "http://localhost:8080"}${item.image_url}`
-                            : placeholder
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+          {items.map((item) => (
+            <div
+              key={item.id}
+              onClick={() => addToCart(item)}
+              className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden cursor-pointer hover:shadow-md hover:border-blue-300 transition-all flex flex-col active:scale-95 duration-150"
+            >
+              <div className="relative w-full pt-[100%] bg-gray-100 overflow-hidden">
+                <img
+                  src={
+                    item.image_url
+                      ? String(item.image_url).startsWith("http")
+                        ? item.image_url
+                        : `${BASE_URL}${item.image_url}`
+                      : placeholder
+                  }
+                  alt={item.name}
+                  className="absolute inset-0 w-full h-full object-cover"
+                  loading="lazy"
+                />
+                {!item.is_stock_managed || item.stock > 0 ? null : (
+                  <div className="absolute inset-0 bg-red-500 bg-opacity-30 flex items-center justify-center z-10">
+                    <span className="bg-red-600 text-white text-xs font-bold px-2 py-1 rounded shadow-lg">
+                      HABIS
+                    </span>
+                  </div>
+                )}
+              </div>
+              <div className="p-2 sm:p-3 flex flex-col flex-1 gap-1">
+                <h3 className="text-xs sm:text-sm font-semibold text-gray-800 line-clamp-2 leading-tight h-8 sm:h-10">
+                  {item.name}
+                </h3>
+                <p
+                  className="text-[10px] text-gray-500 uppercase tracking-widest truncate w-full h-4"
+                  title={item.description || ""}
+                >
+                  {item.description || "-"}
+                </p>
+                <div className="mt-1 text-left">
+                  <p className="text-blue-600 font-bold text-sm sm:text-base">
+                    Rp {item.price.toLocaleString("id-ID")}
+                  </p>
+                  <p className="text-[10px] sm:text-xs text-gray-500 mt-0.5">
+                    Stok:{" "}
+                    {item.is_stock_managed ? (
+                      <span
+                        className={
+                          item.stock <= 5 ? "text-orange-500 font-medium" : ""
                         }
-                        alt={item.name}
-                        className="w-16 h-16 object-cover rounded"
-                      />
-                    </td>
-                    <td className="px-4 py-3 text-sm font-medium text-gray-800">
-                      {item.name}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-gray-600 max-w-xs line-clamp-2">
-                      {item.description || "Deskripsi tidak tersedia."}
-                    </td>
-                    <td className="px-4 py-3 text-sm font-semibold text-gray-800 whitespace-nowrap">
-                      Rp {item.price.toLocaleString()}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-gray-600">
-                      {item.is_stock_managed ? item.stock : "-"}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                      >
+                        {item.stock}
+                      </span>
+                    ) : (
+                      "-"
+                    )}
+                  </p>
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       )}
 

@@ -1,9 +1,12 @@
 import axios from "axios";
 
+const BASE_URL = process.env.REACT_APP_API_URL || "https://api.klampisdepo.com";
+
 const api = axios.create({
-  baseURL: process.env.REACT_APP_API_URL || "https://api.klampisdepo.com",
-  // baseURL: process.env.REACT_APP_API_URL || "http://localhost:8080",
+  baseURL: BASE_URL,
 });
+
+export { BASE_URL };
 
 // Add request interceptor to attach token
 api.interceptors.request.use((config) => {

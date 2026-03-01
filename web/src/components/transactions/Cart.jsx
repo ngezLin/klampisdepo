@@ -27,7 +27,7 @@ export default function Cart({
   useEffect(() => {
     const totalBeforeDiscount = cart.reduce(
       (acc, c) => acc + c.price * c.quantity,
-      0
+      0,
     );
     const total = Math.max(totalBeforeDiscount - discount, 0);
     if (paymentType !== "cash") {
@@ -48,7 +48,7 @@ export default function Cart({
 
   const totalBeforeDiscount = cart.reduce(
     (acc, c) => acc + c.price * c.quantity,
-    0
+    0,
   );
   const total = Math.max(totalBeforeDiscount - discount, 0);
   const change = paymentAmount - total;
@@ -95,7 +95,7 @@ export default function Cart({
                     updateQuantity(
                       c.item_id,
                       c.quantity,
-                      normalizeNumber(e.target.value)
+                      normalizeNumber(e.target.value),
                     )
                   }
                   className="w-24 border rounded px-1 py-0.5 text-right text-sm"
@@ -111,7 +111,7 @@ export default function Cart({
                   updateQuantity(
                     c.item_id,
                     normalizeNumber(e.target.value),
-                    c.price
+                    c.price,
                   )
                 }
                 className="w-16 border rounded px-1 py-0.5 text-center"
@@ -202,10 +202,12 @@ export default function Cart({
           </select>
         </div>
 
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-col sm:flex-row gap-2">
           <button
-            className={`flex-1 bg-green-500 text-white px-4 py-2 rounded ${
-              change < 0 ? "opacity-50 cursor-not-allowed" : ""
+            className={`flex-1 bg-green-500 text-white font-bold px-4 py-3 sm:py-2 rounded shadow-sm ${
+              change < 0
+                ? "opacity-50 cursor-not-allowed"
+                : "hover:bg-green-600 active:scale-95 transition-transform"
             }`}
             disabled={change < 0}
             onClick={() => handleCheckout("completed", discount)}
@@ -213,7 +215,7 @@ export default function Cart({
             Checkout
           </button>
           <button
-            className="flex-1 bg-yellow-500 text-white px-4 py-2 rounded"
+            className="flex-1 bg-yellow-500 hover:bg-yellow-600 font-bold active:scale-95 transition-transform text-white px-4 py-3 sm:py-2 rounded shadow-sm"
             onClick={() => handleCheckout("draft", discount)}
           >
             Save Draft
@@ -221,38 +223,38 @@ export default function Cart({
         </div>
 
         {/* 🔥 SIMPLIFIED: Bluetooth Controls */}
-        <div className="flex gap-2">
+        <div className="flex flex-col sm:flex-row gap-2">
           <button
             onClick={connectPrinter}
             disabled={isConnecting || device}
-            className={`flex-1 px-4 py-2 rounded text-white text-sm ${
+            className={`flex-1 px-4 py-3 sm:py-2 rounded font-bold text-white text-sm shadow-sm active:scale-95 transition-transform ${
               device
                 ? "bg-green-500"
                 : isConnecting
-                ? "bg-blue-400"
-                : "bg-blue-600 hover:bg-blue-700"
+                  ? "bg-blue-400"
+                  : "bg-blue-600 hover:bg-blue-700"
             } ${(isConnecting || device) && "opacity-70 cursor-not-allowed"}`}
           >
             {device
               ? `✅ ${device.name || "Connected"}`
               : isConnecting
-              ? "🔄 Connecting..."
-              : "🔗 Connect Printer"}
+                ? "🔄 Connecting..."
+                : "🔗 Connect Printer"}
           </button>
 
           {device && (
             <button
               onClick={disconnectPrinter}
-              className="flex-1 px-4 py-2 rounded text-white text-sm bg-red-500 hover:bg-red-600"
+              className="flex-1 px-4 py-3 sm:py-2 rounded font-bold text-white text-sm bg-red-500 hover:bg-red-600 shadow-sm active:scale-95 transition-transform"
             >
               🔌 Disconnect
             </button>
           )}
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex flex-col sm:flex-row gap-2">
           <button
-            className={`flex-1 bg-purple-500 text-white px-4 py-2 rounded ${
+            className={`flex-1 bg-purple-500 font-bold text-white px-4 py-3 sm:py-2 rounded shadow-sm active:scale-95 transition-transform ${
               cart.length === 0 || !device
                 ? "opacity-50 cursor-not-allowed"
                 : "hover:bg-purple-600"
@@ -264,7 +266,7 @@ export default function Cart({
           </button>
 
           <button
-            className="flex-1 bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+            className="flex-1 bg-blue-500 hover:bg-blue-600 font-bold text-white px-4 py-3 sm:py-2 rounded shadow-sm active:scale-95 transition-transform"
             onClick={openModal}
           >
             📋 Load Draft

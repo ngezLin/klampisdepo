@@ -54,7 +54,7 @@ export default function Transactions() {
       const exist = prev.find((c) => c.item_id === item.id);
       if (exist) {
         return prev.map((c) =>
-          c.item_id === item.id ? { ...c, quantity: c.quantity + 1 } : c
+          c.item_id === item.id ? { ...c, quantity: c.quantity + 1 } : c,
         );
       }
       return [
@@ -69,8 +69,8 @@ export default function Transactions() {
       prev.map((c) =>
         c.item_id === itemId
           ? { ...c, quantity: quantity ?? c.quantity, price: price ?? c.price }
-          : c
-      )
+          : c,
+      ),
     );
   };
 
@@ -80,7 +80,7 @@ export default function Transactions() {
 
   const totalBeforeDiscount = cart.reduce(
     (acc, c) => acc + c.price * c.quantity,
-    0
+    0,
   );
   const total = Math.max(totalBeforeDiscount - discount, 0);
   const change = paymentAmount - total;
@@ -138,7 +138,7 @@ export default function Transactions() {
           name: i.item.name,
           price: i.price,
           quantity: i.quantity,
-        }))
+        })),
       );
       setPaymentAmount(t.payment || 0);
       setPaymentType(t.paymentType || "cash");
@@ -154,7 +154,7 @@ export default function Transactions() {
   };
 
   return (
-    <div className="flex flex-col md:flex-row gap-4 w-full min-h-screen bg-gray-100 pr-4">
+    <div className="flex flex-col md:flex-row gap-4 w-full min-h-screen bg-gray-100 p-2 md:p-4">
       <ItemList items={items} addToCart={addToCart} />
 
       <Cart

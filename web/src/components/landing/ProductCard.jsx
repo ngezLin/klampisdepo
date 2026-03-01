@@ -1,4 +1,5 @@
 import { motion } from "framer-motion";
+import { BASE_URL } from "../../services/api";
 
 export default function ProductCard({ item }) {
   const placeholder =
@@ -18,7 +19,7 @@ export default function ProductCard({ item }) {
             item?.image_url
               ? String(item?.image_url).startsWith("http")
                 ? item.image_url
-                : `${process.env.REACT_APP_API_URL || "http://localhost:8080"}${item.image_url}`
+                : `${BASE_URL}${item.image_url}`
               : placeholder
           }
           alt={item?.name || "Produk"}

@@ -9,6 +9,7 @@
     "install:all": "npm install && cd web && npm install && cd ../api && go mod tidy"
   },
   "devDependencies": {
-    "concurrently": "^8.2.2"
+    "concurrently": "^8.2.2",
+    "cypress": "^15.11.0"
   }
 }

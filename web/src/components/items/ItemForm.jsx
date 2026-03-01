@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import toast from "react-hot-toast";
 import { uploadImage } from "../../services/itemService";
+import { BASE_URL } from "../../services/api";
 import { compressImage } from "../../utils/imageCompression";
 
 export default function ItemForm({
@@ -251,7 +252,7 @@ export default function ItemForm({
                     src={
                       String(form.image_url).startsWith("http")
                         ? form.image_url
-                        : `${process.env.REACT_APP_API_URL || "http://localhost:8080"}${form.image_url}`
+                        : `${BASE_URL}${form.image_url}`
                     }
                     alt="Preview"
                     className="w-full h-full object-cover"
