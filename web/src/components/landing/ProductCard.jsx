@@ -7,9 +7,9 @@ export default function ProductCard({ item }) {
 
   return (
     <motion.div
-      whileHover={{ y: -8, scale: 1.02 }}
+      whileHover={{ y: -12, scale: 1.02 }}
       transition={{ type: "spring", stiffness: 300, damping: 20 }}
-      className="group bg-white shadow-md rounded-xl overflow-hidden transform transition duration-300 hover:shadow-2xl"
+      className="group bg-gray-900/40 backdrop-blur-md rounded-3xl overflow-hidden border border-white/5 hover:border-blue-500/30 transition-all duration-300 shadow-xl hover:shadow-blue-500/10"
       role="article"
       aria-label={item?.name || "Produk"}
     >
@@ -28,15 +28,15 @@ export default function ProductCard({ item }) {
         {/* subtle overlay on hover */}
         <div className="pointer-events-none absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-300" />
       </div>
-      <div className="p-4">
-        <h3 className="font-semibold text-lg mb-2 line-clamp-1">
+      <div className="p-6">
+        <h3 className="font-bold text-xl mb-2 text-white line-clamp-1 group-hover:text-blue-400 transition-colors">
           {item?.name}
         </h3>
-        <p className="text-gray-600 text-sm mb-3 line-clamp-2">
+        <p className="text-gray-400 text-sm mb-4 line-clamp-2 leading-relaxed h-10">
           {item?.description || "Deskripsi tidak tersedia."}
         </p>
-        <p className="font-bold text-blue-800 text-lg">
-          Rp {(item?.price ?? 0).toLocaleString()}
+        <p className="font-bold text-blue-400 text-2xl tracking-tight">
+          Rp {(item?.price ?? 0).toLocaleString("id-ID")}
         </p>
       </div>
     </motion.div>

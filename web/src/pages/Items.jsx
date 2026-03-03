@@ -217,8 +217,10 @@ export default function Items() {
   };
 
   return (
-    <div className="p-4 sm:p-6">
-      <h1 className="text-lg sm:text-xl font-bold mb-4">Items CRUD</h1>
+    <div className="p-4 sm:p-6 bg-gray-950 min-h-screen text-gray-100">
+      <h1 className="text-lg sm:text-xl font-bold mb-4 text-white">
+        Items CRUD
+      </h1>
 
       <div className="flex flex-col sm:flex-row gap-2 mb-4">
         <button
@@ -252,9 +254,9 @@ export default function Items() {
           placeholder="Cari item berdasarkan nama..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="border rounded w-full p-2"
+          className="bg-gray-800 border-gray-700 rounded w-full p-2 text-white placeholder-gray-500 focus:ring-2 focus:ring-blue-500 outline-none"
         />
-        <p className="text-sm text-gray-600 mt-1">Total: {totalItems} items</p>
+        <p className="text-sm text-gray-400 mt-1">Total: {totalItems} items</p>
       </div>
 
       {error && <p className="text-red-600 mb-2">{error}</p>}

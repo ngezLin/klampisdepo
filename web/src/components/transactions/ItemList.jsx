@@ -38,10 +38,10 @@ export default function ItemList({ addToCart }) {
   }, [fetchData]);
 
   return (
-    <div className="flex-1 min-w-0 min-h-0 bg-gray-50 p-4 rounded shadow-inner overflow-y-auto">
+    <div className="flex-1 min-w-0 min-h-0 bg-gray-900/50 backdrop-blur-sm p-4 rounded-xl shadow-inner overflow-y-auto border border-white/5">
       {/* Header + Search */}
       <div className="flex flex-col sm:flex-row justify-between items-center gap-3 mb-4">
-        <h2 className="text-xl font-bold">Items</h2>
+        <h2 className="text-xl font-bold text-white">Items</h2>
 
         <div className="relative w-full sm:w-1/2 lg:w-1/3">
           <input
@@ -52,7 +52,7 @@ export default function ItemList({ addToCart }) {
               setSearch(e.target.value);
               setCurrentPage(1);
             }}
-            className="w-full px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 pr-8"
+            className="w-full px-3 py-2 bg-gray-800 border-gray-700 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all pr-8"
           />
           {search && (
             <button
@@ -78,7 +78,7 @@ export default function ItemList({ addToCart }) {
             <div
               key={item.id}
               onClick={() => addToCart(item)}
-              className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden cursor-pointer hover:shadow-md hover:border-blue-300 transition-all flex flex-col active:scale-95 duration-150"
+              className="bg-gray-800 rounded-xl shadow-sm border border-white/5 overflow-hidden cursor-pointer hover:shadow-lg hover:border-blue-500/50 hover:bg-gray-700/50 transition-all flex flex-col active:scale-95 duration-150 group"
             >
               <div className="relative w-full pt-[100%] bg-gray-100 overflow-hidden">
                 <img
@@ -102,17 +102,17 @@ export default function ItemList({ addToCart }) {
                 )}
               </div>
               <div className="p-2 sm:p-3 flex flex-col flex-1 gap-1">
-                <h3 className="text-xs sm:text-sm font-semibold text-gray-800 line-clamp-2 leading-tight h-8 sm:h-10">
+                <h3 className="text-xs sm:text-sm font-semibold text-white line-clamp-2 leading-tight h-8 sm:h-10 group-hover:text-blue-400 transition-colors">
                   {item.name}
                 </h3>
                 <p
-                  className="text-[10px] text-gray-500 uppercase tracking-widest truncate w-full h-4"
+                  className="text-[10px] text-gray-400 uppercase tracking-widest truncate w-full h-4"
                   title={item.description || ""}
                 >
                   {item.description || "-"}
                 </p>
                 <div className="mt-1 text-left">
-                  <p className="text-blue-600 font-bold text-sm sm:text-base">
+                  <p className="text-blue-400 font-bold text-sm sm:text-base">
                     Rp {item.price.toLocaleString("id-ID")}
                   </p>
                   <p className="text-[10px] sm:text-xs text-gray-500 mt-0.5">
@@ -120,7 +120,9 @@ export default function ItemList({ addToCart }) {
                     {item.is_stock_managed ? (
                       <span
                         className={
-                          item.stock <= 5 ? "text-orange-500 font-medium" : ""
+                          item.stock <= 5
+                            ? "text-orange-500 font-medium"
+                            : "text-gray-300"
                         }
                       >
                         {item.stock}

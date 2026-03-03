@@ -94,12 +94,12 @@ export default function Attendance() {
 
   const getStatusBadge = (status) => {
     const styles = {
-      present: "bg-green-100 text-green-800",
-      absent: "bg-red-100 text-red-800",
-      sick: "bg-yellow-100 text-yellow-800",
-      leave: "bg-blue-100 text-blue-800",
+      present: "bg-green-900/30 text-green-400 border border-green-800/50",
+      absent: "bg-red-900/30 text-red-400 border border-red-800/50",
+      sick: "bg-yellow-900/30 text-yellow-400 border border-yellow-800/50",
+      leave: "bg-blue-900/30 text-blue-400 border border-blue-800/50",
     };
-    return styles[status] || "bg-gray-100 text-gray-800";
+    return styles[status] || "bg-gray-800 text-gray-400 border border-gray-700";
   };
 
   useEffect(() => {
@@ -123,22 +123,29 @@ export default function Attendance() {
   }, []);
 
   return (
-    <div className="p-6">
-      <h1 className="text-3xl font-bold mb-6">Attendance Management</h1>
+    <div className="p-4 sm:p-6 bg-gray-950 min-h-screen text-gray-100">
+      <h1 className="text-3xl font-bold mb-6 text-white tracking-tight">
+        Attendance Management
+      </h1>
 
       {/* Create Attendance Form */}
-      <div className="bg-white rounded-lg shadow p-6 mb-6">
-        <h2 className="text-xl font-semibold mb-4">Record Attendance</h2>
+      <div className="bg-gray-900/50 backdrop-blur-sm rounded-2xl shadow-xl p-6 mb-8 border border-white/5">
+        <h2 className="text-xl font-semibold mb-6 text-white flex items-center gap-2">
+          <span className="h-2 w-2 bg-blue-500 rounded-full animate-pulse" />
+          Record Attendance
+        </h2>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label className="block text-sm font-medium mb-2">Employee</label>
+              <label className="block text-sm font-bold text-gray-400 mb-2 ml-1">
+                Employee
+              </label>
               <select
                 value={formData.user_id}
                 onChange={(e) =>
                   setFormData({ ...formData, user_id: e.target.value })
                 }
-                className="w-full border rounded-lg px-3 py-2"
+                className="w-full bg-gray-800 border-gray-700 rounded-xl px-4 py-2.5 text-white focus:ring-2 focus:ring-blue-500/50 outline-none transition-all"
                 required
               >
                 <option value="">Select Employee</option>
@@ -151,13 +158,15 @@ export default function Attendance() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-2">Status</label>
+              <label className="block text-sm font-bold text-gray-400 mb-2 ml-1">
+                Status
+              </label>
               <select
                 value={formData.status}
                 onChange={(e) =>
                   setFormData({ ...formData, status: e.target.value })
                 }
-                className="w-full border rounded-lg px-3 py-2"
+                className="w-full bg-gray-800 border-gray-700 rounded-xl px-4 py-2.5 text-white focus:ring-2 focus:ring-blue-500/50 outline-none transition-all"
                 required
               >
                 <option value="present">Present</option>
@@ -168,7 +177,9 @@ export default function Attendance() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-2">Note</label>
+              <label className="block text-sm font-bold text-gray-400 mb-2 ml-1">
+                Note
+              </label>
               <input
                 type="text"
                 value={formData.note}
@@ -176,7 +187,7 @@ export default function Attendance() {
                   setFormData({ ...formData, note: e.target.value })
                 }
                 placeholder="Optional note"
-                className="w-full border rounded-lg px-3 py-2"
+                className="w-full bg-gray-800 border-gray-700 rounded-xl px-4 py-2.5 text-white focus:ring-2 focus:ring-blue-500/50 outline-none transition-all"
               />
             </div>
           </div>
@@ -203,25 +214,25 @@ export default function Attendance() {
       </div>
 
       {/* Tabs */}
-      <div className="bg-white rounded-lg shadow">
-        <div className="border-b">
+      <div className="bg-gray-900/50 backdrop-blur-sm rounded-2xl shadow-xl border border-white/5 overflow-hidden">
+        <div className="border-b border-gray-800">
           <div className="flex">
             <button
               onClick={() => setActiveTab("today")}
-              className={`px-6 py-3 font-medium ${
+              className={`px-8 py-4 font-bold text-sm uppercase tracking-wider transition-all ${
                 activeTab === "today"
-                  ? "border-b-2 border-blue-500 text-blue-600"
-                  : "text-gray-600 hover:text-gray-800"
+                  ? "bg-blue-600/10 text-blue-400 border-b-2 border-blue-500"
+                  : "text-gray-500 hover:text-gray-300 hover:bg-white/5"
               }`}
             >
-              Today's Attendance
+              Today
             </button>
             <button
               onClick={() => setActiveTab("history")}
-              className={`px-6 py-3 font-medium ${
+              className={`px-8 py-4 font-bold text-sm uppercase tracking-wider transition-all ${
                 activeTab === "history"
-                  ? "border-b-2 border-blue-500 text-blue-600"
-                  : "text-gray-600 hover:text-gray-800"
+                  ? "bg-blue-600/10 text-blue-400 border-b-2 border-blue-500"
+                  : "text-gray-500 hover:text-gray-300 hover:bg-white/5"
               }`}
             >
               History
@@ -234,38 +245,44 @@ export default function Attendance() {
             <div className="text-center py-8 text-gray-500">Loading...</div>
           ) : activeTab === "today" ? (
             <div>
-              <h3 className="text-lg font-semibold mb-4">
-                Today's Attendance ({todayAttendance.length})
+              <h3 className="text-lg font-bold mb-6 text-white flex items-center justify-between">
+                <span>Today's Roster</span>
+                <span className="bg-blue-600/20 text-blue-400 text-xs px-3 py-1 rounded-full">
+                  {todayAttendance.length} Records
+                </span>
               </h3>
               {todayAttendance.length === 0 ? (
-                <p className="text-gray-500 text-center py-8">
+                <p className="text-gray-500 text-center py-12 italic">
                   No attendance records for today
                 </p>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full">
-                    <thead className="bg-gray-50">
+                    <thead className="bg-gray-900/50 text-gray-400">
                       <tr>
-                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">
+                        <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-widest">
                           Employee
                         </th>
-                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">
+                        <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-widest">
                           Role
                         </th>
-                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">
+                        <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-widest">
                           Status
                         </th>
-                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">
+                        <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-widest">
                           Note
                         </th>
-                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">
+                        <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-widest">
                           Time
                         </th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y">
+                    <tbody className="divide-y divide-gray-800">
                       {todayAttendance.map((record) => (
-                        <tr key={record.id} className="hover:bg-gray-50">
+                        <tr
+                          key={record.id}
+                          className="hover:bg-white/5 transition-colors"
+                        >
                           <td className="px-4 py-3">
                             {record.user?.username || "-"}
                           </td>
@@ -277,7 +294,7 @@ export default function Attendance() {
                           <td className="px-4 py-3">
                             <span
                               className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusBadge(
-                                record.status
+                                record.status,
                               )}`}
                             >
                               {record.status}
@@ -344,7 +361,7 @@ export default function Attendance() {
                           <td className="px-4 py-3">
                             <span
                               className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusBadge(
-                                record.status
+                                record.status,
                               )}`}
                             >
                               {record.status}

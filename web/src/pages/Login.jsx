@@ -3,11 +3,13 @@ import { useNavigate } from "react-router-dom";
 import { login } from "../services/authService";
 import { motion } from "framer-motion";
 import { toast } from "react-hot-toast";
-import { Lock, User, ArrowRight, Loader2 } from "lucide-react";
+import { Lock, User, ArrowRight, Loader2, Eye, EyeOff } from "lucide-react";
+import Input from "../components/common/Input";
 
 export default function Login() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
@@ -83,34 +85,39 @@ export default function Login() {
 
           <form onSubmit={handleLogin} className="space-y-6">
             <div className="space-y-4">
-              <div className="relative group">
-                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                  <User className="h-5 w-5 text-gray-500 group-focus-within:text-blue-500 transition-colors" />
-                </div>
-                <input
-                  type="text"
-                  placeholder="Username"
-                  autoComplete="username"
-                  className="block w-full pl-11 pr-4 py-3.5 bg-black/30 border border-white/5 rounded-2xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all text-sm font-medium"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  required
-                />
-              </div>
+              <Input
+                icon={User}
+                type="text"
+                placeholder="Username"
+                autoComplete="username"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                required
+                aria-label="Username"
+              />
 
-              <div className="relative group">
-                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                  <Lock className="h-5 w-5 text-gray-500 group-focus-within:text-purple-500 transition-colors" />
-                </div>
-                <input
-                  type="password"
+              <div className="relative">
+                <Input
+                  icon={Lock}
+                  type={showPassword ? "text" : "password"}
                   placeholder="Password"
                   autoComplete="current-password"
-                  className="block w-full pl-11 pr-4 py-3.5 bg-black/30 border border-white/5 rounded-2xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 transition-all text-sm font-medium"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
+                  aria-label="Password"
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-500 hover:text-white transition-colors"
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-5 w-5" />
+                  ) : (
+                    <Eye className="h-5 w-5" />
+                  )}
+                </button>
               </div>
             </div>
 

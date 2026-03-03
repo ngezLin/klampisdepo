@@ -5,7 +5,14 @@ export const getInventoryHistory = async (
   limit = 10,
   filters = {},
 ) => {
-  const params = { page, limit, ...filters };
+  // Filter out empty strings/nulls from filters
+  const cleanFilters = Object.fromEntries(
+    Object.entries(filters).filter(
+      ([_, v]) => v !== "" && v !== null && v !== undefined,
+    ),
+  );
+
+  const params = { page, limit, ...cleanFilters };
   const res = await api.get("/inventory/history", { params });
   return res.data;
 };

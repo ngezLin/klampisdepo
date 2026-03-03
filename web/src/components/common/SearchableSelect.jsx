@@ -100,9 +100,12 @@ const SearchableSelect = ({
   };
 
   return (
-    <div className={`relative ${className}`} ref={wrapperRef}>
+    <div
+      className={`relative ${isOpen ? "z-50" : "z-0"} ${className}`}
+      ref={wrapperRef}
+    >
       {label && (
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+        <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2 ml-1">
           {label}
         </label>
       )}
@@ -110,45 +113,52 @@ const SearchableSelect = ({
       {/* Trigger Button */}
       <div
         className={`
-          w-full bg-white border rounded p-2 flex items-center justify-between cursor-pointer
-          ${disabled ? "opacity-50 cursor-not-allowed bg-gray-100" : "hover:border-blue-500"}
-          ${isOpen ? "border-blue-500 ring-1 ring-blue-500" : "border-gray-300"}
+          w-full bg-gray-800 border rounded-xl px-4 py-2.5 flex items-center justify-between cursor-pointer transition-all duration-200
+          ${disabled ? "opacity-50 cursor-not-allowed bg-gray-900" : "hover:border-blue-500/50 hover:bg-gray-800/80"}
+          ${isOpen ? "border-blue-500/50 ring-2 ring-blue-500/20 bg-gray-900" : "border-gray-700"}
         `}
         onClick={() => !disabled && setIsOpen(!isOpen)}
       >
         <span
-          className={`block truncate ${!selectedOption && !selectedLabel ? "text-gray-400" : "text-gray-900"}`}
+          className={`block truncate text-sm font-medium ${!selectedOption && !selectedLabel ? "text-gray-500" : "text-white"}`}
         >
           {displayLabel}
         </span>
 
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1.5 ml-2">
           {value && !disabled && (
-            <div
+            <button
               onClick={handleClear}
-              className="p-1 hover:bg-gray-200 rounded-full text-gray-500 transition-colors"
+              className="p-1 hover:bg-gray-700 rounded-full text-gray-400 hover:text-red-400 transition-all active:scale-90"
+              title="Clear selection"
             >
-              <X size={14} />
-            </div>
+              <X size={14} strokeWidth={2.5} />
+            </button>
           )}
-          <ChevronDown size={16} className="text-gray-500" />
+          <ChevronDown
+            size={16}
+            className={`text-gray-500 transition-transform duration-200 ${isOpen ? "rotate-180 text-blue-400" : ""}`}
+          />
         </div>
       </div>
 
       {/* Dropdown Menu */}
       {isOpen && (
-        <div className="absolute z-50 mt-1 w-full bg-white shadow-lg max-h-60 rounded-md py-1 text-base ring-1 ring-black ring-opacity-5 overflow-hidden focus:outline-none sm:text-sm">
-          {/* Search Input */}
-          <div className="p-2 border-b sticky top-0 bg-white z-10">
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <Search size={14} className="text-gray-400" />
+        <div className="absolute z-50 mt-2 w-full bg-gray-900/95 backdrop-blur-xl shadow-2xl max-h-72 rounded-2xl border border-white/10 overflow-hidden animate-in fade-in slide-in-from-top-1 duration-200">
+          {/* Search Input Container */}
+          <div className="p-3 border-b border-white/5 sticky top-0 bg-gray-900/40 backdrop-blur-sm z-10">
+            <div className="relative group">
+              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                <Search
+                  size={14}
+                  className="text-gray-500 group-focus-within:text-blue-400 transition-colors"
+                />
               </div>
               <input
                 ref={inputRef}
                 type="text"
-                className="block w-full pl-9 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 sm:text-sm"
-                placeholder="Search..."
+                className="block w-full pl-10 pr-4 py-2 bg-gray-800/80 border border-gray-700 rounded-xl text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500/50 focus:ring-4 focus:ring-blue-500/10 transition-all"
+                placeholder="Search items..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 onClick={(e) => e.stopPropagation()}
@@ -157,49 +167,51 @@ const SearchableSelect = ({
           </div>
 
           {/* Options List */}
-          <div className="max-h-48 overflow-auto">
+          <div className="max-h-56 overflow-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
             {displayOptions.length === 0 ? (
-              <div className="cursor-default select-none relative py-2 px-4 text-gray-700 text-center italic">
-                No items found.
+              <div className="py-8 px-4 text-gray-500 text-center italic text-sm">
+                No results for "{searchTerm}"
               </div>
             ) : (
-              <>
+              <div className="py-1">
                 {displayOptions.map((option) => (
                   <div
                     key={option.id}
-                    className={`cursor-pointer select-none relative py-2 pl-3 pr-9 hover:bg-blue-50 ${
+                    className={`cursor-pointer select-none relative py-2.5 pl-4 pr-10 transition-colors ${
                       value === option.id
-                        ? "bg-blue-100 text-blue-900"
-                        : "text-gray-900"
+                        ? "bg-blue-600/20 text-blue-400 font-bold"
+                        : "text-gray-300 hover:bg-white/5 hover:text-white"
                     }`}
                     onClick={() => handleSelect(option)}
                   >
-                    <span
-                      className={`block truncate ${
-                        value === option.id ? "font-semibold" : "font-normal"
-                      }`}
-                    >
-                      {option.name}
-                    </span>
+                    <span className="block truncate">{option.name}</span>
                     {value === option.id && (
-                      <span className="absolute inset-y-0 right-0 flex items-center pr-4 text-blue-600">
-                        <Check size={16} />
+                      <span className="absolute inset-y-0 right-0 flex items-center pr-4 text-blue-400">
+                        <Check size={16} strokeWidth={3} />
                       </span>
                     )}
                   </div>
                 ))}
                 {onLoadMore && hasMore && (
-                  <div
-                    className="py-2 px-3 text-center text-blue-600 hover:bg-blue-50 cursor-pointer text-sm font-medium border-t bg-gray-50"
+                  <button
+                    className="w-full py-3 px-4 text-center text-blue-400 hover:text-blue-300 hover:bg-white/5 transition-all text-sm font-bold border-t border-white/5 bg-gray-900/50"
                     onClick={(e) => {
                       e.stopPropagation();
                       if (!loadingMore) onLoadMore();
                     }}
+                    disabled={loadingMore}
                   >
-                    {loadingMore ? "Loading..." : "Load More"}
-                  </div>
+                    {loadingMore ? (
+                      <span className="flex items-center justify-center gap-2">
+                        <div className="w-3 h-3 border-2 border-blue-400 border-t-transparent rounded-full animate-spin"></div>
+                        Loading...
+                      </span>
+                    ) : (
+                      "View More items"
+                    )}
+                  </button>
                 )}
-              </>
+              </div>
             )}
           </div>
         </div>

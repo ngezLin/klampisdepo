@@ -154,7 +154,7 @@ export default function Transactions() {
   };
 
   return (
-    <div className="flex flex-col md:flex-row gap-4 w-full min-h-screen bg-gray-100 p-2 md:p-4">
+    <div className="flex flex-col md:flex-row gap-4 w-full min-h-screen bg-gray-950 p-2 md:p-4">
       <ItemList items={items} addToCart={addToCart} />
 
       <Cart

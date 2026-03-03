@@ -42,7 +42,7 @@ export default function AuditLogs() {
     }
 
     return (
-      <ul className="mt-1 space-y-0.5 text-xs text-gray-600">
+      <ul className="mt-1 space-y-0.5 text-xs text-gray-400">
         {Object.entries(parsed).map(([field, value]) => (
           <li key={field}>
             <span className="font-semibold">{field}</span>:{" "}
@@ -76,15 +76,15 @@ export default function AuditLogs() {
   };
 
   return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold mb-4">Audit Logs</h1>
+    <div className="p-4 sm:p-6 bg-gray-950 min-h-screen text-gray-100">
+      <h1 className="text-2xl font-bold mb-4 text-white">Audit Logs</h1>
 
       {loading ? (
         <p>Loading...</p>
       ) : (
-        <div className="overflow-x-auto bg-white rounded shadow">
+        <div className="overflow-x-auto bg-gray-900/50 backdrop-blur-sm rounded-xl shadow-lg border border-white/5">
           <table className="min-w-full text-sm">
-            <thead className="bg-gray-100 text-left">
+            <thead className="bg-gray-900 text-gray-300 border-b border-gray-800">
               <tr>
                 <th className="p-3">Time</th>
                 <th className="p-3">Entity</th>
@@ -95,7 +95,10 @@ export default function AuditLogs() {
             </thead>
             <tbody>
               {logs.map((log) => (
-                <tr key={log.id} className="border-t align-top">
+                <tr
+                  key={log.id}
+                  className="border-t border-gray-800 align-top hover:bg-white/5 transition-colors"
+                >
                   <td className="p-3 whitespace-nowrap">
                     {new Date(log.created_at).toLocaleString()}
                   </td>
@@ -115,7 +118,10 @@ export default function AuditLogs() {
 
               {logs.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="p-4 text-center text-gray-500">
+                  <td
+                    colSpan={5}
+                    className="p-4 text-center text-gray-500 italic"
+                  >
                     No audit logs found
                   </td>
                 </tr>
@@ -126,22 +132,23 @@ export default function AuditLogs() {
       )}
 
       {/* Pagination */}
-      <div className="flex justify-between items-center mt-4">
-        <span className="text-sm text-gray-600">
-          Page {page} of {totalPages || 1}
+      <div className="flex justify-between items-center mt-6">
+        <span className="text-sm text-gray-500">
+          Page <span className="text-gray-300 font-bold">{page}</span> of{" "}
+          <span className="text-gray-300 font-bold">{totalPages || 1}</span>
         </span>
-        <div className="space-x-2">
+        <div className="flex gap-2">
           <button
             disabled={page === 1}
             onClick={() => setPage(page - 1)}
-            className="px-3 py-1 bg-gray-200 rounded disabled:opacity-50"
+            className="px-4 py-1.5 bg-gray-800 border border-gray-700 text-gray-300 rounded-lg disabled:opacity-30 hover:bg-gray-700 transition-colors"
           >
             Prev
           </button>
           <button
             disabled={page >= totalPages}
             onClick={() => setPage(page + 1)}
-            className="px-3 py-1 bg-gray-200 rounded disabled:opacity-50"
+            className="px-4 py-1.5 bg-gray-800 border border-gray-700 text-gray-300 rounded-lg disabled:opacity-30 hover:bg-gray-700 transition-colors"
           >
             Next
           </button>

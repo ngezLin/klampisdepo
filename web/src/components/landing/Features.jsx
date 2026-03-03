@@ -46,10 +46,14 @@ export default function Features() {
   };
 
   return (
-    <section className="bg-white py-16">
+    <section className="bg-black py-24 sm:py-32">
       <div className="max-w-6xl mx-auto px-6">
-        <h2 className="text-3xl font-bold text-center mb-12">
-          Mengapa Memilih <span className="text-yellow-500">Klampis Depo</span>?
+        <h2 className="text-4xl font-bold text-center mb-16 text-white tracking-tight">
+          Mengapa Memilih{" "}
+          <span className="text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-orange-500">
+            Klampis Depo
+          </span>
+          ?
         </h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8">
           {features.map((f, i) => (
@@ -59,13 +63,17 @@ export default function Features() {
               initial="hidden"
               whileInView="visible"
               viewport={{ once: true, amount: 0.2 }}
-              whileHover={{ y: -6, scale: 1.02 }}
+              whileHover={{ y: -8, scale: 1.02 }}
               transition={{ type: "spring", stiffness: 200, damping: 20 }}
-              className="bg-yellow-50 border border-yellow-200 rounded-xl p-6 text-center shadow hover:shadow-lg"
+              className="bg-gray-900/40 backdrop-blur-md border border-white/5 rounded-3xl p-8 text-center shadow-2xl hover:bg-gray-800/60 transition-all group"
             >
-              <div className="flex justify-center mb-4">{f.icon}</div>
-              <h3 className="font-semibold text-lg mb-2">{f.title}</h3>
-              <p className="text-gray-600 text-sm">{f.desc}</p>
+              <div className="flex justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
+                {f.icon}
+              </div>
+              <h3 className="font-bold text-xl mb-3 text-white tracking-tight">
+                {f.title}
+              </h3>
+              <p className="text-gray-400 text-sm leading-relaxed">{f.desc}</p>
             </motion.div>
           ))}
         </div>

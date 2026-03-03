@@ -53,13 +53,15 @@ export default function Sidebar({ onToggleCollapse }) {
       {/* Sidebar */}
       <aside
         className={`fixed top-0 left-0 h-screen z-50 bg-gray-800 text-white flex flex-col transition-all duration-300
-    ${isCollapsed ? "md:w-20" : "md:w-64"}
-    ${isOpen ? "translate-x-0 w-64" : "-translate-x-full w-64"} md:translate-x-0
-  `}
+          ${isCollapsed ? "w-20" : "w-64"}
+          ${isOpen ? "translate-x-0" : "-translate-x-full"} md:translate-x-0
+        `}
       >
         {/* Header / Toggle collapse */}
         <button
-          onClick={handleCollapse}
+          onClick={() =>
+            window.innerWidth >= 768 ? handleCollapse() : setIsOpen(false)
+          }
           className="flex items-center justify-center bg-gray-900 hover:bg-gray-700 text-white font-bold text-lg tracking-wide py-4 transition-all"
         >
           {isCollapsed ? (
@@ -67,7 +69,7 @@ export default function Sidebar({ onToggleCollapse }) {
           ) : (
             <>
               <span className="ml-2">Klampis Depo</span>
-              <FaAngleLeft className="ml-3 text-sm opacity-70" />
+              <FaAngleLeft className="ml-3 text-sm opacity-70 hidden md:inline" />
             </>
           )}
         </button>

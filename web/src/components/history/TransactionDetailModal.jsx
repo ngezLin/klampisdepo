@@ -4,6 +4,20 @@ import jsPDF from "jspdf";
 import { useBluetoothPrinter } from "../../context/BluetoothPrinterContext";
 import toast from "react-hot-toast";
 
+const StatusBadge = ({ status }) => {
+  const styles = {
+    completed: "bg-green-500/10 text-green-400 border-green-500/20",
+    refunded: "bg-red-500/10 text-red-400 border-red-500/20",
+  };
+  return (
+    <span
+      className={`px-2 py-0.5 rounded-full text-[10px] uppercase font-black border ${styles[status] || "bg-gray-500/10 text-gray-400 border-gray-500/20"}`}
+    >
+      {status}
+    </span>
+  );
+};
+
 export default function TransactionDetailModal({
   isOpen,
   onClose,
@@ -64,7 +78,7 @@ export default function TransactionDetailModal({
 
   const itemsTotal = items.reduce(
     (sum, it) => sum + (it.price || 0) * (it.quantity || 0),
-    0
+    0,
   );
 
   const date = new Date(transaction.created_at || Date.now());
@@ -77,93 +91,148 @@ export default function TransactionDetailModal({
   });
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center bg-black/60 z-50">
-      <div className="bg-white p-6 rounded-2xl shadow-lg w-[400px] max-h-[90vh] overflow-y-auto">
-        <div ref={componentRef} className="text-sm font-mono">
-          <h2 className="text-center font-bold text-lg mb-2">
-            UD. KLAMPIS DEPO
-          </h2>
-          <p className="text-center mb-1">085100549376 | 085101381453</p>
-          <p className="text-center mb-2">{formattedDate}</p>
+    <div className="fixed inset-0 flex items-center justify-center bg-black/80 backdrop-blur-sm z-50 p-4">
+      <div className="bg-gray-900 border border-white/10 p-8 rounded-3xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto relative">
+        <button
+          onClick={onClose}
+          className="absolute top-4 right-4 text-gray-500 hover:text-white transition-colors"
+        >
+          <svg
+            className="w-6 h-6"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="2"
+              d="M6 18L18 6M6 6l12 12"
+            />
+          </svg>
+        </button>
 
-          <p>ID: {transaction.id}</p>
-          {transaction.transaction_type && (
-            <p>Type: {transaction.transaction_type}</p>
-          )}
-          <p>Status: {transaction.status}</p>
-          <p>Payment: {transaction.payment_type}</p>
-          <p>Total: Rp {transaction.total?.toLocaleString() || 0}</p>
-          {transaction.note && <p>Note: {transaction.note}</p>}
-
-          <hr className="my-2" />
-
-          <p className="font-semibold mb-1">Items:</p>
-          {items.length > 0 ? (
-            items.map((it, idx) => (
-              <div key={it.item_id || idx} className="flex justify-between">
-                <div>
-                  {it.item?.name || "-"}
-                  <div className="text-xs">
-                    {it.quantity} x {it.price?.toLocaleString() || 0}
-                  </div>
-                </div>
-                <span>
-                  Rp {(it.price * it.quantity)?.toLocaleString() || 0}
-                </span>
-              </div>
-            ))
-          ) : (
-            <p className="text-center text-gray-500">No items</p>
-          )}
-
-          <hr className="my-2" />
-
-          <div className="flex justify-between">
-            <span>Total</span>
-            <span>Rp {itemsTotal.toLocaleString()}</span>
+        <div
+          ref={componentRef}
+          className="text-sm font-mono text-gray-100 bg-gray-950 p-6 rounded-2xl border border-dashed border-gray-700"
+        >
+          <div className="text-center mb-6">
+            <h2 className="font-black text-2xl tracking-tighter text-white mb-1 uppercase">
+              UD. KLAMPIS DEPO
+            </h2>
+            <div className="w-12 h-1 bg-blue-500 mx-auto rounded-full mb-3" />
+            <p className="text-gray-400 text-xs tracking-widest uppercase">
+              Official Transaction Receipt
+            </p>
           </div>
 
-          {transaction.discount > 0 && (
-            <div className="flex justify-between">
-              <span>Discount</span>
-              <span>Rp {transaction.discount.toLocaleString()}</span>
-            </div>
-          )}
+          <div className="grid grid-cols-2 gap-y-2 mb-6 text-xs border-b border-gray-800 pb-4">
+            <span className="text-gray-500 uppercase font-bold">
+              Receipt ID
+            </span>
+            <span className="text-right text-blue-400 font-bold">
+              #{transaction.id}
+            </span>
+            <span className="text-gray-500 uppercase font-bold">Date</span>
+            <span className="text-right">{formattedDate}</span>
+            <span className="text-gray-500 uppercase font-bold">Status</span>
+            <span className="text-right">
+              <StatusBadge status={transaction.status} />
+            </span>
+          </div>
 
-          {transaction.payment && (
-            <div className="flex justify-between">
-              <span>Paid</span>
-              <span>Rp {transaction.payment.toLocaleString()}</span>
+          <div className="space-y-3 mb-6">
+            <div className="flex justify-between items-center text-xs text-gray-500 font-bold uppercase tracking-widest">
+              <span>Item Description</span>
+              <span>Subtotal</span>
             </div>
-          )}
-
-          {transaction.change !== undefined && (
-            <div className="flex justify-between">
-              <span>Change</span>
-              <span>Rp {transaction.change.toLocaleString()}</span>
+            <div className="space-y-4">
+              {items.length > 0 ? (
+                items.map((it, idx) => (
+                  <div
+                    key={it.item_id || idx}
+                    className="flex justify-between items-start gap-4"
+                  >
+                    <div className="flex-1">
+                      <p className="text-white font-bold leading-tight">
+                        {it.item?.name || "-"}
+                      </p>
+                      <p className="text-[10px] text-gray-500 mt-0.5">
+                        {it.quantity} units x Rp {it.price?.toLocaleString()}
+                      </p>
+                    </div>
+                    <span className="text-gray-300 font-medium shrink-0">
+                      Rp {(it.price * it.quantity)?.toLocaleString()}
+                    </span>
+                  </div>
+                ))
+              ) : (
+                <p className="text-center py-4 text-gray-600 italic">
+                  No line items recorded
+                </p>
+              )}
             </div>
-          )}
+          </div>
 
-          <p className="text-center mt-4 font-semibold">Terima Kasih 🙏</p>
+          <div className="border-t border-gray-800 pt-4 space-y-2 mb-6">
+            <div className="flex justify-between text-gray-400">
+              <span>Subtotal</span>
+              <span>Rp {itemsTotal.toLocaleString()}</span>
+            </div>
+            {transaction.discount > 0 && (
+              <div className="flex justify-between text-red-400">
+                <span>Discount</span>
+                <span>-Rp {transaction.discount.toLocaleString()}</span>
+              </div>
+            )}
+            <div className="flex justify-between text-white font-black text-lg pt-1">
+              <span>TOTAL DUE</span>
+              <span className="text-blue-400">
+                Rp {transaction.total?.toLocaleString() || 0}
+              </span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-1 text-[10px] text-gray-500 mb-6 font-medium">
+            <span>Payment: {transaction.payment_type}</span>
+            {transaction.payment && (
+              <span className="text-right">
+                Paid: Rp {transaction.payment.toLocaleString()}
+              </span>
+            )}
+            {transaction.change !== undefined && (
+              <span className="text-right col-span-2">
+                Change: Rp {transaction.change.toLocaleString()}
+              </span>
+            )}
+          </div>
+
+          <div className="text-center pt-4 border-t border-gray-800">
+            <p className="text-[10px] text-gray-500 leading-relaxed uppercase tracking-widest">
+              Thank you for choosing KlampisDepo.
+              <br />
+              Please visit us again!
+            </p>
+          </div>
         </div>
 
-        <div className="flex flex-wrap justify-between mt-6 gap-2">
+        <div className="grid grid-cols-2 gap-3 mt-8">
           <button
             onClick={connectPrinter}
             disabled={isConnecting || device}
-            className={`px-4 py-2 rounded w-full sm:w-auto text-white ${
+            className={`px-4 py-3 rounded-2xl flex items-center justify-center gap-2 text-sm font-bold transition-all active:scale-95 ${
               device
-                ? "bg-green-500"
+                ? "bg-green-500/10 text-green-400 border border-green-500/20"
                 : isConnecting
-                ? "bg-blue-400"
-                : "bg-blue-600 hover:bg-blue-700"
+                  ? "bg-blue-600/50 text-white animate-pulse"
+                  : "bg-blue-600 text-white shadow-lg shadow-blue-600/20 hover:bg-blue-700"
             } disabled:opacity-50`}
           >
             {device
-              ? `✅ ${device.name || "Connected"}`
+              ? `Connected`
               : isConnecting
-              ? "🔄 Connecting..."
-              : "🔗 Connect Printer"}
+                ? "Connecting..."
+                : "Connect Printer"}
           </button>
 
           {device && (
@@ -172,36 +241,29 @@ export default function TransactionDetailModal({
                 disconnectPrinter();
                 toast("Printer terputus");
               }}
-              className="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded w-full sm:w-auto"
+              className="bg-orange-600/10 text-orange-400 border border-orange-500/20 px-4 py-3 rounded-2xl text-sm font-bold active:scale-95 transition-all"
             >
-              🔌 Disconnect
+              Disconnect
             </button>
           )}
 
           <button
             onClick={handlePrintReceipt}
             disabled={!device}
-            className={`px-4 py-2 rounded w-full sm:w-auto text-white ${
+            className={`px-4 py-3 rounded-2xl flex items-center justify-center gap-2 text-sm font-bold transition-all active:scale-95 ${
               device
-                ? "bg-green-600 hover:bg-green-700"
-                : "bg-gray-400 opacity-50 cursor-not-allowed"
+                ? "bg-green-600 text-white shadow-lg shadow-green-600/20 hover:bg-green-700"
+                : "bg-gray-800 text-gray-600 border border-white/5 cursor-not-allowed"
             }`}
           >
-            🖨️ Print
+            🖨️ Print Receipt
           </button>
 
           <button
             onClick={handleDownloadPDF}
-            className="bg-gray-700 hover:bg-gray-800 text-white px-4 py-2 rounded w-full sm:w-auto"
+            className="bg-gray-800 hover:bg-gray-700 text-white px-4 py-3 rounded-2xl text-sm font-bold active:scale-95 transition-all border border-white/5"
           >
-            💾 PDF
-          </button>
-
-          <button
-            onClick={onClose}
-            className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded w-full sm:w-auto"
-          >
-            ❌ Close
+            💾 Download PDF
           </button>
         </div>
       </div>

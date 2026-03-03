@@ -58,7 +58,7 @@ export default function Dashboard() {
 
   if (loading) {
     return (
-      <div className="p-4 sm:p-6 lg:p-8 space-y-8 bg-gray-50/50 min-h-screen">
+      <div className="p-4 sm:p-6 lg:p-8 space-y-8 bg-gray-950 min-h-screen">
         <Skeleton variant="text" width={240} height={50} />
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
           {[...Array(4)].map((_, i) => (
@@ -87,14 +87,14 @@ export default function Dashboard() {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.6, ease: "easeOut" }}
-      className="p-4 sm:p-6 lg:p-8 bg-gray-50/50 min-h-[calc(100vh-64px)]"
+      className="p-4 sm:p-6 lg:p-8 bg-gray-950 min-h-[calc(100vh-64px)]"
     >
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900 tracking-tight">
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
             Dashboard Overview
           </h1>
-          <p className="text-sm text-gray-500 mt-1">
+          <p className="text-sm text-gray-400 mt-1">
             Here's what's happening with your business today.
           </p>
         </div>
@@ -160,13 +160,13 @@ export default function Dashboard() {
         transition={{ duration: 0.6, delay: 0.5, ease: "easeOut" }}
       >
         <div className="flex items-center space-x-2 mb-6">
-          <Package className="w-6 h-6 text-gray-700" />
-          <h2 className="text-xl sm:text-2xl font-bold text-gray-900">
+          <Package className="w-6 h-6 text-gray-400" />
+          <h2 className="text-xl sm:text-2xl font-bold text-white">
             Top 5 Selling Items
           </h2>
         </div>
 
-        <div className="bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-gray-100 h-[350px] sm:h-[400px]">
+        <div className="bg-gray-900/50 backdrop-blur-sm p-4 sm:p-6 rounded-2xl shadow-sm border border-gray-800 h-[350px] sm:h-[400px]">
           {data.top_selling_items?.length > 0 ? (
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
@@ -177,11 +177,11 @@ export default function Dashboard() {
                 <CartesianGrid
                   strokeDasharray="3 3"
                   horizontal={false}
-                  stroke="#e5e7eb"
+                  stroke="#374151"
                 />
                 <XAxis
                   type="number"
-                  stroke="#6b7280"
+                  stroke="#9ca3af"
                   fontSize={12}
                   tickLine={false}
                   axisLine={false}
@@ -190,14 +190,14 @@ export default function Dashboard() {
                   dataKey="name"
                   type="category"
                   width={140}
-                  stroke="#374151"
+                  stroke="#e5e7eb"
                   fontSize={12}
                   fontWeight={500}
                   tickLine={false}
                   axisLine={false}
                 />
                 <Tooltip
-                  cursor={{ fill: "#f3f4f6" }}
+                  cursor={{ fill: "rgba(255, 255, 255, 0.05)" }}
                   contentStyle={{
                     borderRadius: "12px",
                     border: "none",

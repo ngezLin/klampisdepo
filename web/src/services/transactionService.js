@@ -30,7 +30,9 @@ export const getItems = async (params = {}) => {
     queryParams.page_size = queryParams.limit;
     delete queryParams.limit;
   }
-  const res = await api.get("/items/", { params: queryParams });
+
+  const endpoint = queryParams.name ? "/items/search" : "/items/";
+  const res = await api.get(endpoint, { params: queryParams });
   const data = res.data;
 
   if (Array.isArray(data)) return data;
@@ -47,7 +49,9 @@ export const getItemsPaginated = async (params = {}) => {
     queryParams.page_size = queryParams.limit;
     delete queryParams.limit;
   }
-  const res = await api.get("/items/", { params: queryParams });
+
+  const endpoint = queryParams.name ? "/items/search" : "/items/";
+  const res = await api.get(endpoint, { params: queryParams });
   return res.data; // Returns { data: [...], page: 1, limit: 10, total: 100, ... }
 };
 
