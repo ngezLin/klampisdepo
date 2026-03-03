@@ -210,7 +210,7 @@ export default function InventoryHistory() {
       </div>
 
       {/* Table */}
-      <div className="bg-gray-900/50 backdrop-blur-sm rounded-2xl shadow-xl border border-white/5 overflow-hidden">
+      <div className="bg-gray-900/50 backdrop-blur-sm rounded-2xl shadow-xl border border-white/5 overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-800">
           <thead className="bg-black/20">
             <tr>

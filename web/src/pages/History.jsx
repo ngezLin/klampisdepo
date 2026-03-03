@@ -4,7 +4,7 @@ import {
   getTransactionHistory,
   refundTransaction,
 } from "../services/transactionService";
-import TransactionDetailModal from "../components/history/TransactionDetailModal";
+import ReceiptModal from "../components/transactions/ReceiptModal";
 import {
   FaCalendarAlt,
   FaHistory,
@@ -411,7 +411,7 @@ export default function History() {
         </div>
       )}
 
-      <TransactionDetailModal
+      <ReceiptModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         transaction={selectedTransaction}
