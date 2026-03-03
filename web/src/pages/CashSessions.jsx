@@ -1,15 +1,19 @@
 import React, { useState, useEffect, useCallback } from "react";
 import cashSessionService from "../services/cashSessionService";
-import { toast } from "react-hot-toast";
+import { formatCurrency } from "../utils/format";
+import toast from "react-hot-toast";
 import {
-  FaMoneyBillWave,
-  FaCalculator,
-  FaCashRegister,
-  FaCheckCircle,
-  FaExclamationTriangle,
-  FaHistory,
-  FaCalendarAlt,
-} from "react-icons/fa";
+  Banknote,
+  Calculator,
+  Wallet,
+  CheckCircle2,
+  AlertTriangle,
+  History,
+  CalendarDays,
+} from "lucide-react";
+import StatCard from "../components/common/StatCard";
+import Card from "../components/common/Card";
+import Button from "../components/common/Button";
 
 export default function CashSessions() {
   const [session, setSession] = useState(null);
@@ -96,16 +100,12 @@ export default function CashSessions() {
       return;
     }
 
-    if (!window.confirm("Apakah Anda yakin ingin menutup sesi kas ini?")) {
-      return;
-    }
-
     setLoadingAction(true);
     try {
       const response = await cashSessionService.closeSession(
         parseFloat(inputCash),
       );
-      setSession(response.data); // Updated session data (status closed)
+      setSession(response.data);
       toast.success("Sesi kas berhasil ditutup!");
       setInputCash("");
     } catch (error) {
@@ -114,15 +114,6 @@ export default function CashSessions() {
     } finally {
       setLoadingAction(false);
     }
-  };
-
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat("id-ID", {
-      style: "currency",
-      currency: "IDR",
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount);
   };
 
   const formatDate = (dateString) => {
@@ -134,60 +125,62 @@ export default function CashSessions() {
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-500"></div>
+      <div className="flex flex-col items-center justify-center h-screen bg-[#0a0a0a]">
+        <div className="animate-spin rounded-full h-10 w-10 border-4 border-blue-500 border-t-transparent"></div>
+        <p className="mt-4 text-gray-500 font-medium italic">
+          Menyiapkan manajemen kas...
+        </p>
       </div>
     );
   }
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
-      <h1 className="text-3xl font-bold text-black mb-8 flex items-center gap-3">
-        <FaCashRegister className="text-indigo-400" />
-        Manajemen Sesi Kas
-      </h1>
+    <div className="p-4 sm:p-6 bg-[#0a0a0a] min-h-screen text-gray-100 max-w-5xl mx-auto animate-in fade-in duration-700">
+      <div className="mb-10">
+        <h1 className="text-3xl font-black text-white tracking-tight flex items-center gap-3">
+          <Wallet className="text-blue-500 w-8 h-8" />
+          Manajemen Sesi Kas
+        </h1>
+        <p className="text-gray-500 mt-1 font-medium italic">
+          Buka atau tutup sesi kasir untuk melacak mutasi dana.
+        </p>
+      </div>
 
-      {/* NO ACTIVE SESSION - SHOW OPEN FORM */}
       {!session || session.status === "closed" ? (
-        <div className="bg-gray-800 rounded-xl shadow-lg border border-gray-700 overflow-hidden">
-          <div className="p-6 border-b border-gray-700 bg-gray-800/50">
-            <h2 className="text-xl font-semibold text-white flex items-center gap-2">
-              <FaMoneyBillWave className="text-green-400" />
-              Buka Sesi Baru
-            </h2>
-            <p className="text-gray-400 mt-1">
-              Masukkan jumlah uang tunai (modal awal) di laci kasir untuk
-              memulai sesi.
-            </p>
-          </div>
-
-          <div className="p-8">
+        <Card
+          title="Buka Sesi Baru"
+          subtitle="Mulai sesi transaksi dengan modal awal"
+          className="mb-12 border-white/5 shadow-2xl"
+        >
+          <div className="max-w-md">
             {session && session.status === "closed" && (
-              <div className="mb-6 p-4 bg-yellow-900/30 border border-yellow-700/50 rounded-lg text-yellow-200 flex items-center gap-3">
-                <FaExclamationTriangle />
-                <div>
-                  <p className="font-bold">Sesi sebelumnya telah ditutup.</p>
-                  <p className="text-sm opacity-80">
-                    Silakan buka sesi baru untuk mulai bertransaksi.
+              <div className="mb-8 p-4 bg-yellow-900/10 border border-yellow-500/20 rounded-2xl text-yellow-500 flex items-start gap-3">
+                <AlertTriangle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+                <div className="text-sm">
+                  <p className="font-black uppercase tracking-wider mb-1">
+                    Sesi Sebelumnya Selesai
+                  </p>
+                  <p className="opacity-80">
+                    Silakan masukkan modal awal baru untuk mulai berjualan lagi.
                   </p>
                 </div>
               </div>
             )}
 
-            <form onSubmit={handleOpenSession} className="max-w-md">
-              <div className="mb-6">
-                <label className="block text-gray-300 text-sm font-bold mb-2">
-                  Modal Awal (Opening Cash)
+            <form onSubmit={handleOpenSession} className="space-y-6">
+              <div>
+                <label className="block text-gray-400 text-xs font-black uppercase tracking-widest mb-3">
+                  Modal Awal (Tunai)
                 </label>
-                <div className="relative">
-                  <span className="absolute left-3 top-3 text-gray-400">
+                <div className="relative group">
+                  <span className="absolute left-4 top-3.5 text-gray-500 font-bold group-focus-within:text-blue-500 transition-colors">
                     Rp
                   </span>
                   <input
                     type="number"
                     value={inputCash}
                     onChange={(e) => setInputCash(e.target.value)}
-                    className="w-full bg-gray-700 text-white border border-gray-600 rounded-lg py-3 pl-10 pr-4 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                    className="w-full bg-gray-900 text-white border border-white/10 rounded-2xl py-3.5 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all font-mono text-lg"
                     placeholder="0"
                     required
                     min="0"
@@ -195,271 +188,229 @@ export default function CashSessions() {
                 </div>
               </div>
 
-              <button
+              <Button
                 type="submit"
-                disabled={loadingAction}
-                className={`w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-lg shadow-lg transform transition hover:scale-[1.02] flex justify-center items-center gap-2 ${
-                  loadingAction ? "opacity-70 cursor-not-allowed" : ""
-                }`}
+                loading={loadingAction}
+                fullWidth
+                size="lg"
+                icon={CheckCircle2}
               >
-                {loadingAction ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                    Memproses...
-                  </>
-                ) : (
-                  <>
-                    <FaCheckCircle /> Buka Sesi
-                  </>
-                )}
-              </button>
+                Buka Sesi Sekarang
+              </Button>
             </form>
           </div>
-        </div>
+        </Card>
       ) : (
-        /* ACTIVE SESSION DETAILS */
-        <div className="space-y-6">
-          {/* Session Info Card */}
-          <div className="bg-gray-800 rounded-xl shadow-lg border border-gray-700 p-6">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 pb-4 border-b border-gray-700">
-              <div>
-                <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                  <span className="w-3 h-3 rounded-full bg-green-500 animate-pulse"></span>
-                  Sesi Aktif
-                </h2>
-                <p className="text-sm text-gray-400 mt-1">
-                  Sesi dimulai pada:{" "}
-                  {new Date(session.OpenedAt).toLocaleString("id-ID")}
+        <div className="space-y-8 mb-12">
+          <Card
+            title="Sesi Aktif"
+            subtitle={`Dimulai ${new Date(session.OpenedAt).toLocaleString("id-ID")}`}
+            className="border-green-500/10 shadow-green-500/5"
+          >
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              <StatCard
+                label="Modal Awal"
+                value={formatCurrency(session.OpeningCash)}
+                icon={Banknote}
+                colorClass="text-emerald-400"
+              />
+              <div className="p-6 bg-white/5 rounded-2xl border border-white/5 flex flex-col justify-center">
+                <p className="text-gray-500 text-xs font-black uppercase tracking-widest mb-1 text-center">
+                  Status
                 </p>
-              </div>
-              <div className="mt-2 md:mt-0 py-1 px-3 bg-green-900/30 border border-green-700/50 rounded-full text-green-400 text-sm font-semibold">
-                OPEN
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="bg-gray-700/50 p-4 rounded-lg border border-gray-600/50">
-                <p className="text-gray-400 text-sm mb-1">Modal Awal</p>
-                <p className="text-2xl font-bold text-indigo-400">
-                  {formatCurrency(session.OpeningCash)}
-                </p>
-              </div>
-              {/* We won't show real-time sales here unless we fetch them or the user refreshes, 
-                    since the backend updates only on close (based on calculation) 
-                    BUT actually `total_cash_in` is calculated on Close in the backend controller shown.
-                    So current details might be static until close. 
-                    Let's stick to what we have. 
-                */}
-            </div>
-          </div>
-
-          {/* Close Session Form */}
-          <div className="bg-gray-800 rounded-xl shadow-lg border border-gray-700 overflow-hidden">
-            <div className="p-6 border-b border-gray-700 bg-red-900/10">
-              <h2 className="text-xl font-semibold text-white flex items-center gap-2">
-                <FaCalculator className="text-red-400" />
-                Tutup Sesi
-              </h2>
-              <p className="text-gray-400 mt-1">
-                Hitung uang tunai fisik di laci saat ini dan masukkan jumlahnya
-                di bawah.
-              </p>
-            </div>
-
-            <div className="p-8">
-              <form onSubmit={handleCloseSession} className="max-w-md">
-                <div className="mb-6">
-                  <label className="block text-gray-300 text-sm font-bold mb-2">
-                    Uang Tunai Akhir (Closing Cash)
-                  </label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-3 text-gray-400">
-                      Rp
-                    </span>
-                    <input
-                      type="number"
-                      value={inputCash}
-                      onChange={(e) => setInputCash(e.target.value)}
-                      className="w-full bg-gray-700 text-white border border-gray-600 rounded-lg py-3 pl-10 pr-4 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all"
-                      placeholder="Total uang fisik di laci"
-                      required
-                      min="0"
-                    />
-                  </div>
+                <div className="flex items-center justify-center gap-2 text-green-400 font-black text-xl">
+                  <span className="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse"></span>
+                  RUNNING
                 </div>
-
-                <button
-                  type="submit"
-                  disabled={loadingAction}
-                  className={`w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-4 rounded-lg shadow-lg transform transition hover:scale-[1.02] flex justify-center items-center gap-2 ${
-                    loadingAction ? "opacity-70 cursor-not-allowed" : ""
-                  }`}
-                >
-                  {loadingAction ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                      Menghitung & Menutup...
-                    </>
-                  ) : (
-                    <>
-                      <FaCheckCircle /> Tutup Sesi & Lihat Laporan
-                    </>
-                  )}
-                </button>
-              </form>
+              </div>
             </div>
-          </div>
+          </Card>
+
+          <Card
+            title="Tutup Sesi"
+            subtitle="Hitung uang fisik di laci saat ini"
+            className="border-red-500/10 shadow-red-500/5"
+          >
+            <form onSubmit={handleCloseSession} className="max-w-md space-y-6">
+              <div>
+                <label className="block text-gray-400 text-xs font-black uppercase tracking-widest mb-3">
+                  Uang Tunai Akhir (Fisik)
+                </label>
+                <div className="relative group">
+                  <span className="absolute left-4 top-3.5 text-gray-500 font-bold group-focus-within:text-red-500 transition-colors">
+                    Rp
+                  </span>
+                  <input
+                    type="number"
+                    value={inputCash}
+                    onChange={(e) => setInputCash(e.target.value)}
+                    className="w-full bg-gray-900 text-white border border-white/10 rounded-2xl py-3.5 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-red-500/50 transition-all font-mono text-lg"
+                    placeholder="Total uang kas"
+                    required
+                    min="0"
+                  />
+                </div>
+              </div>
+
+              <Button
+                type="submit"
+                variant="danger"
+                loading={loadingAction}
+                fullWidth
+                size="lg"
+                icon={Calculator}
+              >
+                Tutup Sesi & Hitung
+              </Button>
+            </form>
+          </Card>
         </div>
       )}
 
-      {/* REPORT SUMMARY AFTER CLOSING */}
       {session && session.status === "closed" && (
-        <div className="mt-8 bg-gray-800 rounded-xl shadow-lg border border-gray-700 p-6 animate-fade-in-up">
-          <h2 className="text-xl font-bold text-white mb-4 border-b border-gray-700 pb-2">
-            Ringkasan Penutupan
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            <SummaryItem
+        <Card
+          title="Ringkasan Penutupan"
+          className="mb-12 animate-in slide-in-from-bottom-4 duration-500 border-blue-500/20 shadow-blue-500/5"
+        >
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <StatCard
               label="Modal Awal"
-              value={session.OpeningCash}
-              format={formatCurrency}
+              value={formatCurrency(session.OpeningCash)}
+              icon={Banknote}
+              colorClass="text-gray-400"
             />
-            <SummaryItem
-              label="Total Uang Masuk"
-              value={session.TotalCashIn}
-              format={formatCurrency}
-              color="text-green-400"
+            <StatCard
+              label="Uang Masuk"
+              value={formatCurrency(session.TotalCashIn)}
+              icon={CheckCircle2}
+              colorClass="text-emerald-400"
             />
-            <SummaryItem
-              label="Total Kembalian"
-              value={session.TotalChange}
-              format={formatCurrency}
-              color="text-red-400"
+            <StatCard
+              label="Total Kembali"
+              value={formatCurrency(session.TotalChange)}
+              icon={AlertTriangle}
+              colorClass="text-amber-400"
             />
 
-            <div className="col-span-1 md:col-span-2 lg:col-span-3 h-px bg-gray-700 my-2"></div>
+            <div className="sm:col-span-2 lg:col-span-3 h-px bg-white/5 my-2"></div>
 
-            <SummaryItem
-              label="Seharusnya (System)"
-              value={session.ExpectedCash}
-              format={formatCurrency}
+            <StatCard
+              label="Estimasi Sistem"
+              value={formatCurrency(session.ExpectedCash)}
+              icon={Calculator}
+              colorClass="text-blue-400"
             />
-            <SummaryItem
-              label="Aktual (Fisik)"
-              value={session.ClosingCash || 0}
-              format={formatCurrency}
+            <StatCard
+              label="Uang Fisik"
+              value={formatCurrency(session.ClosingCash || 0)}
+              icon={Banknote}
+              colorClass="text-white"
             />
 
             <div
-              className={`p-4 rounded-lg border ${session.Difference === 0 ? "bg-green-900/20 border-green-700 text-green-400" : "bg-red-900/20 border-red-700 text-red-400"}`}
+              className={`p-6 rounded-2xl border ${session.Difference === 0 ? "bg-emerald-900/10 border-emerald-500/20 text-emerald-400" : "bg-red-900/10 border-red-500/20 text-red-400"}`}
             >
-              <p className="text-sm font-semibold mb-1">Selisih</p>
-              <p className="text-2xl font-bold">
+              <p className="text-xs font-black uppercase tracking-widest mb-1 opacity-60">
+                Selisih
+              </p>
+              <p className="text-3xl font-black font-mono">
                 {formatCurrency(session.Difference || 0)}
               </p>
-              {session.Difference !== 0 && (
-                <p className="text-xs mt-1">
+              {session.Difference !== undefined && session.Difference !== 0 && (
+                <p className="text-xs mt-2 font-medium italic opacity-80">
                   {session.Difference > 0
-                    ? "Lebih bayar / Uang berlebih"
-                    : "Kurang / Uang hilang"}
+                    ? "⚠️ Ada kelebihan uang di kasir"
+                    : "⚠️ Ada kekurangan uang di kasir"}
                 </p>
               )}
             </div>
           </div>
 
-          <div className="mt-6 flex justify-end">
-            <button
+          <div className="mt-8 flex justify-end">
+            <Button
+              variant="ghost"
               onClick={() => {
                 setSession(null);
-                fetchHistory(); // Refresh history after closing
+                fetchHistory();
               }}
-              className="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg transition"
             >
               Selesai & Tutup Laporan
-            </button>
+            </Button>
           </div>
-        </div>
+        </Card>
       )}
 
-      {/* HISTORY SECTION */}
-      <div className="mt-12">
-        <h2 className="text-2xl font-bold text-black mb-6 flex items-center gap-3">
-          <FaHistory className="text-indigo-400" />
-          Riwayat Sesi Kas
+      <div className="mt-16">
+        <h2 className="text-2xl font-black text-white mb-8 flex items-center gap-3">
+          <History className="text-blue-400 w-6 h-6" />
+          Riwayat Sesi
         </h2>
 
-        {/* Filters */}
-        <div className="bg-gray-800 p-4 rounded-xl shadow-lg border border-gray-700 mb-6 flex flex-wrap gap-4 items-end">
-          <div className="flex-1 min-w-[200px]">
-            <label className="block text-gray-400 text-sm mb-1">
-              Dari Tanggal
-            </label>
-            <div className="relative">
-              <FaCalendarAlt className="absolute left-3 top-3 text-gray-500" />
-              <input
-                type="date"
-                value={startDate}
-                onChange={(e) => {
-                  setStartDate(e.target.value);
-                  setPage(1);
-                }}
-                className="w-full bg-gray-700 text-white border border-gray-600 rounded-lg py-2 pl-10 pr-4 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              />
-            </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
+          <div className="relative group">
+            <CalendarDays className="absolute left-3 top-3 text-gray-500 group-focus-within:text-blue-500 transition-colors w-4 h-4" />
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => {
+                setStartDate(e.target.value);
+                setPage(1);
+              }}
+              className="w-full bg-gray-900 text-white border border-white/5 rounded-xl py-2.5 pl-10 pr-4 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+            />
           </div>
-          <div className="flex-1 min-w-[200px]">
-            <label className="block text-gray-400 text-sm mb-1">
-              Sampai Tanggal
-            </label>
-            <div className="relative">
-              <FaCalendarAlt className="absolute left-3 top-3 text-gray-500" />
-              <input
-                type="date"
-                value={endDate}
-                onChange={(e) => {
-                  setEndDate(e.target.value);
-                  setPage(1);
-                }}
-                className="w-full bg-gray-700 text-white border border-gray-600 rounded-lg py-2 pl-10 pr-4 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              />
-            </div>
+          <div className="relative group">
+            <CalendarDays className="absolute left-3 top-3 text-gray-500 group-focus-within:text-blue-500 transition-colors w-4 h-4" />
+            <input
+              type="date"
+              value={endDate}
+              onChange={(e) => {
+                setEndDate(e.target.value);
+                setPage(1);
+              }}
+              className="w-full bg-gray-900 text-white border border-white/5 rounded-xl py-2.5 pl-10 pr-4 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+            />
           </div>
-          <button
-            onClick={() => {
-              setStartDate("");
-              setEndDate("");
-              setPage(1);
-            }}
-            className="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg transition h-10 mb-[1px]"
-          >
-            Reset
-          </button>
         </div>
 
-        {/* History Table */}
-        <div className="bg-gray-800 rounded-xl shadow-lg border border-gray-700 overflow-hidden">
+        <Card className="px-0 py-0 overflow-hidden border-white/5 shadow-2xl">
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-gray-300">
-              <thead className="bg-gray-900/50 text-xs uppercase text-gray-400">
-                <tr>
-                  <th className="px-6 py-4">Waktu Buka</th>
-                  <th className="px-6 py-4">Waktu Tutup</th>
-                  <th className="px-6 py-4 text-right">Modal Awal</th>
-                  <th className="px-6 py-4 text-right">Uang Akhir</th>
-                  <th className="px-6 py-4 text-right">Selisih</th>
-                  <th className="px-6 py-4 text-center">Status</th>
+            <table className="w-full text-left">
+              <thead>
+                <tr className="bg-white/5 text-gray-500 border-b border-white/5">
+                  <th className="px-6 py-4 text-xs font-black uppercase tracking-widest">
+                    Waktu Buka
+                  </th>
+                  <th className="px-6 py-4 text-xs font-black uppercase tracking-widest">
+                    Waktu Tutup
+                  </th>
+                  <th className="px-6 py-4 text-xs font-black uppercase tracking-widest text-right">
+                    Modal
+                  </th>
+                  <th className="px-6 py-4 text-xs font-black uppercase tracking-widest text-right">
+                    Uang Akhir
+                  </th>
+                  <th className="px-6 py-4 text-xs font-black uppercase tracking-widest text-right">
+                    Selisih
+                  </th>
+                  <th className="px-6 py-4 text-xs font-black uppercase tracking-widest text-center">
+                    Status
+                  </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-700">
+              <tbody className="divide-y divide-white/5">
                 {historyLoading ? (
                   <tr>
-                    <td colSpan="6" className="text-center py-8">
-                      <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500"></div>
+                    <td colSpan="6" className="text-center py-12">
+                      <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-blue-500 border-t-transparent"></div>
                     </td>
                   </tr>
                 ) : history.length === 0 ? (
                   <tr>
-                    <td colSpan="6" className="text-center py-8 text-gray-500">
+                    <td
+                      colSpan="6"
+                      className="text-center py-12 text-gray-600 italic"
+                    >
                       Tidak ada riwayat sesi ditemukan
                     </td>
                   </tr>
@@ -467,30 +418,24 @@ export default function CashSessions() {
                   history.map((item) => (
                     <tr
                       key={item.ID}
-                      className="hover:bg-gray-700/50 transition-colors"
+                      className="hover:bg-white/5 transition-colors group"
                     >
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-6 py-4 text-sm font-medium">
                         {formatDate(item.OpenedAt)}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-6 py-4 text-sm text-gray-400">
                         {item.ClosedAt ? formatDate(item.ClosedAt) : "-"}
                       </td>
-                      <td className="px-6 py-4 text-right">
+                      <td className="px-6 py-4 text-right font-mono text-sm">
                         {formatCurrency(item.OpeningCash)}
                       </td>
-                      <td className="px-6 py-4 text-right">
+                      <td className="px-6 py-4 text-right font-mono text-sm">
                         {item.ClosingCash
                           ? formatCurrency(item.ClosingCash)
                           : "-"}
                       </td>
                       <td
-                        className={`px-6 py-4 text-right font-bold ${
-                          !item.Difference
-                            ? ""
-                            : item.Difference === 0
-                              ? "text-green-400"
-                              : "text-red-400"
-                        }`}
+                        className={`px-6 py-4 text-right font-black font-mono text-sm ${!item.Difference ? "text-gray-500" : item.Difference === 0 ? "text-green-500" : "text-red-500"}`}
                       >
                         {item.Difference !== undefined &&
                         item.Difference !== null
@@ -499,11 +444,7 @@ export default function CashSessions() {
                       </td>
                       <td className="px-6 py-4 text-center">
                         <span
-                          className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                            item.Status === "open"
-                              ? "bg-green-900/50 text-green-400 border border-green-700"
-                              : "bg-gray-700 text-gray-300 border border-gray-600"
-                          }`}
+                          className={`px-3 py-1 rounded-full text-[10px] font-black tracking-widest uppercase border ${item.Status === "open" ? "bg-green-500/10 text-green-500 border-green-500/20" : "bg-gray-800 text-gray-500 border-white/5"}`}
                         >
                           {item.Status === "open" ? "AKTIF" : "SELESAI"}
                         </span>
@@ -515,37 +456,31 @@ export default function CashSessions() {
             </table>
           </div>
 
-          {/* Pagination */}
-          <div className="px-6 py-4 border-t border-gray-700 flex justify-between items-center">
-            <button
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={page === 1}
-              className="px-4 py-2 bg-gray-700 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-600 transition"
-            >
-              Previous
-            </button>
-            <span className="text-gray-400">
-              Halaman {page} dari {totalPages}
-            </span>
-            <button
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              disabled={page === totalPages}
-              className="px-4 py-2 bg-gray-700 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-600 transition"
-            >
-              Next
-            </button>
-          </div>
-        </div>
+          {totalPages > 1 && (
+            <div className="px-6 py-4 border-t border-white/5 flex justify-between items-center bg-white/5">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page === 1}
+              >
+                Prev
+              </Button>
+              <span className="text-xs font-black text-gray-500 uppercase tracking-widest">
+                Hal {page} / {totalPages}
+              </span>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page === totalPages}
+              >
+                Next
+              </Button>
+            </div>
+          )}
+        </Card>
       </div>
-    </div>
-  );
-}
-
-function SummaryItem({ label, value, format, color = "text-white" }) {
-  return (
-    <div className="bg-gray-900/50 p-3 rounded border border-gray-700/50">
-      <p className="text-gray-500 text-xs uppercase font-semibold">{label}</p>
-      <p className={`text-lg font-mono ${color}`}>{format(value)}</p>
     </div>
   );
 }

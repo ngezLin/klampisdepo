@@ -1,53 +1,26 @@
 import { useEffect, useState, useMemo } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { formatCurrency } from "../utils/format";
+import toast from "react-hot-toast";
 import {
   getTransactionHistory,
   refundTransaction,
 } from "../services/transactionService";
 import ReceiptModal from "../components/transactions/ReceiptModal";
+import ConfirmDialog from "../components/common/ConfirmDialog";
+import StatusBadge from "../components/common/StatusBadge";
 import {
-  FaCalendarAlt,
-  FaHistory,
-  FaSearch,
-  FaUndo,
-  FaEye,
-  FaMoneyBillWave,
-  FaCheckCircle,
-  FaTimesCircle,
-} from "react-icons/fa";
+  Calendar,
+  Undo2,
+  Eye,
+  History as HistoryIcon,
+  DollarSign,
+  CheckCircle2,
+} from "lucide-react";
+import StatCard from "../components/common/StatCard";
+import Card from "../components/common/Card";
+import Button from "../components/common/Button";
 
-const StatusBadge = ({ status }) => {
-  const styles = {
-    completed: "bg-green-500/10 text-green-400 border-green-500/20",
-    refunded: "bg-red-500/10 text-red-400 border-red-500/20",
-    pending: "bg-yellow-500/10 text-yellow-400 border-yellow-500/20",
-    cancelled: "bg-gray-500/10 text-gray-400 border-gray-500/20",
-  };
-
-  return (
-    <span
-      className={`px-2.5 py-0.5 rounded-full text-xs font-medium border ${styles[status] || styles.pending}`}
-    >
-      {status.charAt(0).toUpperCase() + status.slice(1)}
-    </span>
-  );
-};
-
-const SummaryCard = ({ title, value, icon: Icon, colorClass }) => (
-  <div className="bg-gray-900/50 backdrop-blur-sm p-4 rounded-xl border border-white/5 shadow-lg">
-    <div className="flex items-center justify-between gap-4">
-      <div>
-        <p className="text-gray-400 text-xs font-bold uppercase tracking-wider">
-          {title}
-        </p>
-        <h3 className={`text-xl font-bold mt-1 ${colorClass}`}>{value}</h3>
-      </div>
-      <div className={`p-3 rounded-lg bg-white/5 ${colorClass}`}>
-        <Icon className="text-xl opacity-80" />
-      </div>
-    </div>
-  </div>
-);
+// StatusBadge is now imported from shared components
 
 export default function History() {
   const [transactions, setTransactions] = useState([]);
@@ -62,8 +35,9 @@ export default function History() {
   const [totalPages, setTotalPages] = useState(1);
   const itemsPerPage = 10;
   const [loading, setLoading] = useState(false);
+  const [refundTarget, setRefundTarget] = useState(null);
 
-  // Stats calculation (based on current page)
+  // Stats calculation
   const stats = useMemo(() => {
     const totalRevenue = transactions.reduce(
       (acc, curr) => acc + (curr.status === "completed" ? curr.total : 0),
@@ -77,7 +51,7 @@ export default function History() {
     ).length;
 
     return {
-      revenue: `Rp ${totalRevenue.toLocaleString()}`,
+      revenue: totalRevenue,
       completed: completedCount,
       refunded: refundedCount,
     };
@@ -86,13 +60,10 @@ export default function History() {
   const fetchHistory = async (page = 1, date = "") => {
     try {
       setLoading(true);
-
       const res = await getTransactionHistory(page, itemsPerPage, date);
-
       const sortedData = res.data.sort(
         (a, b) => new Date(b.created_at) - new Date(a.created_at),
       );
-
       setTransactions(sortedData);
       setTotalPages(res.totalPages || res.total_pages || 1);
       setCurrentPage(res.page || 1);
@@ -115,9 +86,12 @@ export default function History() {
   const handleRefund = async (id) => {
     try {
       await refundTransaction(id);
+      setRefundTarget(null);
       await fetchHistory(currentPage, filterDate);
+      toast.success("Transaksi berhasil di-refund");
     } catch (err) {
       console.error("Refund failed:", err);
+      toast.error("Gagal melakukan refund");
     }
   };
 
@@ -131,17 +105,14 @@ export default function History() {
     setCurrentPage(1);
   };
 
-  // Pagination logic
   const getPageNumbers = () => {
     const maxButtons = 5;
     let startPage = Math.max(currentPage - Math.floor(maxButtons / 2), 1);
     let endPage = startPage + maxButtons - 1;
-
     if (endPage > totalPages) {
       endPage = totalPages;
       startPage = Math.max(endPage - maxButtons + 1, 1);
     }
-
     const pages = [];
     for (let i = startPage; i <= endPage; i++) {
       pages.push(i);
@@ -150,271 +121,190 @@ export default function History() {
   };
 
   return (
-    <div className="p-4 sm:p-6 bg-gray-950 min-h-screen text-gray-100 font-sans">
+    <div className="p-4 sm:p-6 bg-[#0a0a0a] min-h-screen text-gray-100 max-w-7xl mx-auto animate-in fade-in duration-700">
       <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-white tracking-tight flex items-center gap-2">
-            <FaHistory className="text-blue-500 text-2xl" />
-            Transaction History
+          <h1 className="text-3xl font-black text-white tracking-tight flex items-center gap-3">
+            <HistoryIcon className="text-blue-500 w-8 h-8" />
+            Riwayat Transaksi
           </h1>
-          <p className="text-gray-400 text-sm mt-1">
-            Review and manage your past sales
+          <p className="text-gray-500 mt-1 font-medium italic">
+            Lacak dan kelola semua transaksi penjualan Anda.
           </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
           <div className="relative group">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <FaCalendarAlt className="text-gray-500 group-focus-within:text-blue-500 transition-colors" />
+              <Calendar className="w-4 h-4 text-gray-500 group-focus-within:text-blue-500 transition-colors" />
             </div>
             <input
               type="date"
               value={filterDate}
               onChange={handleDateChange}
-              className="bg-gray-900 border border-white/10 text-white pl-10 pr-3 py-2 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/50 transition-all hover:bg-gray-800"
+              className="bg-gray-900 border border-white/10 text-white pl-10 pr-3 py-2.5 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/50 transition-all hover:bg-gray-800"
             />
           </div>
           {filterDate && (
-            <button
-              onClick={clearFilter}
-              className="bg-gray-800 hover:bg-gray-700 text-gray-300 px-4 py-2 rounded-xl transition-all border border-white/5 active:scale-95 text-sm font-semibold"
-            >
-              All Time
-            </button>
+            <Button variant="ghost" onClick={clearFilter} className="h-[46px]">
+              Semua Waktu
+            </Button>
           )}
         </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
-        <SummaryCard
-          title="Revenue (This View)"
-          value={stats.revenue}
-          icon={FaMoneyBillWave}
+        <StatCard
+          label="Omzet Halaman Ini"
+          value={formatCurrency(stats.revenue)}
+          icon={DollarSign}
           colorClass="text-green-400"
         />
-        <SummaryCard
-          title="Completed"
-          value={stats.completed}
-          icon={FaCheckCircle}
+        <StatCard
+          label="Selesai"
+          value={`${stats.completed} Trx`}
+          icon={CheckCircle2}
           colorClass="text-blue-400"
         />
-        <SummaryCard
-          title="Refunded"
-          value={stats.refunded}
-          icon={FaTimesCircle}
+        <StatCard
+          label="Refund"
+          value={`${stats.refunded} Trx`}
+          icon={Undo2}
           colorClass="text-red-400"
         />
       </div>
 
       {loading ? (
-        <div className="flex flex-col items-center justify-center py-20">
-          <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-          <p className="text-gray-500 mt-4 animate-pulse">
-            Fetching transactions...
+        <div className="flex flex-col items-center justify-center py-24 bg-white/5 rounded-3xl border border-white/5 border-dashed">
+          <div className="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+          <p className="text-gray-500 mt-4 font-medium italic">
+            Mengambil data transaksi...
           </p>
         </div>
       ) : (
-        <div className="space-y-4">
-          {/* Mobile View: Cards */}
-          <div className="grid grid-cols-1 gap-4 md:hidden">
-            <AnimatePresence mode="popLayout">
-              {transactions.map((trx, idx) => {
-                const dateObj =
-                  typeof trx.created_at === "number"
-                    ? new Date(trx.created_at * 1000)
-                    : new Date(trx.created_at);
-                const formattedDate = isNaN(dateObj.getTime())
-                  ? "-"
-                  : dateObj.toLocaleString("id-ID", {
-                      day: "2-digit",
-                      month: "short",
-                      year: "numeric",
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    });
-                return (
-                  <motion.div
-                    key={trx.id}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: idx * 0.05 }}
-                    className="bg-gray-900/60 backdrop-blur-md rounded-2xl p-5 border border-white/5 shadow-lg space-y-4"
-                  >
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <p className="text-xs font-mono text-gray-500 mb-1">
-                          #{trx.id}
-                        </p>
-                        <p className="text-lg font-bold text-white tracking-tight">
+        <Card className="px-0 py-0 overflow-hidden border-white/10 shadow-2xl">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left">
+              <thead>
+                <tr className="bg-white/5 text-gray-400 border-b border-white/5">
+                  <th className="px-6 py-4 text-xs font-black uppercase tracking-widest">
+                    ID
+                  </th>
+                  <th className="px-6 py-4 text-xs font-black uppercase tracking-widest">
+                    Status
+                  </th>
+                  <th className="px-6 py-4 text-xs font-black uppercase tracking-widest">
+                    Total
+                  </th>
+                  <th className="px-6 py-4 text-xs font-black uppercase tracking-widest">
+                    Waktu
+                  </th>
+                  <th className="px-6 py-4 text-xs font-black uppercase tracking-widest text-right">
+                    Aksi
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/5">
+                {transactions.map((trx) => {
+                  const dateObj =
+                    typeof trx.created_at === "number"
+                      ? new Date(trx.created_at * 1000)
+                      : new Date(trx.created_at);
+                  const formattedDate = isNaN(dateObj.getTime())
+                    ? "-"
+                    : dateObj.toLocaleString("id-ID", {
+                        day: "2-digit",
+                        month: "short",
+                        year: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      });
+                  return (
+                    <tr
+                      key={trx.id}
+                      className="hover:bg-white/5 transition-colors group"
+                    >
+                      <td className="px-6 py-4 font-mono text-xs text-gray-500 group-hover:text-blue-400 transition-colors">
+                        #{trx.id}
+                      </td>
+                      <td className="px-6 py-4">
+                        <StatusBadge status={trx.status} />
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="font-bold text-white">
                           Rp {trx.total?.toLocaleString() || 0}
-                        </p>
-                      </div>
-                      <StatusBadge status={trx.status} />
-                    </div>
-
-                    <div className="flex justify-between items-center text-xs text-gray-400 border-t border-white/5 pt-3">
-                      <span>{formattedDate}</span>
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => viewDetails(trx)}
-                          className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600/10 text-blue-400 rounded-lg font-bold border border-blue-500/20 active:scale-95"
-                        >
-                          <FaEye className="text-xs" /> Details
-                        </button>
-                        {trx.status === "completed" && (
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-400">
+                        {formattedDate}
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <div className="flex items-center justify-end gap-2">
                           <button
-                            onClick={() => handleRefund(trx.id)}
-                            className="flex items-center gap-1.5 px-3 py-1.5 bg-red-600/10 text-red-500 rounded-lg font-bold border border-red-500/20 active:scale-95"
+                            title="Detail"
+                            className="p-2 bg-blue-600/10 hover:bg-blue-600 text-blue-500 hover:text-white rounded-lg transition-all active:scale-90"
+                            onClick={() => viewDetails(trx)}
                           >
-                            <FaUndo className="text-xs" /> Refund
+                            <Eye className="w-4 h-4" />
                           </button>
-                        )}
-                      </div>
-                    </div>
-                  </motion.div>
-                );
-              })}
-            </AnimatePresence>
+                          {trx.status === "completed" && (
+                            <button
+                              title="Refund"
+                              className="p-2 bg-red-600/10 hover:bg-red-600 text-red-500 hover:text-white rounded-lg transition-all active:scale-90"
+                              onClick={() => setRefundTarget(trx.id)}
+                            >
+                              <Undo2 className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
 
-          {/* Desktop View: Table */}
-          <div className="hidden md:block bg-gray-900/40 backdrop-blur-md rounded-2xl shadow-xl border border-white/5 overflow-hidden">
-            <div className="overflow-x-auto overflow-y-hidden">
-              <table className="w-full text-left">
-                <thead>
-                  <tr className="bg-gray-950/50 text-gray-400 border-b border-gray-800 text-xs font-bold uppercase tracking-widest">
-                    <th className="px-6 py-4">ID</th>
-                    <th className="px-6 py-4">Status</th>
-                    <th className="px-6 py-4">Total</th>
-                    <th className="px-6 py-4">Date</th>
-                    <th className="px-6 py-4 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-800/50">
-                  <AnimatePresence mode="popLayout">
-                    {transactions.map((trx, idx) => {
-                      const dateObj =
-                        typeof trx.created_at === "number"
-                          ? new Date(trx.created_at * 1000)
-                          : new Date(trx.created_at);
-                      const formattedDate = isNaN(dateObj.getTime())
-                        ? "-"
-                        : dateObj.toLocaleString("id-ID", {
-                            day: "2-digit",
-                            month: "short",
-                            year: "numeric",
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          });
-                      return (
-                        <motion.tr
-                          key={trx.id}
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, scale: 0.95 }}
-                          transition={{ delay: idx * 0.05 }}
-                          className="hover:bg-white/5 transition-all group"
-                        >
-                          <td className="px-6 py-4 font-mono text-xs text-gray-500 group-hover:text-blue-400 transition-colors">
-                            #{trx.id}
-                          </td>
-                          <td className="px-6 py-4">
-                            <StatusBadge status={trx.status} />
-                          </td>
-                          <td className="px-6 py-4">
-                            <span className="font-bold text-white tracking-tight">
-                              Rp {trx.total?.toLocaleString() || 0}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 text-sm text-gray-400">
-                            {formattedDate}
-                          </td>
-                          <td className="px-6 py-4 text-right">
-                            <div className="flex items-center justify-end gap-2">
-                              <button
-                                title="Details"
-                                className="p-2 bg-blue-600/10 hover:bg-blue-600 text-blue-400 hover:text-white rounded-lg transition-all active:scale-90"
-                                onClick={() => viewDetails(trx)}
-                              >
-                                <FaEye />
-                              </button>
-
-                              {trx.status === "completed" && (
-                                <button
-                                  title="Refund"
-                                  className="p-2 bg-red-600/10 hover:bg-red-600 text-red-500 hover:text-white rounded-lg transition-all active:scale-90"
-                                  onClick={() => handleRefund(trx.id)}
-                                >
-                                  <FaUndo />
-                                </button>
-                              )}
-                            </div>
-                          </td>
-                        </motion.tr>
-                      );
-                    })}
-                  </AnimatePresence>
-                </tbody>
-              </table>
-            </div>
-
-            {transactions.length === 0 && (
-              <div className="flex flex-col items-center justify-center py-20 bg-gray-900/20">
-                <FaSearch className="text-gray-800 text-6xl mb-4" />
-                <p className="text-gray-500 font-medium">
-                  No transactions found match your criteria.
-                </p>
-              </div>
-            )}
-
-            {/* Pagination Desktop (Integrated into Table) */}
-            {totalPages > 1 && (
-              <div className="bg-gray-950/30 p-4 border-t border-gray-800 flex items-center justify-between">
-                <p className="text-xs text-gray-500 font-medium uppercase tracking-widest">
-                  Page <span className="text-gray-300">{currentPage}</span> of{" "}
-                  <span className="text-gray-300">{totalPages}</span>
-                </p>
-                <PaginationControls
-                  currentPage={currentPage}
-                  totalPages={totalPages}
-                  setCurrentPage={setCurrentPage}
-                  getPageNumbers={getPageNumbers}
-                />
-              </div>
-            )}
-          </div>
-
-          {/* Mobile Empty State */}
-          {transactions.length === 0 && !loading && (
-            <div className="flex flex-col items-center justify-center py-20 md:hidden bg-gray-900/20 rounded-2xl border border-white/5">
-              <FaSearch className="text-gray-800 text-6xl mb-4" />
-              <p className="text-gray-500 font-medium text-center px-6">
-                No transactions found match your criteria.
+          {transactions.length === 0 && (
+            <div className="py-24 text-center">
+              <HistoryIcon className="w-12 h-12 text-gray-800 mx-auto mb-4 opacity-20" />
+              <p className="text-gray-500 font-medium italic">
+                Tidak ada transaksi yang ditemukan
               </p>
             </div>
           )}
 
-          {/* Mobile Pagination */}
-          <div className="md:hidden pt-4">
-            {totalPages > 1 && (
-              <div className="flex flex-col items-center gap-4">
-                <PaginationControls
-                  currentPage={currentPage}
-                  totalPages={totalPages}
-                  setCurrentPage={setCurrentPage}
-                  getPageNumbers={getPageNumbers}
-                  mobile
-                />
-              </div>
-            )}
-          </div>
-        </div>
+          {totalPages > 1 && (
+            <div className="px-6 py-4 bg-white/5 border-t border-white/5 flex items-center justify-between">
+              <span className="text-xs font-black text-gray-500 uppercase tracking-widest">
+                Hal <span className="text-white">{currentPage}</span> dari{" "}
+                {totalPages}
+              </span>
+              <PaginationControls
+                currentPage={currentPage}
+                totalPages={totalPages}
+                setCurrentPage={setCurrentPage}
+                getPageNumbers={getPageNumbers}
+              />
+            </div>
+          )}
+        </Card>
       )}
 
       <ReceiptModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         transaction={selectedTransaction}
+      />
+
+      <ConfirmDialog
+        isOpen={!!refundTarget}
+        onClose={() => setRefundTarget(null)}
+        onConfirm={() => handleRefund(refundTarget)}
+        title="Konfirmasi Refund"
+        message="Apakah Anda yakin ingin melakukan refund transaksi ini? Aksi ini tidak dapat dibatalkan."
+        confirmText="Ya, Refund"
+        variant="danger"
       />
     </div>
   );

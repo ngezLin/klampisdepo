@@ -201,7 +201,7 @@ export default function Attendance() {
           </button>
         </form>
         {error && !error.includes("not logged in as admin") && (
-          <div className="mt-4 bg-red-100 text-red-700 p-3 rounded">
+          <div className="mt-4 bg-red-500/10 text-red-400 p-3 rounded-xl border border-red-500/20">
             {error}
           </div>
         )}
@@ -325,28 +325,31 @@ export default function Attendance() {
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full">
-                    <thead className="bg-gray-50">
+                    <thead className="bg-gray-900/50 text-gray-400">
                       <tr>
-                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">
+                        <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-widest">
                           Date
                         </th>
-                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">
+                        <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-widest">
                           Employee
                         </th>
-                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">
+                        <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-widest">
                           Role
                         </th>
-                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">
+                        <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-widest">
                           Status
                         </th>
-                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">
+                        <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-widest">
                           Note
                         </th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y">
+                    <tbody className="divide-y divide-gray-800">
                       {allAttendance.map((record) => (
-                        <tr key={record.id} className="hover:bg-gray-50">
+                        <tr
+                          key={record.id}
+                          className="hover:bg-white/5 transition-colors"
+                        >
                           <td className="px-4 py-3 text-sm">
                             {formatDate(record.date)}
                           </td>

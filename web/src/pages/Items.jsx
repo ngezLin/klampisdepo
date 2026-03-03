@@ -12,7 +12,10 @@ import ItemForm from "../components/items/ItemForm";
 import ItemTable from "../components/items/ItemTable";
 import ImportModal from "../components/items/ImportModal";
 import Pagination from "../components/common/Pagination";
+import ConfirmDialog from "../components/common/ConfirmDialog";
+import Button from "../components/common/Button";
 import toast from "react-hot-toast";
+import { Plus, FileUp, FileDown, Search } from "lucide-react";
 
 export default function Items() {
   const [items, setItems] = useState([]);
@@ -23,6 +26,7 @@ export default function Items() {
   const [error, setError] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [exporting, setExporting] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState(null);
 
   // Backend pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -74,10 +78,11 @@ export default function Items() {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm("Yakin hapus item ini?")) return;
     try {
       await deleteItem(id);
+      setDeleteTarget(null);
       fetchItems(currentPage, searchQuery);
+      toast.success("Item berhasil dihapus");
     } catch (err) {
       setError("Gagal menghapus item");
       console.error(err);
@@ -218,44 +223,52 @@ export default function Items() {
 
   return (
     <div className="p-4 sm:p-6 bg-gray-950 min-h-screen text-gray-100">
-      <h1 className="text-lg sm:text-xl font-bold mb-4 text-white">
-        Items CRUD
+      <h1 className="text-2xl sm:text-3xl font-bold mb-6 text-white tracking-tight">
+        Manajemen Inventori
       </h1>
 
       <div className="flex flex-col sm:flex-row gap-2 mb-4">
-        <button
+        <Button
+          variant="success"
+          icon={Plus}
           onClick={handleAdd}
-          className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded w-full sm:w-auto"
+          className="w-full sm:w-auto"
         >
-          + Add Item
-        </button>
-        <button
+          Tambah Item
+        </Button>
+        <Button
+          variant="primary"
+          icon={FileUp}
           onClick={() => setIsImportModalOpen(true)}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded w-full sm:w-auto"
+          className="w-full sm:w-auto"
         >
           Import Excel
-        </button>
-        <button
+        </Button>
+        <Button
+          variant="purple"
+          icon={FileDown}
           onClick={handleExport}
           disabled={exporting || totalItems === 0}
-          className={`px-4 py-2 rounded w-full sm:w-auto ${
-            exporting || totalItems === 0
-              ? "bg-gray-400 cursor-not-allowed"
-              : "bg-purple-600 hover:bg-purple-700"
-          } text-white`}
+          loading={exporting}
+          className="w-full sm:w-auto"
         >
           {exporting ? "Exporting..." : "Export CSV"}
-        </button>
+        </Button>
       </div>
 
       <div className="mb-4">
-        <input
-          type="text"
-          placeholder="Cari item berdasarkan nama..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="bg-gray-800 border-gray-700 rounded w-full p-2 text-white placeholder-gray-500 focus:ring-2 focus:ring-blue-500 outline-none"
-        />
+        <div className="relative">
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <Search className="w-4 h-4 text-gray-500" />
+          </div>
+          <input
+            type="text"
+            placeholder="Cari item berdasarkan nama..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="bg-gray-900 border border-white/10 rounded-xl w-full pl-10 pr-3 py-2.5 text-white placeholder-gray-500 focus:ring-2 focus:ring-blue-500/50 outline-none transition-all"
+          />
+        </div>
         <p className="text-sm text-gray-400 mt-1">Total: {totalItems} items</p>
       </div>
 
@@ -278,7 +291,7 @@ export default function Items() {
           <ItemTable
             items={items}
             onEdit={handleEdit}
-            onDelete={handleDelete}
+            onDelete={(id) => setDeleteTarget(id)}
           />
 
           <Pagination
@@ -305,6 +318,16 @@ export default function Items() {
         isOpen={isImportModalOpen}
         onClose={() => setIsImportModalOpen(false)}
         onImport={handleImportItems}
+      />
+
+      <ConfirmDialog
+        isOpen={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={() => handleDelete(deleteTarget)}
+        title="Hapus Item"
+        message="Apakah Anda yakin ingin menghapus item ini? Stok dan data item akan hilang."
+        confirmText="Ya, Hapus"
+        variant="danger"
       />
     </div>
   );

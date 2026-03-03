@@ -3,11 +3,13 @@ import { NavLink, useNavigate } from "react-router-dom";
 import { navigationItems } from "../config/navigation";
 import { logout } from "../services/authService";
 import {
-  FaSignOutAlt,
-  FaUserCircle,
-  FaBars,
-  FaAngleLeft,
-} from "react-icons/fa";
+  Menu,
+  LogOut,
+  UserCircle,
+  ChevronLeft,
+  LayoutDashboard,
+} from "lucide-react";
+import Button from "./common/Button";
 
 export default function Sidebar({ onToggleCollapse }) {
   const navigate = useNavigate();
@@ -28,8 +30,10 @@ export default function Sidebar({ onToggleCollapse }) {
   };
 
   const linkClass = ({ isActive }) =>
-    `flex items-center gap-2 p-2 rounded ${
-      isActive ? "bg-gray-700 font-semibold" : "hover:bg-gray-700"
+    `flex items-center gap-2 p-2 rounded-lg transition-all relative ${
+      isActive
+        ? "bg-blue-600/10 text-blue-400 font-semibold border-l-[3px] border-blue-500 pl-3"
+        : "text-gray-400 hover:bg-white/5 hover:text-white"
     }`;
 
   return (
@@ -37,9 +41,10 @@ export default function Sidebar({ onToggleCollapse }) {
       {/* Toggle button visible on mobile */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="md:hidden fixed top-3 left-3 z-50 bg-gray-800 text-white p-2 rounded-md shadow-md"
+        aria-label="Buka menu navigasi"
+        className="md:hidden fixed top-3 left-3 z-50 bg-gray-800 text-white p-2 rounded-lg shadow-md hover:bg-gray-700 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
       >
-        <FaBars />
+        <Menu className="w-5 h-5" />
       </button>
 
       {/* Overlay (mobile) */}
@@ -57,20 +62,24 @@ export default function Sidebar({ onToggleCollapse }) {
           ${isOpen ? "translate-x-0" : "-translate-x-full"} md:translate-x-0
         `}
       >
-        {/* Header / Toggle collapse */}
         <button
           onClick={() =>
             window.innerWidth >= 768 ? handleCollapse() : setIsOpen(false)
           }
-          className="flex items-center justify-center bg-gray-900 hover:bg-gray-700 text-white font-bold text-lg tracking-wide py-4 transition-all"
+          className="flex items-center justify-center bg-gray-900 hover:bg-gray-800 text-white font-black text-xs uppercase tracking-[0.2em] py-5 border-b border-white/5 transition-all"
         >
           {isCollapsed ? (
-            <FaBars className="text-xl" />
+            <Menu className="w-5 h-5 flex-shrink-0" />
           ) : (
-            <>
-              <span className="ml-2">Klampis Depo</span>
-              <FaAngleLeft className="ml-3 text-sm opacity-70 hidden md:inline" />
-            </>
+            <div className="flex items-center gap-2 px-4 w-full">
+              <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center">
+                <LayoutDashboard className="w-5 h-5 text-white" />
+              </div>
+              <span className="font-black text-white whitespace-nowrap">
+                KLAMPIS DEPO
+              </span>
+              <ChevronLeft className="ml-auto w-4 h-4 opacity-30 group-hover:opacity-100 hidden md:block" />
+            </div>
           )}
         </button>
 
@@ -93,23 +102,34 @@ export default function Sidebar({ onToggleCollapse }) {
           {/* Bottom User Info + Logout */}
           <div className="space-y-2">
             {role && (
-              <div className="flex items-center gap-2 p-2 bg-gray-700 rounded">
-                <FaUserCircle className="text-xl" />
+              <div
+                className={`flex items-center gap-3 p-3 bg-white/5 border border-white/5 rounded-2xl transition-all ${isCollapsed ? "justify-center px-0" : ""}`}
+              >
+                <div className="w-10 h-10 rounded-xl bg-blue-600/20 flex items-center justify-center text-blue-400 flex-shrink-0">
+                  <UserCircle className="w-6 h-6" />
+                </div>
                 {!isCollapsed && (
-                  <div className="flex flex-col">
-                    <span className="text-xs text-gray-400">Logged in as</span>
-                    <span className="font-semibold capitalize">{role}</span>
+                  <div className="flex flex-col min-w-0">
+                    <span className="text-[10px] font-black text-blue-500 uppercase tracking-widest leading-none mb-1">
+                      {role === "owner" ? "Boss" : "Staff"}
+                    </span>
+                    <span className="font-bold text-white truncate text-sm">
+                      {role.charAt(0).toUpperCase() + role.slice(1)}
+                    </span>
                   </div>
                 )}
               </div>
             )}
 
-            <button
+            <Button
+              variant="danger"
+              size="md"
+              icon={LogOut}
               onClick={handleLogout}
-              className="flex items-center justify-center gap-2 w-full bg-red-500 hover:bg-red-600 text-white p-2 rounded transition-colors"
+              className={`w-full ${isCollapsed ? "px-0 justify-center" : "justify-start"} mt-2`}
             >
-              <FaSignOutAlt /> {!isCollapsed && "Logout"}
-            </button>
+              {!isCollapsed && "Logout"}
+            </Button>
           </div>
         </div>
       </aside>

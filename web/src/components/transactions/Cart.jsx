@@ -1,5 +1,13 @@
 import { useEffect } from "react";
 import toast from "react-hot-toast";
+import {
+  Printer,
+  ClipboardList,
+  Link,
+  Unplug,
+  CheckCircle,
+  RefreshCw,
+} from "lucide-react";
 
 export default function Cart({
   cart,
@@ -243,26 +251,34 @@ export default function Cart({
                   : "bg-blue-600 hover:bg-blue-700"
             } ${(isConnecting || device) && "opacity-70 cursor-not-allowed"}`}
           >
-            {device
-              ? `✅ ${device.name || "Connected"}`
-              : isConnecting
-                ? "🔄 Connecting..."
-                : "🔗 Connect Printer"}
+            {device ? (
+              <>
+                <CheckCircle className="w-4 h-4" /> {device.name || "Connected"}
+              </>
+            ) : isConnecting ? (
+              <>
+                <RefreshCw className="w-4 h-4 animate-spin" /> Connecting...
+              </>
+            ) : (
+              <>
+                <Link className="w-4 h-4" /> Connect Printer
+              </>
+            )}
           </button>
 
           {device && (
             <button
               onClick={disconnectPrinter}
-              className="flex-1 px-4 py-3 sm:py-2 rounded font-bold text-white text-sm bg-red-500 hover:bg-red-600 shadow-sm active:scale-95 transition-transform"
+              className="flex-1 px-4 py-3 sm:py-2 rounded-xl font-bold text-white text-sm bg-red-500 hover:bg-red-600 shadow-sm active:scale-95 transition-all inline-flex items-center justify-center gap-2"
             >
-              🔌 Disconnect
+              <Unplug className="w-4 h-4" /> Disconnect
             </button>
           )}
         </div>
 
         <div className="flex flex-col sm:flex-row gap-2">
           <button
-            className={`flex-1 bg-purple-500 font-bold text-white px-4 py-3 sm:py-2 rounded shadow-sm active:scale-95 transition-transform ${
+            className={`flex-1 bg-purple-500 font-bold text-white px-4 py-3 sm:py-2 rounded-xl shadow-sm active:scale-95 transition-all inline-flex items-center justify-center gap-2 ${
               cart.length === 0 || !device
                 ? "opacity-50 cursor-not-allowed"
                 : "hover:bg-purple-600"
@@ -270,14 +286,14 @@ export default function Cart({
             onClick={handlePrintPreview}
             disabled={cart.length === 0 || !device}
           >
-            🖨️ Print Preview
+            <Printer className="w-4 h-4" /> Print Preview
           </button>
 
           <button
-            className="flex-1 bg-blue-500 hover:bg-blue-600 font-bold text-white px-4 py-3 sm:py-2 rounded shadow-sm active:scale-95 transition-transform"
+            className="flex-1 bg-blue-500 hover:bg-blue-600 font-bold text-white px-4 py-3 sm:py-2 rounded-xl shadow-sm active:scale-95 transition-all inline-flex items-center justify-center gap-2"
             onClick={openModal}
           >
-            📋 Load Draft
+            <ClipboardList className="w-4 h-4" /> Load Draft
           </button>
         </div>
       </div>

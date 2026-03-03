@@ -3,20 +3,9 @@ import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 import { useBluetoothPrinter } from "../../context/BluetoothPrinterContext";
 import toast from "react-hot-toast";
+import StatusBadge from "../common/StatusBadge";
 
-const StatusBadge = ({ status }) => {
-  const styles = {
-    completed: "bg-green-500/10 text-green-400 border-green-500/20",
-    refunded: "bg-red-500/10 text-red-400 border-red-500/20",
-  };
-  return (
-    <span
-      className={`px-2 py-0.5 rounded-full text-[10px] uppercase font-black border ${styles[status] || "bg-gray-500/10 text-gray-400 border-gray-500/20"}`}
-    >
-      {status}
-    </span>
-  );
-};
+// StatusBadge is now imported from shared components
 
 export default function ReceiptModal({ isOpen, onClose, transaction }) {
   const componentRef = useRef();
@@ -126,7 +115,7 @@ export default function ReceiptModal({ isOpen, onClose, transaction }) {
             <span className="text-right">{formattedDate}</span>
             <span className="text-gray-500 uppercase font-bold">Status</span>
             <span className="text-right">
-              <StatusBadge status={transaction.status} />
+              <StatusBadge status={transaction.status} size="xs" />
             </span>
           </div>
 

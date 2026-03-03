@@ -1,68 +1,61 @@
 import {
-  FaTachometerAlt,
-  FaBox,
-  FaReceipt,
-  FaHistory,
-  FaCalendarCheck,
-  FaClipboardList,
-  FaWallet,
-} from "react-icons/fa";
+  LayoutDashboard,
+  Wallet,
+  Box,
+  Receipt,
+  History,
+  ClipboardList,
+  CalendarCheck,
+  FileText,
+} from "lucide-react";
 
 export const navigationItems = [
   {
     label: "Dashboard",
     path: "/dashboard",
-    icon: <FaTachometerAlt />,
+    icon: <LayoutDashboard />,
     roles: ["owner"],
   },
   {
-    label: "Cash Session",
+    label: "Sesi Kas",
     path: "/cash-sessions",
-    icon: <FaWallet />,
+    icon: <Wallet />,
     roles: ["admin", "owner"],
   },
   {
-    label: "Items",
+    label: "Stok Barang",
     path: "/items",
-    icon: <FaBox />,
+    icon: <Box />,
     roles: ["admin", "owner"],
   },
   {
-    label: "Transactions",
+    label: "Transaksi",
     path: "/transactions",
-    icon: <FaReceipt />,
+    icon: <Receipt />,
     roles: ["cashier", "admin", "owner"],
   },
   {
-    label: "History",
+    label: "Riwayat",
     path: "/history",
-    icon: <FaHistory />,
+    icon: <History />,
     roles: ["cashier", "admin", "owner"],
   },
   {
-    label: "Inventory History",
+    label: "Mutasi Stok",
     path: "/inventory-history",
-    icon: <FaClipboardList />, // Reusing icon or using a new one if available. FaClipboardList is used for Audit Logs. Let's use FaBoxOpen or something similar if imported? FaBox is used for Items.
-    // Let's import FaWarehouse if possible, or just reuse FaBox for now to be safe with imports, or check imports.
-    // FaClipboardList is imported.
-    // Let's check imports in navigation.js
-    // FaBox, FaReceipt, FaHistory, FaCalendarCheck, FaClipboardList, FaWallet, FaTachometerAlt are imported.
-    // I will use FaBox for now, or just FaClipboardList but with different label.
-    // Actually, let's use FaHistory but distinguish it.
-    // Or add FaWarehouse to imports.
-    // For now, to avoid import errors without checking available icons in react-icons/fa (though standard), I'll use FaBox.
+    icon: <ClipboardList />,
     roles: ["owner"],
   },
   {
-    label: "Attendance",
+    label: "Presensi",
     path: "/attendance",
-    icon: <FaCalendarCheck />,
+    icon: <CalendarCheck />,
     roles: ["owner"],
   },
   {
-    label: "Audit Logs",
+    label: "Log Audit",
     path: "/audit-logs",
-    icon: <FaClipboardList />,
+    icon: <FileText />,
     roles: ["owner"],
   },
 ];

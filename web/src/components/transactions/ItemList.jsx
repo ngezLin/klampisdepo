@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { getItems, searchItemsByName } from "../../services/itemService";
 import { BASE_URL } from "../../services/api";
 import Pagination from "../common/Pagination";
+import toast from "react-hot-toast";
 
 export default function ItemList({ addToCart }) {
   const [items, setItems] = useState([]);
@@ -77,7 +78,18 @@ export default function ItemList({ addToCart }) {
           {items.map((item) => (
             <div
               key={item.id}
-              onClick={() => addToCart(item)}
+              onClick={() => {
+                addToCart(item);
+                toast.success(`${item.name} ditambahkan`, {
+                  duration: 1500,
+                  style: {
+                    background: "#1f2937",
+                    color: "#e5e7eb",
+                    border: "1px solid rgba(255,255,255,0.1)",
+                    fontSize: "13px",
+                  },
+                });
+              }}
               className="bg-gray-800 rounded-xl shadow-sm border border-white/5 overflow-hidden cursor-pointer hover:shadow-lg hover:border-blue-500/50 hover:bg-gray-700/50 transition-all flex flex-col active:scale-95 duration-150 group"
             >
               <div className="relative w-full pt-[100%] bg-gray-100 overflow-hidden">

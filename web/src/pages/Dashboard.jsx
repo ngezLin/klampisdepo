@@ -6,12 +6,9 @@ import {
   Bar,
   XAxis,
   YAxis,
-  CartesianGrid,
   Tooltip,
-  Legend,
   Cell,
 } from "recharts";
-import { motion } from "framer-motion";
 import { toast } from "react-hot-toast";
 import { Skeleton } from "@mui/material";
 import { formatCurrency } from "../utils/format";
@@ -23,7 +20,10 @@ import {
   CalendarRange,
   Coins,
   BadgeDollarSign,
+  LayoutDashboard,
 } from "lucide-react";
+import StatCard from "../components/common/StatCard";
+import Card from "../components/common/Card";
 
 export default function Dashboard() {
   const [data, setData] = useState({
@@ -48,7 +48,7 @@ export default function Dashboard() {
         });
       } catch (err) {
         console.error("Error fetching dashboard:", err);
-        toast.error("Failed to load dashboard data");
+        toast.error("Gagal mengambil data dashboard");
       } finally {
         setLoading(false);
       }
@@ -58,230 +58,175 @@ export default function Dashboard() {
 
   if (loading) {
     return (
-      <div className="p-4 sm:p-6 lg:p-8 space-y-8 bg-gray-950 min-h-screen">
-        <Skeleton variant="text" width={240} height={50} />
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-          {[...Array(4)].map((_, i) => (
+      <div className="p-4 sm:p-6 lg:p-8 space-y-8 bg-[#0a0a0a] min-h-screen">
+        <div className="flex flex-col gap-2">
+          <Skeleton
+            variant="text"
+            width={240}
+            height={40}
+            sx={{ bgcolor: "rgba(255,255,255,0.05)" }}
+          />
+          <Skeleton
+            variant="text"
+            width={340}
+            height={20}
+            sx={{ bgcolor: "rgba(255,255,255,0.05)" }}
+          />
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+          {[...Array(6)].map((_, i) => (
             <Skeleton
               key={i}
               variant="rounded"
-              height={140}
-              className="rounded-2xl shadow-sm"
+              height={120}
+              sx={{ bgcolor: "rgba(255,255,255,0.05)", borderRadius: "16px" }}
             />
           ))}
         </div>
-        <Skeleton
-          variant="rounded"
-          height={380}
-          className="rounded-2xl shadow-sm"
-        />
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <Skeleton
+            variant="rounded"
+            height={400}
+            sx={{ bgcolor: "rgba(255,255,255,0.05)", borderRadius: "16px" }}
+          />
+          <Skeleton
+            variant="rounded"
+            height={400}
+            sx={{ bgcolor: "rgba(255,255,255,0.05)", borderRadius: "16px" }}
+          />
+        </div>
       </div>
     );
   }
 
-  // Define colors for the bar chart
   const COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6"];
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.6, ease: "easeOut" }}
-      className="p-4 sm:p-6 lg:p-8 bg-gray-950 min-h-[calc(100vh-64px)]"
-    >
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-            Dashboard Overview
-          </h1>
-          <p className="text-sm text-gray-400 mt-1">
-            Here's what's happening with your business today.
-          </p>
-        </div>
+    <div className="p-4 sm:p-6 lg:p-8 bg-[#0a0a0a] min-h-screen max-w-7xl mx-auto animate-in fade-in duration-700">
+      <div className="mb-10">
+        <h1 className="text-3xl font-black text-white tracking-tight flex items-center gap-3">
+          <LayoutDashboard className="w-8 h-8 text-blue-500" />
+          Dashboard
+        </h1>
+        <p className="text-gray-500 mt-1 font-medium italic">
+          Selamat datang kembali. Ringkasan performa bisnis Anda hari ini.
+        </p>
       </div>
 
       {/* SUMMARY CARDS */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 mb-8">
-        <DashboardCard
-          title="Daily Omzet"
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 mb-10">
+        <StatCard
+          label="Omzet Hari Ini"
           value={formatCurrency(data.today_omzet)}
           icon={Coins}
-          gradient="from-fuchsia-500 to-pink-500"
-          shadowColor="shadow-fuchsia-200"
-          delay={0.1}
+          colorClass="text-fuchsia-400"
         />
-        <DashboardCard
-          title="Daily Profit"
+        <StatCard
+          label="Profit Hari Ini"
           value={formatCurrency(data.today_profit)}
           icon={Wallet}
-          gradient="from-emerald-500 to-teal-400"
-          shadowColor="shadow-emerald-200"
-          delay={0.2}
+          colorClass="text-emerald-400"
         />
-        <DashboardCard
-          title="Transactions Today"
-          value={data.today_transactions}
+        <StatCard
+          label="Transaksi Hari Ini"
+          value={`${data.today_transactions} Trx`}
           icon={TrendingUp}
-          gradient="from-amber-500 to-orange-400"
-          shadowColor="shadow-amber-200"
-          delay={0.3}
+          colorClass="text-amber-400"
         />
-        <DashboardCard
-          title="Monthly Omzet"
+        <StatCard
+          label="Omzet Bulan Ini"
           value={formatCurrency(data.monthly_omzet)}
           icon={BadgeDollarSign}
-          gradient="from-violet-500 to-purple-500"
-          shadowColor="shadow-violet-200"
-          delay={0.4}
+          colorClass="text-violet-400"
         />
-        <DashboardCard
-          title="Monthly Profit"
+        <StatCard
+          label="Profit Bulan Ini"
           value={formatCurrency(data.monthly_profit)}
           icon={CalendarRange}
-          gradient="from-blue-600 to-indigo-500"
-          shadowColor="shadow-blue-200"
-          delay={0.5}
+          colorClass="text-blue-400"
         />
-        <DashboardCard
-          title="Low Stock Warning"
+        <StatCard
+          label="Stok Menipis"
           value={data.low_stock}
-          subtitle="Items < 5"
           icon={AlertCircle}
-          gradient="from-rose-500 to-red-500"
-          shadowColor="shadow-rose-200"
-          delay={0.6}
+          colorClass="text-rose-400"
+          className={data.low_stock > 0 ? "border-red-500/20" : ""}
         />
       </div>
 
-      {/* TOP SELLING ITEMS */}
-      <motion.section
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6, delay: 0.5, ease: "easeOut" }}
-      >
-        <div className="flex items-center space-x-2 mb-6">
-          <Package className="w-6 h-6 text-gray-400" />
-          <h2 className="text-xl sm:text-2xl font-bold text-white">
-            Top 5 Selling Items
-          </h2>
-        </div>
-
-        <div className="bg-gray-900/50 backdrop-blur-sm p-4 sm:p-6 rounded-2xl shadow-sm border border-gray-800 h-[350px] sm:h-[400px]">
-          {data.top_selling_items?.length > 0 ? (
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart
-                layout="vertical"
-                data={data.top_selling_items}
-                margin={{ top: 10, right: 30, left: 0, bottom: 10 }}
-              >
-                <CartesianGrid
-                  strokeDasharray="3 3"
-                  horizontal={false}
-                  stroke="#374151"
-                />
-                <XAxis
-                  type="number"
-                  stroke="#9ca3af"
-                  fontSize={12}
-                  tickLine={false}
-                  axisLine={false}
-                />
-                <YAxis
-                  dataKey="name"
-                  type="category"
-                  width={140}
-                  stroke="#e5e7eb"
-                  fontSize={12}
-                  fontWeight={500}
-                  tickLine={false}
-                  axisLine={false}
-                />
-                <Tooltip
-                  cursor={{ fill: "rgba(255, 255, 255, 0.05)" }}
-                  contentStyle={{
-                    borderRadius: "12px",
-                    border: "none",
-                    boxShadow:
-                      "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)",
-                    fontWeight: 500,
-                  }}
-                  formatter={(value) => [value, "Quantity Sold"]}
-                />
-                <Legend
-                  iconType="circle"
-                  wrapperStyle={{ paddingTop: "20px" }}
-                />
-                <Bar
-                  dataKey="quantity"
-                  name="Quantity Sold"
-                  radius={[0, 8, 8, 0]}
-                  barSize={32}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <Card
+          title="Barang Terlaris"
+          subtitle="Top 5 items berdasarkan kuantitas"
+        >
+          <div className="h-80 w-full mt-4">
+            {data.top_selling_items?.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  layout="vertical"
+                  data={data.top_selling_items}
+                  margin={{ top: 0, right: 30, left: 10, bottom: 0 }}
                 >
-                  {data.top_selling_items.map((entry, index) => (
-                    <Cell
-                      key={`cell-${index}`}
-                      fill={COLORS[index % COLORS.length]}
-                    />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          ) : (
-            <div className="flex flex-col items-center justify-center h-full text-gray-400 space-y-3">
-              <Package className="w-12 h-12 opacity-20" />
-              <p className="font-medium">No top selling data available</p>
-            </div>
-          )}
-        </div>
-      </motion.section>
-    </motion.div>
-  );
-}
-
-function DashboardCard({
-  title,
-  value,
-  subtitle,
-  icon: Icon,
-  gradient,
-  shadowColor,
-  delay = 0,
-}) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.9 }}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={{ duration: 0.4, delay, ease: "easeOut" }}
-      whileHover={{ y: -5, scale: 1.02 }}
-      className={`relative overflow-hidden bg-gradient-to-br ${gradient} p-5 sm:p-6 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 ${shadowColor}`}
-    >
-      <div className="absolute -right-6 -top-6 opacity-20 transform rotate-12 transition-transform duration-500 hover:rotate-45">
-        <Icon className="w-32 h-32 text-white" />
-      </div>
-
-      <div className="relative z-10">
-        <div className="flex justify-between items-start mb-4">
-          <p className="text-white/90 text-sm font-semibold tracking-wider uppercase text-shadow-sm">
-            {title}
-          </p>
-          <div className="p-2 bg-white/20 rounded-xl backdrop-blur-md shadow-inner">
-            <Icon className="w-6 h-6 text-white" />
+                  <XAxis type="number" hide />
+                  <YAxis
+                    dataKey="name"
+                    type="category"
+                    width={100}
+                    stroke="#9ca3af"
+                    fontSize={11}
+                    fontWeight={600}
+                    tickLine={false}
+                    axisLine={false}
+                  />
+                  <Tooltip
+                    cursor={{ fill: "rgba(255, 255, 255, 0.03)" }}
+                    contentStyle={{
+                      borderRadius: "16px",
+                      border: "1px solid rgba(255,255,255,0.1)",
+                      backgroundColor: "#111827",
+                      color: "#f3f4f6",
+                      boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.5)",
+                      fontSize: "12px",
+                      fontWeight: 600,
+                    }}
+                    formatter={(value) => [value, "Terjual"]}
+                  />
+                  <Bar
+                    dataKey="quantity"
+                    name="Quantity"
+                    radius={[0, 4, 4, 0]}
+                    barSize={24}
+                  >
+                    {data.top_selling_items.map((entry, index) => (
+                      <Cell
+                        key={`cell-${index}`}
+                        fill={COLORS[index % COLORS.length]}
+                        fillOpacity={0.8}
+                      />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex flex-col items-center justify-center h-full text-gray-600 space-y-2 italic">
+                <Package className="w-8 h-8 opacity-20" />
+                <p className="text-sm">Belum ada data penjualan</p>
+              </div>
+            )}
           </div>
-        </div>
+        </Card>
 
-        <div className="mt-2 text-white">
-          <h3 className="text-3xl font-extrabold tracking-tight drop-shadow-md">
-            {value}
-          </h3>
-          {subtitle ? (
-            <p className="text-white/80 text-sm mt-2 font-medium">{subtitle}</p>
-          ) : (
-            <p className="text-white/80 text-sm mt-2 font-medium opacity-0">
-              Placeholder
-            </p> // Keeps height consistent
-          )}
-        </div>
+        <Card title="Peforma Penjualan" subtitle="Visualisasi metrik utama">
+          <div className="h-80 w-full mt-4 flex items-center justify-center bg-white/5 rounded-xl border border-white/5 border-dashed">
+            <div className="text-center">
+              <TrendingUp className="w-10 h-10 text-gray-700 mx-auto mb-2" />
+              <p className="text-gray-500 text-sm font-medium">
+                Grafik riwayat sedang disiapkan
+              </p>
+            </div>
+          </div>
+        </Card>
       </div>
-    </motion.div>
+    </div>
   );
 }
