@@ -6,7 +6,6 @@ import { compressImage } from "../../utils/imageCompression";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   X,
-  Upload,
   Package,
   Info,
   DollarSign,
