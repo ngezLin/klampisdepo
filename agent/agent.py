@@ -7,9 +7,9 @@ from dotenv import load_dotenv
 # Load environment variables from .env file
 load_dotenv()
 
-BASE_URL = os.getenv("API_BASE_URL", "https://api.klampisdepo.com")
-USERNAME = os.getenv("API_USERNAME", "admin")
-PASSWORD = os.getenv("API_PASSWORD", "test123")
+BASE_URL = os.getenv("API_BASE_URL")
+USERNAME = os.getenv("API_USERNAME")
+PASSWORD = os.getenv("API_PASSWORD")
 MODEL_NAME = os.getenv("OLLAMA_MODEL", "qwen3:8b")
 
 token = None
@@ -75,14 +75,22 @@ Contoh: {"action": "create_item", "name": "semen", "price": 50000, "stock": 100}
 Balas HANYA dalam format JSON. Jangan ada penjelasan lain.
 """
 
-    print("Thinking...")
-    response = ollama.chat(
-        model=MODEL_NAME,
-        messages=[
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_input}
-        ]
-    )
+    print(f"DEBUG: Using model '{MODEL_NAME}'")
+    print(f"DEBUG: Sending prompt to Ollama...")
+    
+    try:
+        response = ollama.chat(
+            model=MODEL_NAME,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_input}
+            ]
+        )
+    except Exception as e:
+        return f"CRITICAL ERROR: Ollama chat failed: {e}"
+
+    if not response or "message" not in response:
+        return f"CRITICAL ERROR: Ollama returned invalid response: {response}"
 
     content = response["message"]["content"].strip()
     print(f"AI Responded: {content}")

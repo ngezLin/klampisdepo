@@ -7,9 +7,9 @@ from dotenv import load_dotenv
 # Load environment variables
 load_dotenv()
 
-BASE_URL = os.getenv("API_BASE_URL", "https://api.klampisdepo.com")
-USERNAME = os.getenv("API_USERNAME", "admin")
-PASSWORD = os.getenv("API_PASSWORD", "test123")
+BASE_URL = os.getenv("API_BASE_URL")
+USERNAME = os.getenv("API_USERNAME")
+PASSWORD = os.getenv("API_PASSWORD")
 MODEL_NAME = os.getenv("OLLAMA_MODEL", "qwen3:8b")
 
 token = None
