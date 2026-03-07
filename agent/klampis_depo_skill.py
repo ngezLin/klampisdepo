@@ -50,15 +50,18 @@ def handle_klampis_command(user_input):
     This replaces the 'run_agent' loop with a clean function call.
     """
     system_prompt = """
-Kamu adalah AI asisten toko yang pintar.
-Tugasmu adalah membantu user mengelola stok barang (upsert: tambah stok jika ada, buat baru jika belum ada).
+You are a smart shop management AI assistant.
+Your task is to help users manage inventory items by updating stock, creating new items, or modifying item properties.
 
-### STRATEGI:
-1. "add_stock": Untuk tambah stok (misal: "tambah 10 semen").
-2. "create_item": Untuk barang baru lengkap.
-3. Cari field price/buy_price jika ada.
+### ACTIONS:
+1. "add_stock": Add quantity to an existing item (e.g., "add 5 cement").
+2. "create_item": Create a new item with complete information (name, price, buy_price, stock).
+3. "update_item": Modify existing item properties like price or buy_price (e.g., "change aaaaa buy price to 5000").
 
-Balas HANYA JSON. Contoh: {"action": "add_stock", "name": "semen", "added_stock": 10}
+Respond ONLY with valid JSON. Examples:
+- {"action": "add_stock", "name": "cement", "added_stock": 5}
+- {"action": "create_item", "name": "wood", "price": 50000, "buy_price": 30000, "stock": 0}
+- {"action": "update_item", "name": "aaaaa", "buy_price": 5000}
 """
 
     try:
@@ -86,23 +89,49 @@ Balas HANYA JSON. Contoh: {"action": "add_stock", "name": "semen", "added_stock"
                 
                 if items:
                     item = items[0]
-                    update_payload = {"name": item["name"], "stock": item["stock"] + added_stock}
+                    # Preserve all existing fields
+                    update_payload = {"name": item["name"], "stock": item["stock"] + added_stock, "price": item["price"], "buy_price": item["buy_price"]}
+                    if "description" in item and item["description"]: update_payload["description"] = item["description"]
+                    if "image_url" in item and item["image_url"]: update_payload["image_url"] = item["image_url"]
                     if price: update_payload["price"] = price
                     if buy_price: update_payload["buy_price"] = buy_price
                     res = call_api(f"items/{item['id']}", update_payload, method="PUT")
-                    return f"Stok '{name}' berhasil diperbarui! Status: {res['status']}"
+                    return f"Stock '{name}' updated successfully! Status: {res['status']}"
                 else:
                     if price is not None:
                         create_payload = {"name": name, "stock": added_stock, "price": price, "buy_price": buy_price or 0}
                         res = call_api("items/", create_payload, method="POST")
-                        return f"Barang baru '{name}' berhasil dibuat! Status: {res['status']}"
-                    return f"Item '{name}' tidak ditemukan. Mohon berikan informasi harga."
-            return "Gagal mencari item."
+                        return f"New item '{name}' created successfully! Status: {res['status']}"
+                    return f"Item '{name}' not found. Please provide price information."
+            return "Failed to search items."
 
         if data.get("action") == "create_item":
             payload = {"name": data["name"], "price": data["price"], "stock": data.get("stock", 0), "buy_price": data.get("buy_price", 0)}
             res = call_api("items/", payload)
-            return f"Barang '{data['name']}' berhasil dibuat! Status: {res['status']}"
+            return f"Item '{data['name']}' created successfully! Status: {res['status']}"
+
+        if data.get("action") == "update_item":
+            name = data["name"]
+            search_res = call_api("items/search", method="GET", params={"name": name})
+            if search_res.get("status") == 200:
+                results = json.loads(search_res["response"])
+                items = results.get("data", [])
+                if items:
+                    item = items[0]
+                    # Preserve all existing fields, then override with new values
+                    update_payload = {"name": item["name"], "stock": item["stock"], "price": item["price"], "buy_price": item["buy_price"]}
+                    if "description" in item and item["description"]: update_payload["description"] = item["description"]
+                    if "image_url" in item and item["image_url"]: update_payload["image_url"] = item["image_url"]
+                    if "price" in data: update_payload["price"] = data["price"]
+                    if "buy_price" in data: update_payload["buy_price"] = data["buy_price"]
+                    if "stock" in data: update_payload["stock"] = data["stock"]
+                    if "description" in data: update_payload["description"] = data["description"]
+                    if "image_url" in data: update_payload["image_url"] = data["image_url"]
+                    res = call_api(f"items/{item['id']}", update_payload, method="PUT")
+                    return f"Item '{name}' updated successfully! Status: {res['status']}"
+                else:
+                    return f"Item '{name}' not found."
+            return "Failed to search items."
 
         return content
     except Exception as e:
