@@ -18,7 +18,8 @@ func RegisterRoutes(r *gin.Engine) {
 
 	// Inventory
 	inventory := r.Group("/inventory")
-	inventory.Use(middlewares.AuthMiddleware(), middlewares.RoleMiddleware("owner"))
+	// allow both owner and admin to view inventory history (manual adjustments)
+	inventory.Use(middlewares.AuthMiddleware(), middlewares.RoleMiddleware("owner", "admin"))
 	{
 		inventory.GET("/history", controllers.GetInventoryHistory)
 	}
@@ -35,6 +36,9 @@ func RegisterRoutes(r *gin.Engine) {
 		items.DELETE("/:id", middlewares.RoleMiddleware("owner", "admin"), controllers.DeleteItem)
 		items.POST("/bulk", middlewares.RoleMiddleware("owner", "admin"), controllers.BulkCreateItems)
 		items.GET("/export/csv", middlewares.RoleMiddleware("owner", "admin"), controllers.ExportItems)
+
+		// manual stock adjustments for a given item
+		items.GET("/:id/manual-changes", middlewares.RoleMiddleware("owner", "admin"), controllers.GetManualStockChanges)
 	}
 
 	// Static route to serve uploaded image files

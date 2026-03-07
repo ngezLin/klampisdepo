@@ -75,3 +75,12 @@ export const uploadImage = async (file) => {
   });
   return res.data; // e.g., { url: "/uploads/img_x.jpg" }
 };
+
+// fetch manual stock adjustment logs for an item
+export const getManualStockChanges = async (itemId, params = {}) => {
+  // params may include start_date, end_date, page, limit
+  const res = await api.get(`/items/${itemId}/manual-changes`, {
+    params,
+  });
+  return res.data;
+};

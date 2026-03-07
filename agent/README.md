@@ -5,6 +5,7 @@ This agent allows you to manage inventory stock using natural language. It can a
 ## Features
 
 - **Stock Upsert**: Add stock to existing items or create new ones if not found (with price).
+- **Manual Stock Change Query**: Ask the bot to show adjustments not caused by transactions (e.g., "show manual stock changes for aaaaa").
 - **Natural Language Parsing**: Uses Ollama (`qwen3:8b`) to understand commands like "tambah 5 semen tiga roda".
 - **Production Ready**: Uses environment variables for configuration and handles AI response quirks gracefully.
 - **OpenClaw Integration**: Multi-platform support (Telegram, WhatsApp, Discord) via the included skill script.

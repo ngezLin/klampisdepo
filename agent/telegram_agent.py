@@ -68,6 +68,9 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "**5. Update Stock**\n"
         "   Usage: \"set aaaaa stock to 50\"\n"
         "   Effect: Sets the stock of item 'aaaaa' to 50 units\n\n"
+        "**6. Manual Stock Changes**\n"
+        "   Usage: \"show manual stock changes for aaaaa\"\n"
+        "   Effect: Lists inventory adjustments that were made without a transaction\n\n"
         "Just send your commands in natural language. I'll understand! 😊"
     )
 

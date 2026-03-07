@@ -177,3 +177,35 @@ func ExportItems(c *gin.Context) {
 	c.Header("Content-Disposition", "attachment; filename=\"" + export.FileName + "\"")
 	c.Data(http.StatusOK, "text/csv", export.Content)
 }
+// GetManualStockChanges returns only manual/adjustment stock logs for the specified item.
+// This helps identify inventory changes that weren't part of a sale or refund.
+func GetManualStockChanges(c *gin.Context) {
+    // item id comes from path
+    idParam := c.Param("id")
+    // we still bind query to allow optional date filters
+    var filter dtos.InventoryFilter
+    if err := c.ShouldBindQuery(&filter); err != nil {
+        c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+        return
+    }
+
+    // override item id
+    if parsed, err := strconv.ParseUint(idParam, 10, 64); err == nil {
+        filter.ItemID = uint(parsed)
+    } else {
+        c.JSON(http.StatusBadRequest, gin.H{"error": "invalid item id"})
+        return
+    }
+
+    // force type to adjustment so only manual changes are returned
+    filter.Type = "adjustment"
+
+    service := services.NewInventoryService()
+    response, err := service.GetInventoryHistory(filter)
+    if err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+        return
+    }
+
+    c.JSON(http.StatusOK, response)
+}

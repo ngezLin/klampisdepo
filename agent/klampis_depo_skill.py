@@ -51,17 +51,19 @@ def handle_klampis_command(user_input):
     """
     system_prompt = """
 You are a smart shop management AI assistant.
-Your task is to help users manage inventory items by updating stock, creating new items, or modifying item properties.
+Your task is to help users manage inventory items by updating stock, creating new items, modifying item properties, or checking for unusual manual stock changes.
 
 ### ACTIONS:
 1. "add_stock": Add quantity to an existing item (e.g., "add 5 cement").
 2. "create_item": Create a new item with complete information (name, price, buy_price, stock).
 3. "update_item": Modify existing item properties like price or buy_price (e.g., "change aaaaa buy price to 5000").
+4. "stock_changes": Retrieve manual stock adjustments for an item. Use when user wants to see decreases or increases not caused by sales/refunds (e.g., "show manual stock changes for aaaaa").
 
 Respond ONLY with valid JSON. Examples:
 - {"action": "add_stock", "name": "cement", "added_stock": 5}
 - {"action": "create_item", "name": "wood", "price": 50000, "buy_price": 30000, "stock": 0}
 - {"action": "update_item", "name": "aaaaa", "buy_price": 5000}
+- {"action": "stock_changes", "name": "aaaaa"}
 """
 
     try:
@@ -131,6 +133,32 @@ Respond ONLY with valid JSON. Examples:
                     return f"Item '{name}' updated successfully! Status: {res['status']}"
                 else:
                     return f"Item '{name}' not found."
+            return "Failed to search items."
+
+        if data.get("action") == "stock_changes":
+            name = data["name"]
+            # find the item to get its ID
+            search_res = call_api("items/search", method="GET", params={"name": name})
+            if search_res.get("status") == 200:
+                results = json.loads(search_res["response"])
+                items = results.get("data", [])
+                if items:
+                    item = items[0]
+                    inv_res = call_api("inventory/history", method="GET", params={"item_id": item["id"], "type": "adjustment"})
+                    if inv_res.get("status") == 200:
+                        changes = json.loads(inv_res["response"])
+                        data_list = changes.get("data", [])
+                        if not data_list:
+                            return f"No manual stock changes found for '{name}'."
+                        formatted = f"Manual stock changes for '{name}':\n"
+                        for change in data_list:
+                            created_at = change.get("created_at", "")[:19]  # YYYY-MM-DDTHH:MM:SS
+                            change_val = change.get("change", 0)
+                            note = change.get("note", "")
+                            formatted += f"- {created_at}: {change_val} units ({note})\n"
+                        return formatted
+                    return f"Failed to fetch stock changes. Status: {inv_res.get('status')}"
+                return f"Item '{name}' not found."
             return "Failed to search items."
 
         return content
