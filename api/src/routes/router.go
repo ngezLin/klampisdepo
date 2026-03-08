@@ -18,8 +18,7 @@ func RegisterRoutes(r *gin.Engine) {
 
 	// Inventory
 	inventory := r.Group("/inventory")
-	// allow both owner and admin to view inventory history (manual adjustments)
-	inventory.Use(middlewares.AuthMiddleware(), middlewares.RoleMiddleware("owner", "admin"))
+	inventory.Use(middlewares.AuthMiddleware(), middlewares.RoleMiddleware("owner"))
 	{
 		inventory.GET("/history", controllers.GetInventoryHistory)
 	}
@@ -91,9 +90,9 @@ func RegisterRoutes(r *gin.Engine) {
 		users.GET("/", controllers.GetUsers)
 	}
 
-	// Audit logs (owner only)
+	// Audit logs (owner and admin)
 	audit := r.Group("/audit-logs")
-	audit.Use(middlewares.AuthMiddleware(), middlewares.RoleMiddleware("owner"))
+	audit.Use(middlewares.AuthMiddleware(), middlewares.RoleMiddleware("owner", "admin"))
 	{
 		audit.GET("/", controllers.GetAuditLogs)
 	}

@@ -183,7 +183,8 @@ export default function History() {
         </div>
       ) : (
         <Card className="px-0 py-0 overflow-hidden border-white/10 shadow-2xl">
-          <div className="overflow-x-auto">
+          {/* Desktop Table View */}
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-left">
               <thead>
                 <tr className="bg-white/5 text-gray-400 border-b border-white/5">
@@ -265,6 +266,68 @@ export default function History() {
             </table>
           </div>
 
+          {/* Mobile Card View */}
+          <div className="md:hidden">
+            <div className="divide-y divide-white/5">
+              {transactions.map((trx) => {
+                const dateObj =
+                  typeof trx.created_at === "number"
+                    ? new Date(trx.created_at * 1000)
+                    : new Date(trx.created_at);
+                const formattedDate = isNaN(dateObj.getTime())
+                  ? "-"
+                  : dateObj.toLocaleString("id-ID", {
+                      day: "2-digit",
+                      month: "short",
+                      year: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    });
+                return (
+                  <div
+                    key={trx.id}
+                    className="p-4 hover:bg-white/5 transition-colors"
+                  >
+                    <div className="flex justify-between items-start mb-3">
+                      <div className="flex flex-col gap-1">
+                        <span className="font-mono text-xs text-gray-500">
+                          #{trx.id}
+                        </span>
+                        <StatusBadge status={trx.status} />
+                      </div>
+                      <div className="text-right">
+                        <div className="font-bold text-white text-lg">
+                          Rp {trx.total?.toLocaleString() || 0}
+                        </div>
+                        <div className="text-[10px] text-gray-500 font-medium">
+                          {formattedDate}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 mt-2">
+                      <button
+                        className="flex-1 py-2 px-3 bg-blue-600/10 text-blue-500 hover:bg-blue-600 hover:text-white rounded-lg transition-all active:scale-95 flex items-center justify-center gap-2 text-xs font-bold"
+                        onClick={() => viewDetails(trx)}
+                      >
+                        <Eye className="w-4 h-4" />
+                        Detail
+                      </button>
+                      {trx.status === "completed" && (
+                        <button
+                          className="flex-1 py-2 px-3 bg-red-600/10 text-red-500 hover:bg-red-600 hover:text-white rounded-lg transition-all active:scale-95 flex items-center justify-center gap-2 text-xs font-bold"
+                          onClick={() => setRefundTarget(trx.id)}
+                        >
+                          <Undo2 className="w-4 h-4" />
+                          Refund
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
           {transactions.length === 0 && (
             <div className="py-24 text-center">
               <HistoryIcon className="w-12 h-12 text-gray-800 mx-auto mb-4 opacity-20" />
@@ -276,16 +339,27 @@ export default function History() {
 
           {totalPages > 1 && (
             <div className="px-6 py-4 bg-white/5 border-t border-white/5 flex items-center justify-between">
-              <span className="text-xs font-black text-gray-500 uppercase tracking-widest">
-                Hal <span className="text-white">{currentPage}</span> dari{" "}
-                {totalPages}
-              </span>
-              <PaginationControls
-                currentPage={currentPage}
-                totalPages={totalPages}
-                setCurrentPage={setCurrentPage}
-                getPageNumbers={getPageNumbers}
-              />
+              <div className="flex-1 md:hidden flex justify-center">
+                <PaginationControls
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  setCurrentPage={setCurrentPage}
+                  getPageNumbers={getPageNumbers}
+                  mobile={true}
+                />
+              </div>
+              <div className="hidden md:flex flex-1 items-center justify-between">
+                <span className="text-xs font-black text-gray-500 uppercase tracking-widest">
+                  Hal <span className="text-white">{currentPage}</span> dari{" "}
+                  {totalPages}
+                </span>
+                <PaginationControls
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  setCurrentPage={setCurrentPage}
+                  getPageNumbers={getPageNumbers}
+                />
+              </div>
             </div>
           )}
         </Card>
