@@ -116,11 +116,15 @@ func UploadImage(c *gin.Context) {
 	}
 
 
-	// Create a unique filename to prevent overwrites
-	extension := filepath.Ext(file.Filename)
-	if extension == "" {
-		// Default to .jpg since frontend compressor typically outputs jpeg or webp
-		extension = ".jpg"
+	// Generate safe extension from validated content type (never trust client filename)
+	extension := ".jpg"
+	switch contentType {
+	case "image/png":
+		extension = ".png"
+	case "image/webp":
+		extension = ".webp"
+	case "image/gif":
+		extension = ".gif"
 	}
 	
 	newFileName := fmt.Sprintf("img_%d%s", time.Now().UnixNano(), extension)

@@ -29,6 +29,7 @@ export default function Button({
   icon: Icon,
   loading = false,
   disabled = false,
+  fullWidth = false,
   className = "",
   ...props
 }) {
@@ -45,6 +46,7 @@ export default function Button({
         ${variants[variant] || variants.primary}
         ${sizes[size] || sizes.md}
         ${isDisabled ? "opacity-50 cursor-not-allowed" : "active:scale-95"}
+        ${fullWidth ? "w-full" : ""}
         ${className}
       `}
       {...props}

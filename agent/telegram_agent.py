@@ -10,6 +10,7 @@ load_dotenv()
 
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 ALLOWED_USER_IDS = [id.strip() for id in os.getenv("ALLOWED_USER_IDS", "").split(",") if id.strip()]
+ADMIN_USER_IDS = [id.strip() for id in os.getenv("ADMIN_USER_IDS", "").split(",") if id.strip()] or ALLOWED_USER_IDS
 
 # Enable logging
 logging.basicConfig(
@@ -23,6 +24,10 @@ def is_authorized(user_id):
         return False
     return str(user_id) in ALLOWED_USER_IDS
 
+def is_admin(user_id):
+    """Check if the user ID is in the admin list."""
+    return str(user_id) in ADMIN_USER_IDS
+
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handler for the /start command."""
     user_id = update.effective_user.id
@@ -32,14 +37,11 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     await update.message.reply_text(
-        "Hello! I'm Klampis Depo Bot. 🛒\n"
-        "I can help you manage your inventory items.\n\n"
-        "📝 **Command Examples:**\n"
-        "• Add stock: \"add 5 cement\"\n"
-        "• Create item: \"create new item wood price 50000 buy 30000\"\n"
-        "• Update price: \"change aaaaa buy price to 5000\"\n"
-        "• Update sell price: \"change aaaaa sell price to 100000\"\n\n"
-        "Type /help for more information."
+        "👋 Hello! I'm Klampis Depo Bot, your smart shop assistant.\n\n"
+        "I can help you manage inventory, check sales, and monitor operations using natural language.\n\n"
+        "💡 **Not sure where to start?**\n"
+        "Try saying: \"How is the shop doing today?\" or \"Add 10 units of cement\".\n\n"
+        "Type /help to see all available commands categorized by function."
     )
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -48,45 +50,28 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not is_authorized(user_id):
         return
 
-    await update.message.reply_text(
+    help_text = (
         "📖 **Klampis Depo Bot - Command Guide**\n\n"
-        "**📦 INVENTORY MANAGEMENT**\n\n"
-        "**1. Add Stock**\n"
-        "   Usage: \"add 5 cement\"\n"
-        "   Effect: Adds 5 units to an item. Creates it if it doesn't exist\n\n"
-        "**2. Create New Item**\n"
-        "   Usage: \"create wood price 50000 buy 30000\"\n"
-        "   Usage: \"new item wood sell 50000 buy 30000\"\n"
-        "   Effect: Creates a new item with name, sell price, and buy price\n\n"
-        "**3. Update Sell Price**\n"
-        "   Usage: \"change aaaaa sell price to 100000\"\n"
-        "   Usage: \"update aaaaa price 100000\"\n"
-        "   Effect: Changes the sell price of item 'aaaaa'\n\n"
-        "**4. Update Buy Price**\n"
-        "   Usage: \"change aaaaa buy price to 5000\"\n"
-        "   Usage: \"update aaaaa buy 5000\"\n"
-        "   Effect: Changes the buy price of item 'aaaaa'\n\n"
-        "**5. Update Stock**\n"
-        "   Usage: \"set aaaaa stock to 50\"\n"
-        "   Effect: Sets the stock of item 'aaaaa' to exactly 50 units\n\n"
-        "**📊 HISTORY & ANALYTICS**\n\n"
-        "**6. Manual Stock Changes**\n"
-        "   Usage: \"show manual stock changes for aaaaa\"\n"
-        "   Effect: Lists inventory adjustments made without transactions\n\n"
-        "**7. Audit Logs**\n"
-        "   Usage: \"show audit logs for aaaaa\"\n"
-        "   Effect: Shows all changes to the item (price changes, updates, creation, etc.) with detailed change information\n\n"
-        "**8. Transaction History**\n"
-        "   Usage: \"show transactions for aaaaa\"\n"
-        "   Usage: \"show sales history for aaaaa\"\n"
-        "   Effect: Lists all sales and refunds for the item with timestamps and quantities\n\n"
-        "💡 **Tips:**\n"
-        "• Use natural language - I'll understand various phrasings!\n"
-        "• Item names are case-insensitive\n"
-        "• All timestamps show when changes were made\n"
-        "• Audit logs now show detailed change information (what changed, from what to what)\n\n"
-        "Questions? Just send your command! 😊"
+        "**📦 INVENTORY MANAGEMENT**\n"
+        "• **Add Stock**: \"add 5 cement\"\n"
+        "• **Create Item**: \"create wood price 50000 buy 30000\"\n"
+        "• **Bulk Create**: \"bulk create: wood 50000 30000, cement 60000 40000\"\n"
+        "• **Update Item**: \"change cement price to 55000\"\n"
+        "• **Export CSV**: \"export inventory to csv\"\n"
+        "• **Low Stock**: \"show items with low stock\"\n\n"
+        "**📊 HISTORY & AUDIT**\n"
+        "• **Manual Changes**: \"show manual stock changes for cement\"\n"
+        "• **Audit Logs**: \"show audit logs for cement\" or \"show global audit logs\"\n"
+        "• **Transactions**: \"show sales history for wood\"\n\n"
+        "**🏢 SHOP OPERATIONS**\n"
+        "• **Dashboard**: \"show shop summary\" or \"how is the shop doing?\"\n"
+        "• **Attendance**: \"who is working today?\" or \"show attendance history\"\n"
+        "• **Cash Session**: \"is the cash drawer open?\" or \"show cash history\"\n"
+        "• **User List**: \"list all employees\"\n\n"
+        "💡 *Tips: I understand various phrasings, so feel free to talk to me naturally!*"
     )
+    
+    await update.message.reply_text(help_text, parse_mode='Markdown')
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handler for processing natural language messages."""
@@ -103,9 +88,30 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await context.bot.send_chat_action(chat_id=update.effective_chat.id, action="typing")
 
     # Use the existing logic from klampis_depo_skill
-    response_text = handle_klampis_command(user_text)
+    response = handle_klampis_command(user_text)
 
-    await update.message.reply_text(response_text)
+    if isinstance(response, dict) and response.get("type") == "file":
+        # Handle file export
+        import io
+        file_content = response.get("content", "")
+        filename = response.get("filename", "export.csv")
+        
+        # Admin check for exports
+        if not is_admin(user_id):
+            await update.message.reply_text("❌ You don't have permission to export data.")
+            return
+
+        file_obj = io.BytesIO(file_content.encode('utf-8'))
+        file_obj.name = filename
+        
+        await update.message.reply_document(
+            document=file_obj,
+            filename=filename,
+            caption="📊 Here is your inventory export."
+        )
+    else:
+        # Standard text response
+        await update.message.reply_text(response, parse_mode='Markdown')
 
 if __name__ == '__main__':
     if not TELEGRAM_TOKEN:

@@ -1,17 +1,36 @@
 # Dependency directories
 node_modules/
+.venv/
+env/
+venv/
+__pycache__/
+*.pyc
 
 # Build outputs
 build/
 dist/
 api/main
 api/main.exe
+api/kd-api*
 
-# Environment
+# Environment and Secrets
 .env
 .env.local
+.env.*
+*.pem
+*.key
+credentials.json
+*.sql
+*.log
+backup_all.sql
+
+# Project Specific
+nginx_conf.txt
+nginx.conf
+uploads/
 
 # IDEs and OS
 .vscode/
 .idea/
 .DS_Store
+.aider*

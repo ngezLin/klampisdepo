@@ -9,7 +9,7 @@ import (
 
 func RegisterRoutes(r *gin.Engine) {
 
-	r.POST("/login", controllers.Login)
+	r.POST("/login", middlewares.LoginRateLimiter(), controllers.Login)
 
 	// Public items buat landing page
 	r.GET("/public/items", controllers.GetItems)

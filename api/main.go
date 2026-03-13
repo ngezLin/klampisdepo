@@ -31,7 +31,6 @@ func main() {
 
 	r.Use(cors.New(cors.Config{
 		AllowOrigins: []string{
-			"http://202.10.41.223",
 			"http://localhost:3000",
 			"https://klampisdepo.com",
 		},
