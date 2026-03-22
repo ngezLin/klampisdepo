@@ -62,7 +62,7 @@ func (s *attendanceService) GetTodayAttendance() ([]models.Attendance, error) {
 
 func (s *attendanceService) GetAttendanceHistory() ([]models.Attendance, error) {
 	var attendances []models.Attendance
-	if err := config.DB.Preload("User").Order("date DESC").Find(&attendances).Error; err != nil {
+	if err := config.DB.Preload("User").Order("date DESC").Limit(1000).Find(&attendances).Error; err != nil {
 		return nil, err
 	}
 	return attendances, nil
@@ -71,7 +71,7 @@ func (s *attendanceService) GetAttendanceHistory() ([]models.Attendance, error) 
 func (s *attendanceService) GetAllAttendances() ([]models.Attendance, error) {
 	var attendances []models.Attendance
 
-	if err := config.DB.Preload("User").Find(&attendances).Error; err != nil {
+	if err := config.DB.Preload("User").Limit(1000).Find(&attendances).Error; err != nil {
 		return nil, err
 	}
 

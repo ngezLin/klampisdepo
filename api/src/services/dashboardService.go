@@ -28,36 +28,44 @@ func (s *dashboardService) GetDashboardStats() (*dtos.DashboardStats, error) {
 
 	today := time.Now().Format("2006-01-02")
 	thisMonth := time.Now().Format("2006-01")
-	var todayTransactionsData []models.Transaction
-	var monthlyTransactionsData []models.Transaction
 
-	// Calculate today's profit
-	if err := config.DB.Preload("Items.Item").
-		Where("status = ? AND DATE(created_at) = ?", "completed", today).
-		Find(&todayTransactionsData).Error; err != nil {
+	// Calculate today's profit and omzet using SQL aggregation (no loading into Go memory)
+	var todayResult struct {
+		Profit float64
+		Omzet  float64
+	}
+	if err := config.DB.Model(&models.TransactionItem{}).
+		Select(
+			"COALESCE(SUM(transaction_items.quantity * (transaction_items.price - items.buy_price)), 0) AS profit, "+
+				"COALESCE(SUM(transaction_items.quantity * transaction_items.price), 0) AS omzet",
+		).
+		Joins("JOIN transactions ON transactions.id = transaction_items.transaction_id").
+		Joins("JOIN items ON items.id = transaction_items.item_id").
+		Where("transactions.status = ? AND DATE(transactions.created_at) = ? AND transactions.deleted_at IS NULL", "completed", today).
+		Scan(&todayResult).Error; err != nil {
 		return nil, err
 	}
+	todayProfit = todayResult.Profit
+	todayOmzet = todayResult.Omzet
 
-	for _, t := range todayTransactionsData {
-		for _, ti := range t.Items {
-			todayProfit += float64(ti.Quantity) * (ti.Price - ti.Item.BuyPrice)
-			todayOmzet += float64(ti.Quantity) * ti.Price
-		}
+	// Calculate monthly profit and omzet using SQL aggregation
+	var monthlyResult struct {
+		Profit float64
+		Omzet  float64
 	}
-
-	// Calculate monthly profit
-	if err := config.DB.Preload("Items.Item").
-		Where("status = ? AND DATE_FORMAT(created_at, '%Y-%m') = ?", "completed", thisMonth).
-		Find(&monthlyTransactionsData).Error; err != nil {
+	if err := config.DB.Model(&models.TransactionItem{}).
+		Select(
+			"COALESCE(SUM(transaction_items.quantity * (transaction_items.price - items.buy_price)), 0) AS profit, "+
+				"COALESCE(SUM(transaction_items.quantity * transaction_items.price), 0) AS omzet",
+		).
+		Joins("JOIN transactions ON transactions.id = transaction_items.transaction_id").
+		Joins("JOIN items ON items.id = transaction_items.item_id").
+		Where("transactions.status = ? AND DATE_FORMAT(transactions.created_at, '%Y-%m') = ? AND transactions.deleted_at IS NULL", "completed", thisMonth).
+		Scan(&monthlyResult).Error; err != nil {
 		return nil, err
 	}
-
-	for _, t := range monthlyTransactionsData {
-		for _, ti := range t.Items {
-			monthlyProfit += float64(ti.Quantity) * (ti.Price - ti.Item.BuyPrice)
-			monthlyOmzet += float64(ti.Quantity) * ti.Price
-		}
-	}
+	monthlyProfit = monthlyResult.Profit
+	monthlyOmzet = monthlyResult.Omzet
 
 	// Count today's transactions
 	if err := config.DB.Model(&models.Transaction{}).

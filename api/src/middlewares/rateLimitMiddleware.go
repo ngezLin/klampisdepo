@@ -2,6 +2,7 @@ package middlewares
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/ulule/limiter/v3"
@@ -17,7 +18,9 @@ func LoginRateLimiter() gin.HandlerFunc {
 		panic(err)
 	}
 
-	store := memory.NewStore()
+	store := memory.NewStoreWithOptions(limiter.StoreOptions{
+		CleanUpInterval: 10 * time.Minute,
+	})
 
 	instance := limiter.New(store, rate)
 

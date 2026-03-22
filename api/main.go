@@ -26,6 +26,7 @@ func main() {
 	config.ConnectDatabase()
 
 	r := gin.Default()
+	r.MaxMultipartMemory = 8 << 20 // 8 MB max memory for multipart uploads
 
 	r.Use(middlewares.SecurityMiddleware())
 

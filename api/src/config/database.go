@@ -36,13 +36,16 @@ func ConnectDatabase() {
 	}
 
 	// SetMaxIdleConns sets the maximum number of connections in the idle connection pool.
-	sqlDB.SetMaxIdleConns(5)
+	sqlDB.SetMaxIdleConns(3)
 
 	// SetMaxOpenConns sets the maximum number of open connections to the database.
-	sqlDB.SetMaxOpenConns(20)
+	sqlDB.SetMaxOpenConns(10)
 
 	// SetConnMaxLifetime sets the maximum amount of time a connection may be reused.
-	sqlDB.SetConnMaxLifetime(time.Hour)
+	sqlDB.SetConnMaxLifetime(30 * time.Minute)
+
+	// SetConnMaxIdleTime sets the maximum amount of time a connection may be idle before being closed.
+	sqlDB.SetConnMaxIdleTime(5 * time.Minute)
 
 	err = db.AutoMigrate(
 		&models.Item{},
