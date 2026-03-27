@@ -1,4 +1,6 @@
-requests
+httpx
 ollama
 python-dotenv
 python-telegram-bot
+thefuzz
+python-Levenshtein

@@ -1,38 +1,17 @@
-import os
 import logging
-from dotenv import load_dotenv
+import io
 from telegram import Update
-from telegram.ext import ApplicationBuilder, ContextTypes, CommandHandler, MessageHandler, filters
-from klampis_depo_skill import handle_klampis_command
+from telegram.ext import ContextTypes
+from bot.auth import is_authorized, is_admin
+from core.llm import handle_klampis_command
 
-# Load environment variables
-load_dotenv()
-
-TELEGRAM_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
-ALLOWED_USER_IDS = [id.strip() for id in os.getenv("ALLOWED_USER_IDS", "").split(",") if id.strip()]
-ADMIN_USER_IDS = [id.strip() for id in os.getenv("ADMIN_USER_IDS", "").split(",") if id.strip()] or ALLOWED_USER_IDS
-
-# Enable logging
-logging.basicConfig(
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    level=logging.INFO
-)
-
-def is_authorized(user_id):
-    """Check if the user ID is in the allowed list."""
-    if not ALLOWED_USER_IDS or "CHANGE_ME" in ALLOWED_USER_IDS:
-        return False
-    return str(user_id) in ALLOWED_USER_IDS
-
-def is_admin(user_id):
-    """Check if the user ID is in the admin list."""
-    return str(user_id) in ADMIN_USER_IDS
+logger = logging.getLogger(__name__)
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handler for the /start command."""
     user_id = update.effective_user.id
     if not is_authorized(user_id):
-        logging.warning(f"Unauthorized access attempt by ID: {user_id}")
+        logger.warning(f"Unauthorized access attempt by ID: {user_id}")
         await update.message.reply_text("Sorry, you don't have access to this bot. Please contact the administrator.")
         return
 
@@ -77,7 +56,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handler for processing natural language messages."""
     user_id = update.effective_user.id
     if not is_authorized(user_id):
-        logging.warning(f"Unauthorized message from ID: {user_id}")
+        logger.warning(f"Unauthorized message from ID: {user_id}")
         return
 
     user_text = update.message.text
@@ -87,12 +66,11 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Show "typing..." action
     await context.bot.send_chat_action(chat_id=update.effective_chat.id, action="typing")
 
-    # Use the existing logic from klampis_depo_skill
-    response = handle_klampis_command(user_text)
+    # Use the handle_klampis_command from our core/llm model
+    response = await handle_klampis_command(user_text, user_id=str(user_id))
 
     if isinstance(response, dict) and response.get("type") == "file":
-        # Handle file export
-        import io
+        # Handle file export (like CSV)
         file_content = response.get("content", "")
         filename = response.get("filename", "export.csv")
         
@@ -111,22 +89,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
     else:
         # Standard text response
-        await update.message.reply_text(response, parse_mode='Markdown')
-
-if __name__ == '__main__':
-    if not TELEGRAM_TOKEN:
-        print("Error: TELEGRAM_BOT_TOKEN not found in .env")
-        exit()
-
-    application = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
-    
-    start_handler = CommandHandler('start', start)
-    help_handler = CommandHandler('help', help_command)
-    msg_handler = MessageHandler(filters.TEXT & (~filters.COMMAND), handle_message)
-
-    application.add_handler(start_handler)
-    application.add_handler(help_handler)
-    application.add_handler(msg_handler)
-    
-    print("Bot is running...")
-    application.run_polling()
+        # Using Markdown for parsing if possible
+        try:
+            await update.message.reply_text(response, parse_mode='Markdown')
+        except Exception:
+            # Fallback to plain text if Markdown fails (e.g., due to unescaped special characters)
+            await update.message.reply_text(response)
