@@ -26,7 +26,6 @@ import {
   LayoutDashboard,
   ArrowUpRight,
 } from "lucide-react";
-import { motion } from "framer-motion";
 import StatCard from "../components/common/StatCard";
 import Card from "../components/common/Card";
 

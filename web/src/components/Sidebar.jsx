@@ -9,7 +9,6 @@ import {
   ChevronLeft,
   LayoutDashboard,
 } from "lucide-react";
-import { motion } from "framer-motion";
 import Button from "./common/Button";
 
 export default function Sidebar({ onToggleCollapse }) {
