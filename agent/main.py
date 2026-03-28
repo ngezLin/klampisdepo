@@ -1,8 +1,8 @@
 import os
 import logging
-from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters
+from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, CallbackQueryHandler, filters
 from config import TELEGRAM_TOKEN
-from bot.handlers import start, help_command, handle_message
+from bot.handlers import start, help_command, handle_message, handle_receipt_photo, receipt_callback_handler
 
 # Enable logging
 logging.basicConfig(
@@ -27,9 +27,17 @@ if __name__ == '__main__':
     # Register natural language message handler
     msg_handler = MessageHandler(filters.TEXT & (~filters.COMMAND), handle_message)
 
+    # Register receipt photo handler
+    photo_handler = MessageHandler(filters.PHOTO, handle_receipt_photo)
+
+    # Register callback query handler for receipt confirmation
+    callback_handler = CallbackQueryHandler(receipt_callback_handler)
+
     application.add_handler(start_handler)
     application.add_handler(help_handler)
     application.add_handler(msg_handler)
+    application.add_handler(photo_handler)
+    application.add_handler(callback_handler)
     
     logger.info("Bot is starting...")
     application.run_polling()

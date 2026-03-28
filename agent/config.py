@@ -10,6 +10,7 @@ PASSWORD = os.getenv("API_PASSWORD", "admin123")
 
 # LLM Configuration
 MODEL_NAME = os.getenv("OLLAMA_MODEL", "qwen3:8b")
+VISION_MODEL = os.getenv("VISION_MODEL", "moondream")
 
 # Telegram Configuration
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")

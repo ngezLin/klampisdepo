@@ -1,6 +1,7 @@
-httpx
-ollama
-python-dotenv
 python-telegram-bot
+python-dotenv
+ollama
+pillow
 thefuzz
 python-Levenshtein
+httpx

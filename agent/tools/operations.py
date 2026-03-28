@@ -8,12 +8,20 @@ logger = logging.getLogger(__name__)
 async def get_dashboard(data):
     res = await call_api("dashboard/", method="GET")
     if res.get("status") == 200:
-        json_data = res.get("json", {})
-        data_obj = json_data.get("data", {}) if isinstance(json_data, dict) else {}
-        return (f"📊 **Shop Dashboard Summary**:\n"
-                f"💰 Total Sales: Rp {data_obj.get('total_sales', 0):,}\n"
-                f"📈 Total Profit: Rp {data_obj.get('total_profit', 0):,}\n"
-                f"📦 Total Items: {data_obj.get('total_items', 0)}")
+        data_obj = res.get("json", {})
+        if not isinstance(data_obj, dict):
+            data_obj = {}
+            
+        today_omzet = data_obj.get('today_omzet', 0)
+        today_profit = data_obj.get('today_profit', 0)
+        today_tx = data_obj.get('today_transactions', 0)
+        low_stock = data_obj.get('low_stock', 0)
+        
+        return (f"📊 **Shop Dashboard Overview (Today)**:\n"
+                f"💰 Today's Sales: Rp {today_omzet:,}\n"
+                f"📈 Today's Profit: Rp {today_profit:,}\n"
+                f"🧾 Today's Transactions: {today_tx}\n"
+                f"⚠️ Low Stock Items: {low_stock}")
     return f"❌ Failed to fetch dashboard. Status: {res.get('status')}"
 
 @registry.register("check_attendance")

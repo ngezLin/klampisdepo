@@ -13,6 +13,9 @@ import tools.operations
 
 logger = logging.getLogger(__name__)
 
+# Initialize Ollama client
+client = ollama.AsyncClient()
+
 SYSTEM_PROMPT = """
 You are a smart shop management AI assistant for Klampis Depo.
 Your task is to help users manage inventory items, transactions, and shop operations.
@@ -69,18 +72,18 @@ async def handle_klampis_command(user_input: str, user_id: str = "default"):
     messages = [{"role": "system", "content": SYSTEM_PROMPT}] + history + [{"role": "user", "content": user_input}]
 
     try:
-        client = ollama.AsyncClient()
-        response = await client.chat(model=MODEL_NAME, messages=messages)
+        response = await client.chat(
+            model=MODEL_NAME,
+            messages=messages,
+            format="json"
+        )
         content = response["message"]["content"].strip()
         
-        # Clean markdown if present
-        if content.startswith("```json"): content = content[7:-3].strip()
-        elif content.startswith("```"): content = content[3:-3].strip()
-
         try:
             data = json.loads(content)
         except json.JSONDecodeError:
-            # If AI didn't return JSON, it might be a plain message
+            # Fallback if JSON parsing fails despite response_format
+            logger.error(f"Failed to parse JSON response: {content}")
             session_manager.add_message(user_id, "user", user_input)
             session_manager.add_message(user_id, "assistant", content)
             return content
