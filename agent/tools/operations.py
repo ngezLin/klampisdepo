@@ -46,6 +46,15 @@ async def check_attendance(data):
         return formatted
     return f"❌ Failed to fetch attendance. Status: {res.get('status')}"
 
+@registry.register("mark_attendance")
+async def mark_attendance(data):
+    status = data.get("status", "clock_in")
+    res = await call_api("attendance/", {"status": status}, method="POST")
+    if res.get("status") in [200, 201]:
+        status_text = "Clocked In" if status == "clock_in" else "Clocked Out"
+        return f"✅ Attendance marked: **{status_text}** successfully!"
+    return f"❌ Failed to mark attendance. Status: {res.get('status')}"
+
 @registry.register("manage_cash")
 async def manage_cash(data):
     res = await call_api("cash-sessions/current", method="GET")
@@ -59,6 +68,22 @@ async def manage_cash(data):
                 f"💵 Opening Balance: Rp {session.get('opening_balance', 0):,}\n"
                 f"🕒 Opened at: {session.get('opened_at', '')[:19].replace('T', ' ')}")
     return f"❌ Failed to fetch cash session. Status: {res.get('status')}"
+
+@registry.register("open_cash_session")
+async def open_cash_session(data):
+    opening_balance = data.get("opening_balance", 0)
+    res = await call_api("cash-sessions/open", {"opening_balance": opening_balance}, method="POST")
+    if res.get("status") in [200, 201]:
+        return f"🟢 Cash session **OPENED** with balance: Rp {opening_balance:,}"
+    return f"❌ Failed to open cash session. Status: {res.get('status')}"
+
+@registry.register("close_cash_session")
+async def close_cash_session(data):
+    actual_balance = data.get("actual_balance", 0)
+    res = await call_api("cash-sessions/close", {"actual_balance": actual_balance}, method="POST")
+    if res.get("status") in [200, 201]:
+        return f"✅ Cash session **CLOSED** with final balance: Rp {actual_balance:,}"
+    return f"❌ Failed to close cash session. Status: {res.get('status')}"
 
 @registry.register("cash_session_history")
 async def cash_session_history(data):

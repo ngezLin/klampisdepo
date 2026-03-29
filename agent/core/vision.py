@@ -3,7 +3,7 @@ import json
 import logging
 from typing import Dict, Any
 import ollama
-from config import VISION_MODEL
+from config import MODEL_NAME
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +31,7 @@ async def get_receipt_data(image_path: str) -> Dict[str, Any]:
             image_bytes = image_file.read()
 
         response = await client.chat(
-            model=VISION_MODEL,
+            model=MODEL_NAME,
             messages=[
                 {
                     "role": "user",

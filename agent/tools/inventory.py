@@ -125,3 +125,59 @@ async def low_stock_report(data):
             formatted += f"- 📦 {i.get('name', 'Unknown')}: {i.get('stock', 0)} units left\n"
         return formatted
     return f"❌ Failed to fetch items. Status: {res.get('status')}"
+
+@registry.register("delete_item")
+async def delete_item(data):
+    name = data.get("name")
+    if not name:
+        return "❌ Please provide the name of the item to delete."
+
+    search_res = await call_api("items/search", method="GET", params={"name": name})
+    item = None
+    if search_res.get("status") == 200:
+        results = search_res.get("json", {})
+        items = results.get("data", []) if isinstance(results, dict) else []
+        if items:
+            item = items[0]
+            
+    if not item:
+        item = await fuzzy_match_item(name)
+        
+    if item:
+        res = await call_api(f"items/{item['id']}", method="DELETE")
+        if res.get("status") in [200, 204]:
+            return f"🗑️ Item '{item['name']}' has been deleted successfully."
+        return f"❌ Failed to delete item. Status: {res.get('status')}"
+    return f"❌ Item '{name}' not found."
+
+@registry.register("get_item_details")
+async def get_item_details(data):
+    name = data.get("name")
+    if not name:
+        return "❌ Please provide the name of the item to check."
+
+    search_res = await call_api("items/search", method="GET", params={"name": name})
+    item = None
+    if search_res.get("status") == 200:
+        results = search_res.get("json", {})
+        items = results.get("data", []) if isinstance(results, dict) else []
+        if items:
+            item = items[0]
+            
+    if not item:
+        item = await fuzzy_match_item(name)
+        
+    if item:
+        stock = item.get("stock", 0)
+        price = item.get("price", 0)
+        buy_price = item.get("buy_price", 0)
+        desc = item.get("description", "No description available.")
+        
+        formatted = f"📦 **Item Details: {item['name']}**\n"
+        formatted += f"• **Current Stock**: {stock} units\n"
+        formatted += f"• **Selling Price**: Rp {price:,.0f}\n"
+        formatted += f"• **Buying Price**: Rp {buy_price:,.0f}\n"
+        formatted += f"• **Description**: {desc}\n"
+        return formatted
+    
+    return f"❌ Item '{name}' not found."

@@ -9,8 +9,9 @@ USERNAME = os.getenv("API_USERNAME", "admin")
 PASSWORD = os.getenv("API_PASSWORD", "admin123")
 
 # LLM Configuration
-MODEL_NAME = os.getenv("OLLAMA_MODEL", "qwen3:8b")
-VISION_MODEL = os.getenv("VISION_MODEL", "moondream")
+MODEL_NAME = os.getenv("OLLAMA_MODEL", "llava-phi3")
+# VISION_MODEL is deprecated; we now use MODEL_NAME for both text and vision tasks.
+VISION_MODEL = os.getenv("VISION_MODEL", MODEL_NAME)
 
 # Telegram Configuration
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")

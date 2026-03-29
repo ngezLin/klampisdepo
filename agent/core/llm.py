@@ -10,6 +10,7 @@ from tools.registry import registry
 import tools.inventory
 import tools.history
 import tools.operations
+import tools.transactions
 
 logger = logging.getLogger(__name__)
 
@@ -29,14 +30,21 @@ Your task is to help users manage inventory items, transactions, and shop operat
 -   `add_stock`: {"action": "add_stock", "name": "item_name", "added_stock": 10}
 -   `create_item`: {"action": "create_item", "name": "item_name", "price": 50000, "buy_price": 30000, "stock": 10}
 -   `update_item`: {"action": "update_item", "name": "item_name", "price": 60000}
+-   `delete_item`: {"action": "delete_item", "name": "item_name"}
+-   `get_item_details`: {"action": "get_item_details", "name": "item_name"}
 -   `bulk_create_items`: {"action": "bulk_create_items", "items": [{"name": "wood", "price": 50000, "buy_price": 30000, "stock": 0}, ...]}
 -   `export_items_csv`: {"action": "export_items_csv"}
 -   `low_stock_report`: {"action": "low_stock_report", "threshold": 10}
--   `stock_changes`: {"action": "stock_changes", "name": "item_name"}
+-   `stock_changes`: {"action": "stock_changes", "name": "item_name"} (Shows manual adjustments/restock history)
 -   `audit_logs`: {"action": "audit_logs", "name": "optional_item_name"}
--   `transaction_history`: {"action": "transaction_history", "name": "item_name"}
+-   `list_transactions`: {"action": "list_transactions", "limit": 10}
+-   `transaction_history`: {"action": "transaction_history", "name": "item_name"} (Shows sales/refund logic for an item)
+-   `refund_transaction`: {"action": "refund_transaction", "transaction_id": 123}
 -   `get_dashboard`: {"action": "get_dashboard"}
+-   `mark_attendance`: {"action": "mark_attendance", "status": "clock_in"} (status can be "clock_in" or "clock_out")
 -   `check_attendance`: {"action": "check_attendance", "history": false}
+-   `open_cash_session`: {"action": "open_cash_session", "opening_balance": 100000}
+-   `close_cash_session`: {"action": "close_cash_session", "actual_balance": 500000}
 -   `manage_cash`: {"action": "manage_cash"}
 -   `cash_session_history`: {"action": "cash_session_history"}
 -   `list_users`: {"action": "list_users"}
@@ -44,6 +52,9 @@ Your task is to help users manage inventory items, transactions, and shop operat
 ### EXAMPLES:
 User: "Hi there!"
 Assistant: {"message": "Hello! I'm your Klampis Depo assistant. How can I help you manage the shop today?"}
+
+User: "How many semen are in stock?"
+Assistant: {"action": "get_item_details", "name": "semen"}
 
 User: "Add 10 semen"
 Assistant: {"action": "add_stock", "name": "semen", "added_stock": 10}
