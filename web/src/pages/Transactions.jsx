@@ -25,6 +25,7 @@ export default function Transactions() {
   const [isReceiptOpen, setIsReceiptOpen] = useState(false);
   const [note, setNote] = useState("");
   const [discount, setDiscount] = useState(0);
+  const [currentDraftId, setCurrentDraftId] = useState(null);
 
   // 🔥 dari context
   const {
@@ -92,6 +93,8 @@ export default function Transactions() {
     }
 
     const payload = {
+      ...(checkoutStatus === "draft" &&
+        currentDraftId && { id: currentDraftId }),
       status: checkoutStatus,
       paymentAmount: checkoutStatus === "completed" ? paymentAmount : undefined,
       paymentType: checkoutStatus === "completed" ? paymentType : undefined,
@@ -114,6 +117,7 @@ export default function Transactions() {
       setTransactionType("onsite");
       setNote("");
       setDiscount(0);
+      setCurrentDraftId(null);
       fetchDrafts();
 
       if (checkoutStatus === "completed") {
@@ -145,12 +149,18 @@ export default function Transactions() {
       setTransactionType(t.transaction_type || "onsite");
       setNote(t.note || "");
       setDiscount(t.discount || 0);
+      setCurrentDraftId(t.id);
       setIsModalOpen(false);
 
       toast("Draft dimuat");
     } catch {
       toast.error("Gagal memuat draft");
     }
+  };
+
+  const clearDraft = () => {
+    setCurrentDraftId(null);
+    toast.success("Membuat draft baru");
   };
 
   return (
@@ -175,6 +185,7 @@ export default function Transactions() {
         discount={discount}
         setDiscount={setDiscount}
         openModal={() => setIsModalOpen(true)}
+        clearDraft={clearDraft}
         device={device}
         isConnecting={isConnecting}
         connectPrinter={connectPrinter}
@@ -187,6 +198,7 @@ export default function Transactions() {
         isOpen={isModalOpen}
         closeModal={() => setIsModalOpen(false)}
         loadDraft={loadDraft}
+        fetchDrafts={fetchDrafts}
       />
 
       <ReceiptModal

@@ -9,6 +9,7 @@ type TransactionItemInput struct {
 }
 
 type CreateTransactionInput struct {
+	ID              *uint                  `json:"id,omitempty"`
 	Status          string                 `json:"status"`
 	PaymentAmount   *float64               `json:"paymentAmount,omitempty"`
 	PaymentType     *string                `json:"paymentType,omitempty"`

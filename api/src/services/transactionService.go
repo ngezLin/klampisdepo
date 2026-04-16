@@ -41,8 +41,25 @@ func (s *transactionService) CreateTransaction(input dtos.CreateTransactionInput
 
 	var transaction models.Transaction
 	var warnings []string
+	isUpdate := input.ID != nil && *input.ID > 0
 
 	err := config.DB.Transaction(func(tx *gorm.DB) error {
+		// If updating an existing draft
+		if isUpdate && input.Status == "draft" {
+			if err := tx.Preload("Items").First(&transaction, *input.ID).Error; err != nil {
+				return errors.New("transaction not found")
+			}
+
+			if transaction.Status != "draft" {
+				return errors.New("only draft transactions can be updated")
+			}
+
+			// Delete old transaction items
+			if err := tx.Where("transaction_id = ?", transaction.ID).Delete(&models.TransactionItem{}).Error; err != nil {
+				return err
+			}
+		}
+
 		var total float64
 		var transactionItems []models.TransactionItem
 		var localWarnings []string
@@ -83,13 +100,21 @@ func (s *transactionService) CreateTransaction(input dtos.CreateTransactionInput
 			finalTotal = 0
 		}
 
-		transaction = models.Transaction{
-			Status:          input.Status,
-			Total:           finalTotal,
-			Discount:        discount,
-			Items:           transactionItems,
-			Note:            input.Note,
-			TransactionType: "onsite",
+		if !isUpdate {
+			transaction = models.Transaction{
+				Status:          input.Status,
+				Total:           finalTotal,
+				Discount:        discount,
+				Items:           transactionItems,
+				Note:            input.Note,
+				TransactionType: "onsite",
+			}
+		} else {
+			transaction.Status = input.Status
+			transaction.Total = finalTotal
+			transaction.Discount = discount
+			transaction.Items = transactionItems
+			transaction.Note = input.Note
 		}
 
 		if input.TransactionType != nil && *input.TransactionType != "" {
@@ -140,8 +165,14 @@ func (s *transactionService) CreateTransaction(input dtos.CreateTransactionInput
 			}
 		}
 
-		if err := tx.Create(&transaction).Error; err != nil {
-			return err
+		if isUpdate {
+			if err := tx.Save(&transaction).Error; err != nil {
+				return err
+			}
+		} else {
+			if err := tx.Create(&transaction).Error; err != nil {
+				return err
+			}
 		}
 
 		// Inventory Ledger: Log Sales
@@ -167,10 +198,14 @@ func (s *transactionService) CreateTransaction(input dtos.CreateTransactionInput
 			}
 		}
 
-		description := fmt.Sprintf("Transaction #%d created", transaction.ID)
+		actionType := "create"
+		if isUpdate {
+			actionType = "update"
+		}
+		description := fmt.Sprintf("Transaction #%d %s", transaction.ID, actionType)
 		if err := log.CreateTransactionAuditLog(
 			tx,
-			"create",
+			actionType,
 			transaction.ID,
 			nil,
 			&transaction,

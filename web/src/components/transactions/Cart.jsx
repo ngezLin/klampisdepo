@@ -21,6 +21,7 @@ export default function Cart({
   setTransactionType,
   handleCheckout,
   openModal,
+  clearDraft,
   note,
   setNote,
   discount,
@@ -237,6 +238,13 @@ export default function Cart({
             Save Draft
           </button>
         </div>
+
+        <button
+          className="w-full bg-orange-500 hover:bg-orange-600 font-bold active:scale-95 transition-transform text-white px-4 py-2 rounded shadow-sm"
+          onClick={clearDraft}
+        >
+          New Draft
+        </button>
 
         {/* 🔥 SIMPLIFIED: Bluetooth Controls */}
         <div className="flex flex-col sm:flex-row gap-2">
