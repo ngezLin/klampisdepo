@@ -86,51 +86,17 @@ export default function Cart({
 
       {cart.length === 0 && <p className="text-gray-500 italic">Cart kosong</p>}
 
-      {cart.length > 0 && (
-        <div className="space-y-2">
-          {/* Header */}
-          <div className="grid grid-cols-[1fr_auto_auto] gap-1 px-2 text-[10px] text-gray-500 uppercase tracking-wider">
-            <span>Item</span>
-            <span className="text-center w-12">Qty</span>
-            <span className="text-right w-20">Subtotal</span>
-          </div>
-          {/* Items */}
-          {cart.map((c) => (
-            <div
-              key={c.item_id}
-              className="bg-gray-800/60 border border-white/5 rounded-lg px-2 py-2 space-y-1"
-            >
-              {/* Row 1: Name + Qty + Subtotal + Remove */}
-              <div className="grid grid-cols-[1fr_auto_auto_auto] gap-1 items-center">
-                <span className="font-semibold text-white text-sm truncate" title={c.name}>
-                  {c.name}
-                </span>
-                <input
-                  type="number"
-                  value={c.quantity}
-                  onChange={(e) =>
-                    updateQuantity(
-                      c.item_id,
-                      normalizeNumber(e.target.value),
-                      c.price,
-                    )
-                  }
-                  className="w-12 bg-gray-700 border border-gray-600 rounded px-1 py-0.5 text-center text-xs text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
-                />
-                <span className="text-gray-300 text-xs font-medium text-right w-20 whitespace-nowrap">
-                  Rp {formatNumber(c.price * c.quantity)}
-                </span>
-                <button
-                  className="text-red-400 hover:text-red-300 hover:bg-red-500/20 rounded p-0.5 transition-colors ml-1"
-                  onClick={() => removeFromCart(c.item_id)}
-                  title="Hapus item"
-                >
-                  ✕
-                </button>
-              </div>
-              {/* Row 2: Price input */}
+      <div className="space-y-2">
+        {cart.map((c) => (
+          <div
+            key={c.item_id}
+            className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 p-3 bg-gray-800 border border-white/5 rounded-xl shadow-sm"
+          >
+            <div className="flex-1">
+              <p className="font-semibold text-white">{c.name}</p>
+
               <div className="flex items-center gap-2">
-                <span className="text-[10px] text-gray-500">@ Rp</span>
+                <label className="text-sm">Harga:</label>
                 <input
                   type="number"
                   value={c.price}
@@ -141,13 +107,34 @@ export default function Cart({
                       normalizeNumber(e.target.value),
                     )
                   }
-                  className="w-20 bg-gray-700/50 border border-gray-600/50 rounded px-2 py-0.5 text-right text-xs text-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="w-24 bg-gray-700 border-gray-600 rounded px-2 py-0.5 text-right text-sm text-white"
                 />
               </div>
             </div>
-          ))}
-        </div>
-      )}
+
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <input
+                type="number"
+                value={c.quantity}
+                onChange={(e) =>
+                  updateQuantity(
+                    c.item_id,
+                    normalizeNumber(e.target.value),
+                    c.price,
+                  )
+                }
+                className="w-16 bg-gray-700 border-gray-600 rounded px-2 py-0.5 text-center text-white"
+              />
+              <button
+                className="text-red-500 text-sm"
+                onClick={() => removeFromCart(c.item_id)}
+              >
+                Remove
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
 
       <div className="mt-4 space-y-3">
         <div className="flex justify-between items-center text-gray-300">
