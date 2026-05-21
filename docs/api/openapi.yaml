@@ -1,0 +1,729 @@
+openapi: 3.0.3
+info:
+  title: Klampis Depo API
+  description: API documentation for Klampis Depo Management System
+  version: 1.0.0
+servers:
+  - url: http://localhost:8080
+    description: Local development server
+paths:
+  /login:
+    post:
+      summary: User Login
+      tags:
+        - Auth
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginInput'
+      responses:
+        '200':
+          description: Successfully logged in
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          description: Unauthorized
+        '429':
+          description: Too Many Requests (Rate Limited)
+
+  /public/items:
+    get:
+      summary: Get items for landing page
+      tags:
+        - Public
+      responses:
+        '200':
+          description: List of items
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ItemListResponse'
+
+  /public/items/search:
+    get:
+      summary: Search public items by name
+      tags:
+        - Public
+      parameters:
+        - name: name
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Matching items
+
+  /public/items/{id}:
+    get:
+      summary: Get public item by ID
+      tags:
+        - Public
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Item details
+
+  /inventory/history:
+    get:
+      summary: Get inventory history
+      tags:
+        - Inventory
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Inventory history
+
+  /items/:
+    get:
+      summary: Get all items
+      tags:
+        - Items
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: List of items
+    post:
+      summary: Create new item
+      tags:
+        - Items
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateItemInput'
+      responses:
+        '201':
+          description: Item created
+
+  /items/search:
+    get:
+      summary: Search items by name
+      tags:
+        - Items
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: name
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Search results
+
+  /items/{id}:
+    get:
+      summary: Get item by ID
+      tags:
+        - Items
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Item details
+    put:
+      summary: Update item
+      tags:
+        - Items
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateItemInput'
+      responses:
+        '200':
+          description: Item updated
+    delete:
+      summary: Delete item
+      tags:
+        - Items
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Item deleted
+
+  /items/bulk:
+    post:
+      summary: Bulk create items
+      tags:
+        - Items
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: '#/components/schemas/CreateItemInput'
+      responses:
+        '201':
+          description: Items created
+
+  /items/export/csv:
+    get:
+      summary: Export items to CSV
+      tags:
+        - Items
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: CSV file
+          content:
+            text/csv:
+              schema:
+                type: string
+                format: binary
+
+  /items/{id}/manual-changes:
+    get:
+      summary: Get manual stock changes for an item
+      tags:
+        - Items
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: List of changes
+
+  /upload/image:
+    post:
+      summary: Upload item image
+      tags:
+        - Upload
+      security:
+        - BearerAuth: []
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                image:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: Image URL
+
+  /transactions/:
+    get:
+      summary: Get transactions
+      tags:
+        - Transactions
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: List of transactions
+    post:
+      summary: Create transaction
+      tags:
+        - Transactions
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTransactionInput'
+      responses:
+        '201':
+          description: Transaction created
+
+  /transactions/history:
+    get:
+      summary: Get transaction history
+      tags:
+        - Transactions
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: History
+
+  /transactions/{id}:
+    get:
+      summary: Get transaction by ID
+      tags:
+        - Transactions
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Transaction details
+    patch:
+      summary: Update transaction status
+      tags:
+        - Transactions
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateTransactionInput'
+      responses:
+        '200':
+          description: Status updated
+    delete:
+      summary: Delete transaction
+      tags:
+        - Transactions
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Deleted
+
+  /transactions/history/by-date:
+    get:
+      summary: Get transactions by date
+      tags:
+        - Transactions
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: date
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Transactions
+
+  /transactions/{id}/refund:
+    post:
+      summary: Refund transaction
+      tags:
+        - Transactions
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Refunded
+
+  /transactions/drafts:
+    get:
+      summary: Get draft transactions
+      tags:
+        - Transactions
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: List of drafts
+
+  /dashboard/:
+    get:
+      summary: Get dashboard statistics
+      tags:
+        - Dashboard
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Dashboard stats
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DashboardStats'
+
+  /attendance/:
+    get:
+      summary: Get all attendances
+      tags:
+        - Attendance
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: List of attendances
+    post:
+      summary: Create attendance
+      tags:
+        - Attendance
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateAttendanceInput'
+      responses:
+        '201':
+          description: Attendance created
+
+  /attendance/today:
+    get:
+      summary: Get today's attendance
+      tags:
+        - Attendance
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Today's attendance
+
+  /attendance/history:
+    get:
+      summary: Get attendance history
+      tags:
+        - Attendance
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: History
+
+  /users/:
+    get:
+      summary: Get all users
+      tags:
+        - Users
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: List of users
+
+  /audit-logs/:
+    get:
+      summary: Get audit logs
+      tags:
+        - Audit Logs
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: List of logs
+
+  /cash-sessions/current:
+    get:
+      summary: Get current cash session
+      tags:
+        - Cash Sessions
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Current session
+
+  /cash-sessions/history:
+    get:
+      summary: Get cash session history
+      tags:
+        - Cash Sessions
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: History
+
+  /cash-sessions/open:
+    post:
+      summary: Open new cash session
+      tags:
+        - Cash Sessions
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OpenCashSessionInput'
+      responses:
+        '200':
+          description: Session opened
+
+  /cash-sessions/close:
+    post:
+      summary: Close current cash session
+      tags:
+        - Cash Sessions
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CloseCashSessionInput'
+      responses:
+        '200':
+          description: Session closed
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    LoginInput:
+      type: object
+      required:
+        - username
+        - password
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+
+    AuthResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        token:
+          type: string
+        role:
+          type: string
+
+    CreateItemInput:
+      type: object
+      required:
+        - name
+        - price
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        stock:
+          type: integer
+        is_stock_managed:
+          type: boolean
+        buy_price:
+          type: number
+        price:
+          type: number
+        image_url:
+          type: string
+          nullable: true
+
+    UpdateItemInput:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        stock:
+          type: integer
+        is_stock_managed:
+          type: boolean
+        buy_price:
+          type: number
+        price:
+          type: number
+        image_url:
+          type: string
+          nullable: true
+
+    ItemListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            type: object
+        meta:
+          $ref: '#/components/schemas/PaginationMeta'
+
+    PaginationMeta:
+      type: object
+      properties:
+        total:
+          type: integer
+        page:
+          type: integer
+        pageSize:
+          type: integer
+        totalPages:
+          type: integer
+
+    CreateTransactionInput:
+      type: object
+      required:
+        - status
+        - items
+      properties:
+        id:
+          type: integer
+        status:
+          type: string
+        paymentAmount:
+          type: number
+        paymentType:
+          type: string
+        note:
+          type: string
+        transaction_type:
+          type: string
+        discount:
+          type: number
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/TransactionItemInput'
+
+    TransactionItemInput:
+      type: object
+      required:
+        - item_id
+        - quantity
+      properties:
+        item_id:
+          type: integer
+        quantity:
+          type: integer
+        customPrice:
+          type: number
+
+    UpdateTransactionInput:
+      type: object
+      properties:
+        status:
+          type: string
+        note:
+          type: string
+        transaction_type:
+          type: string
+        discount:
+          type: number
+
+    DashboardStats:
+      type: object
+      properties:
+        today_profit:
+          type: number
+        monthly_profit:
+          type: number
+        today_omzet:
+          type: number
+        monthly_omzet:
+          type: number
+        today_transactions:
+          type: integer
+        low_stock:
+          type: integer
+        top_selling_items:
+          type: array
+          items:
+            type: object
+            properties:
+              item_id:
+                type: integer
+              name:
+                type: string
+              quantity:
+                type: integer
+
+    CreateAttendanceInput:
+      type: object
+      required:
+        - user_id
+        - status
+      properties:
+        user_id:
+          type: integer
+        status:
+          type: string
+          enum: [present, absent, off]
+        note:
+          type: string
+
+    OpenCashSessionInput:
+      type: object
+      required:
+        - opening_cash
+      properties:
+        opening_cash:
+          type: number
+
+    CloseCashSessionInput:
+      type: object
+      required:
+        - closing_cash
+      properties:
+        closing_cash:
+          type: number

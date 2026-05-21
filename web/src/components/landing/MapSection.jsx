@@ -16,42 +16,40 @@ export default function MapSection() {
         backgroundPosition: "center",
       }}
     >
-      <div className="absolute inset-0 bg-gray-950/90 backdrop-blur-sm"></div>
+      <div className="absolute inset-0 bg-white/90 backdrop-blur-sm"></div>
       <div className="relative max-w-6xl mx-auto px-6 text-center">
         <motion.h2
-          className="text-4xl font-bold mb-6 text-white tracking-tight"
+          className="text-4xl font-black mb-6 text-slate-900 tracking-tight"
           initial="hidden"
           whileInView="visible"
           viewport={{ once: true, amount: 0.2 }}
           variants={fadeUp}
         >
-          Temukan <span className="text-blue-400">Lokasi Kami</span>
+          Mampir ke <span className="text-green-600">Toko Kami</span>
         </motion.h2>
         <motion.p
-          className="text-gray-400 mb-12 text-lg"
+          className="text-slate-500 mb-12 text-lg max-w-2xl mx-auto"
           initial="hidden"
           whileInView="visible"
           viewport={{ once: true, amount: 0.2 }}
           variants={fadeUp}
         >
-          Kunjungi toko fisik kami untuk pengalaman belanja langsung.
+          Lebih enak kalau lihat barangnya langsung. Datang saja ke UD. Klampis Depo di Jl. Klampis Harapan No. G-168, Surabaya. Kami buka setiap hari!
         </motion.p>
         <motion.div
-          className="rounded-3xl overflow-hidden shadow-2xl border border-white/10"
+          className="rounded-3xl overflow-hidden shadow-2xl border border-slate-200 max-w-5xl mx-auto"
           initial={{ opacity: 0, scale: 0.98 }}
           whileInView={{ opacity: 1, scale: 1 }}
           viewport={{ once: true, amount: 0.2 }}
           transition={{ duration: 0.5 }}
-          whileHover={{ scale: 1.01 }}
+          whileHover={{ scale: 1.005 }}
         >
           <iframe
             src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3958.125332253869!2d112.7793589!3d-7.2952918!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x2dd7fa5b4b0bfce1%3A0xa07b8b8602f4a3db!2sUD.%20Klampis%20Depo!5e0!3m2!1sen!2sid!4v1692960721066!5m2!1sen!2sid"
             width="100%"
-            height="400"
+            height="450"
             style={{
               border: 0,
-              filter:
-                "invert(90%) hue-rotate(180deg) brightness(95%) contrast(90%)",
             }}
             allowFullScreen=""
             loading="lazy"

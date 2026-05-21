@@ -20,6 +20,16 @@ api/kd-api*
 *.pem
 *.key
 credentials.json
+# Secret and credentials
+secrets.json
+
+# Flutter/Dart
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
 *.sql
 *.log
 backup_all.sql
@@ -28,7 +38,6 @@ backup_all.sql
 nginx_conf.txt
 nginx.conf
 uploads/
-mobile/
 
 # IDEs and OS
 .vscode/

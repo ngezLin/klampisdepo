@@ -1,41 +1,36 @@
-import { Truck, ShieldCheck, Zap, Headphones, Store } from "lucide-react";
+import { Paintbrush, Construction, Layers, Weight, Home, Droplets } from "lucide-react";
 import { motion } from "framer-motion";
 
-const features = [
+const products = [
   {
-    icon: <Truck className="w-10 h-10 text-yellow-500" />,
-    title: "Ongkir Murah",
-    desc: "Nikmati pengiriman hemat ke seluruh Indonesia.",
+    icon: <Construction className="w-10 h-10 text-green-600" />,
+    title: "Semen & Pasir",
+    desc: "Sedia berbagai merk semen berkualitas dan pasir bersih untuk cor/pasang bata.",
   },
   {
-    icon: <Store className="w-10 h-10 text-yellow-500" />,
-    title: "Support Tokopedia",
-    desc: "Belanja juga via Tokopedia / offline store dengan aman.",
+    icon: <Paintbrush className="w-10 h-10 text-green-600" />,
+    title: "Cat Tembok & Kayu",
+    desc: "Pilihan warna lengkap untuk mempercantik rumah Anda, dalam maupun luar.",
   },
   {
-    icon: <ShieldCheck className="w-10 h-10 text-yellow-500" />,
-    title: "Transaksi Aman",
-    desc: "Pembayaran & data bisa menggunakan transfer, qris, cash, dll.",
-  },
-  // {
-  //   icon: <Gift className="w-10 h-10 text-yellow-500" />,
-  //   title: "Point & Reward",
-  //   desc: "Dapatkan poin setiap belanja untuk reward menarik.",
-  // },
-  {
-    icon: <Zap className="w-10 h-10 text-yellow-500" />,
-    title: "Pengiriman Cepat",
-    desc: "Pesanan dikirim dalam waktu singkat.",
+    icon: <Weight className="w-10 h-10 text-green-600" />,
+    title: "Besi Beton",
+    desc: "Besi berbagai ukuran untuk pondasi bangunan yang kokoh dan tahan lama.",
   },
   {
-    icon: <Headphones className="w-10 h-10 text-yellow-500" />,
-    title: "Hubungi kami",
-    desc: "Customer Service siap membantu Anda kapan saja.",
+    icon: <Layers className="w-10 h-10 text-green-600" />,
+    title: "Genteng & Atap",
+    desc: "Lindungi rumah dari hujan dan panas dengan pilihan atap yang awet.",
   },
   {
-    icon: <Truck className="w-10 h-10 text-yellow-500" />,
-    title: "Ongkir Murah",
-    desc: "Sedia pickup sebelum hujan.",
+    icon: <Droplets className="w-10 h-10 text-green-600" />,
+    title: "Pipa & Sanitari",
+    desc: "Kebutuhan saluran air lengkap, mulai dari pipa PVC hingga kran air.",
+  },
+  {
+    icon: <Home className="w-10 h-10 text-green-600" />,
+    title: "Alat Pertukangan",
+    desc: "Cangkul, palu, meteran, dan alat lainnya untuk memudahkan pekerjaan Anda.",
   },
 ];
 
@@ -46,34 +41,37 @@ export default function Features() {
   };
 
   return (
-    <section className="bg-black py-24 sm:py-32">
-      <div className="max-w-6xl mx-auto px-6">
-        <h2 className="text-4xl font-bold text-center mb-16 text-white tracking-tight">
-          Mengapa Memilih{" "}
-          <span className="text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-orange-500">
-            Klampis Depo
-          </span>
-          ?
-        </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8">
-          {features.map((f, i) => (
+    <section id="what-we-sell" className="bg-white py-24 sm:py-32">
+      <div className="max-w-7xl mx-auto px-6">
+        <div className="text-center mb-16">
+          <h2 className="text-4xl font-black text-slate-900 tracking-tight mb-4">
+            Katalog Material Bangunan Lengkap
+          </h2>
+          <p className="text-slate-500 text-lg">
+            Semua kebutuhan bangun rumah Anda ada di Klampis Depo Surabaya.
+          </p>
+        </div>
+        
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+          {products.map((p, i) => (
             <motion.div
               key={i}
               variants={card}
               initial="hidden"
               whileInView="visible"
               viewport={{ once: true, amount: 0.2 }}
-              whileHover={{ y: -8, scale: 1.02 }}
-              transition={{ type: "spring", stiffness: 200, damping: 20 }}
-              className="bg-gray-900/40 backdrop-blur-md border border-white/5 rounded-3xl p-8 text-center shadow-2xl hover:bg-gray-800/60 transition-all group"
+              whileHover={{ y: -8 }}
+              className="bg-white border border-slate-100 rounded-3xl p-8 shadow-sm hover:shadow-md hover:border-green-100 transition-all group"
             >
-              <div className="flex justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
-                {f.icon}
+              <div className="mb-6 group-hover:scale-110 transition-transform duration-300">
+                {p.icon}
               </div>
-              <h3 className="font-bold text-xl mb-3 text-white tracking-tight">
-                {f.title}
+              <h3 className="font-bold text-2xl mb-3 text-slate-900">
+                {p.title}
               </h3>
-              <p className="text-gray-400 text-sm leading-relaxed">{f.desc}</p>
+              <p className="text-slate-500 leading-relaxed">
+                {p.desc}
+              </p>
             </motion.div>
           ))}
         </div>
