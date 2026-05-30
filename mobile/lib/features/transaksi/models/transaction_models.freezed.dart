@@ -27,7 +27,7 @@ mixin _$ItemModel {
   @JsonKey(name: 'is_stock_managed')
   bool get isStockManaged => throw _privateConstructorUsedError;
   @JsonKey(name: 'buy_price')
-  double get buyPrice => throw _privateConstructorUsedError;
+  double? get buyPrice => throw _privateConstructorUsedError;
   double get price => throw _privateConstructorUsedError;
   @JsonKey(name: 'image_url')
   String? get imageUrl => throw _privateConstructorUsedError;
@@ -53,7 +53,7 @@ abstract class $ItemModelCopyWith<$Res> {
       String? description,
       int stock,
       @JsonKey(name: 'is_stock_managed') bool isStockManaged,
-      @JsonKey(name: 'buy_price') double buyPrice,
+      @JsonKey(name: 'buy_price') double? buyPrice,
       double price,
       @JsonKey(name: 'image_url') String? imageUrl});
 }
@@ -78,7 +78,7 @@ class _$ItemModelCopyWithImpl<$Res, $Val extends ItemModel>
     Object? description = freezed,
     Object? stock = null,
     Object? isStockManaged = null,
-    Object? buyPrice = null,
+    Object? buyPrice = freezed,
     Object? price = null,
     Object? imageUrl = freezed,
   }) {
@@ -103,10 +103,10 @@ class _$ItemModelCopyWithImpl<$Res, $Val extends ItemModel>
           ? _value.isStockManaged
           : isStockManaged // ignore: cast_nullable_to_non_nullable
               as bool,
-      buyPrice: null == buyPrice
+      buyPrice: freezed == buyPrice
           ? _value.buyPrice
           : buyPrice // ignore: cast_nullable_to_non_nullable
-              as double,
+              as double?,
       price: null == price
           ? _value.price
           : price // ignore: cast_nullable_to_non_nullable
@@ -133,7 +133,7 @@ abstract class _$$ItemModelImplCopyWith<$Res>
       String? description,
       int stock,
       @JsonKey(name: 'is_stock_managed') bool isStockManaged,
-      @JsonKey(name: 'buy_price') double buyPrice,
+      @JsonKey(name: 'buy_price') double? buyPrice,
       double price,
       @JsonKey(name: 'image_url') String? imageUrl});
 }
@@ -156,7 +156,7 @@ class __$$ItemModelImplCopyWithImpl<$Res>
     Object? description = freezed,
     Object? stock = null,
     Object? isStockManaged = null,
-    Object? buyPrice = null,
+    Object? buyPrice = freezed,
     Object? price = null,
     Object? imageUrl = freezed,
   }) {
@@ -181,10 +181,10 @@ class __$$ItemModelImplCopyWithImpl<$Res>
           ? _value.isStockManaged
           : isStockManaged // ignore: cast_nullable_to_non_nullable
               as bool,
-      buyPrice: null == buyPrice
+      buyPrice: freezed == buyPrice
           ? _value.buyPrice
           : buyPrice // ignore: cast_nullable_to_non_nullable
-              as double,
+              as double?,
       price: null == price
           ? _value.price
           : price // ignore: cast_nullable_to_non_nullable
@@ -206,7 +206,7 @@ class _$ItemModelImpl implements _ItemModel {
       this.description,
       this.stock = 0,
       @JsonKey(name: 'is_stock_managed') this.isStockManaged = true,
-      @JsonKey(name: 'buy_price') required this.buyPrice,
+      @JsonKey(name: 'buy_price') this.buyPrice,
       required this.price,
       @JsonKey(name: 'image_url') this.imageUrl});
 
@@ -227,7 +227,7 @@ class _$ItemModelImpl implements _ItemModel {
   final bool isStockManaged;
   @override
   @JsonKey(name: 'buy_price')
-  final double buyPrice;
+  final double? buyPrice;
   @override
   final double price;
   @override
@@ -286,7 +286,7 @@ abstract class _ItemModel implements ItemModel {
       final String? description,
       final int stock,
       @JsonKey(name: 'is_stock_managed') final bool isStockManaged,
-      @JsonKey(name: 'buy_price') required final double buyPrice,
+      @JsonKey(name: 'buy_price') final double? buyPrice,
       required final double price,
       @JsonKey(name: 'image_url') final String? imageUrl}) = _$ItemModelImpl;
 
@@ -306,7 +306,7 @@ abstract class _ItemModel implements ItemModel {
   bool get isStockManaged;
   @override
   @JsonKey(name: 'buy_price')
-  double get buyPrice;
+  double? get buyPrice;
   @override
   double get price;
   @override

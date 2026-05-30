@@ -11,7 +11,7 @@ class ItemModel with _$ItemModel {
     String? description,
     @Default(0) int stock,
     @JsonKey(name: 'is_stock_managed') @Default(true) bool isStockManaged,
-    @JsonKey(name: 'buy_price') required double buyPrice,
+    @JsonKey(name: 'buy_price') double? buyPrice,
     required double price,
     @JsonKey(name: 'image_url') String? imageUrl,
   }) = _ItemModel;
@@ -58,4 +58,18 @@ class CreateTransactionInput with _$CreateTransactionInput {
   }) = _CreateTransactionInput;
 
   factory CreateTransactionInput.fromJson(Map<String, dynamic> json) => _$CreateTransactionInputFromJson(json);
+}
+
+class CheckoutResult {
+  final bool success;
+  final int? transactionId;
+  final bool wasOffline;
+  final Map<String, dynamic>? transactionData;
+
+  CheckoutResult({
+    required this.success,
+    this.transactionId,
+    this.wasOffline = false,
+    this.transactionData,
+  });
 }

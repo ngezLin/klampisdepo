@@ -13,7 +13,7 @@ _$ItemModelImpl _$$ItemModelImplFromJson(Map<String, dynamic> json) =>
       description: json['description'] as String?,
       stock: (json['stock'] as num?)?.toInt() ?? 0,
       isStockManaged: json['is_stock_managed'] as bool? ?? true,
-      buyPrice: (json['buy_price'] as num).toDouble(),
+      buyPrice: (json['buy_price'] as num?)?.toDouble(),
       price: (json['price'] as num).toDouble(),
       imageUrl: json['image_url'] as String?,
     );

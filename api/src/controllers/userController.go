@@ -1,17 +1,17 @@
 package controllers
 
 import (
-	"kd-api/src/config"
-	"kd-api/src/models"
 	"net/http"
+
+	"kd-api/src/services"
 
 	"github.com/gin-gonic/gin"
 )
 
 func GetUsers(c *gin.Context) {
-	var users []models.User
-	
-	if err := config.DB.Select("id, username, role").Find(&users).Error; err != nil {
+	service := services.NewUserService()
+	users, err := service.GetUsers()
+	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}

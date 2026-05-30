@@ -4,39 +4,42 @@
 
 - **Language/Runtime:** Go (Golang)
 - **Framework:** Gin Web Framework
-- **Database:** PostgreSQL (with GORM or direct SQL, based on `models` and `services`)
-- **Base Dir:** `C:\project\klampisDepo\api`
-- **Source Dir:** `C:\project\klampisDepo\api\src`
+- **Database:** MySQL (using GORM)
+- **Base Dir:** `D:\project\klampisdepo\api`
+- **Source Dir:** `D:\project\klampisdepo\api\src`
 
 ## Core Architecture
 
-- `src/config`: Environment and DB configuration.
-- `src/controllers`: Request handlers (parsing inputs, calling services).
-- `src/services`: Core business logic and DB interactions.
-- `src/models`: Database struct definitions.
-- `src/middlewares`: Auth (JWT), Logging, CORS, Role-based access control.
-- `src/routes/router.go`: Central route registration.
+- `src/config`: Database connection pool configurations.
+- `src/controllers`: Request handlers (delegating parsing inputs, executing business logic via services).
+- `src/services`: Decoupled core business logic interfaces and DB query layer (with row-level updates lock safety).
+- `src/dtos`: Encapsulated Request and Response data transfer object schemas.
+- `src/models`: Database GORM struct definitions.
+- `src/middlewares`: Security/Anti-bot interceptor, Auth (JWT), Rate Limiter, and Role-based access control.
+- `src/routes/router.go`: Central router mapping.
+- `src/utils`: Common type parsers, JWT helpers, logging formatters, and pagination tools.
 
 ## Key Endpoints & RBAC
 
-- `POST /login`: Public login.
+- `POST /login`: Public login (Rate-limited to 5 requests/min/IP).
 - `GET /public/items`: Public item listing for landing page.
 - `GET /items`: Authenticated item list (searchable, filterable).
 - `POST /items`: Owner/Admin only.
 - `POST /transactions`: Cashier/Admin/Owner.
-- `GET /dashboard`: Owner only (Sales metrics).
+- `GET /dashboard`: Owner only (Sales, Profit, and Omzet aggregates).
 - `GET /attendance`: Owner only.
-- `GET /audit-logs`: Owner only.
-- `GET /cash-sessions`: Admin/Owner (Opening/Closing shifts).
+- `GET /audit-logs`: Owner/Admin (System actions log).
+- `GET /cash-sessions`: Admin/Owner (POS Shift Opening/Closing).
 
 ## Business Logic Notes
 
 - **Roles:** `owner`, `admin`, `cashier`.
-- **Media:** Images are stored in `./uploads` and served statically via `/uploads`.
-- **Transactions:** Supports history by date, refunds, and draft transactions.
+- **Media Uploads:** Base64 or standard multipart upload. Decoded to disk under `./uploads` and statically served via `/uploads/` route. Hides database from raw base64 bloat.
+- **Transactions & Concurrency:** Concurrency-safe sales, refunds, and drafts via GORM MySQL row-level locks (`FOR UPDATE`).
+- **Security:** `User.Password` is hidden from all preloaded JSON output lists (such as audit logs and logs history) using `json:"-"` serialization blocks.
 
 ## Development Workflows
 
-- Uses `.env` for configuration.
+- Uses `.env` for database connection details and environment configuration.
 - Serves on port `8080` by default.
 - Image compression/processing may be handled in `UploadImage` controller.

@@ -110,7 +110,7 @@ class TransaksiNotifier extends StateNotifier<TransaksiState> {
   /// Checkout with automatic offline fallback.
   /// If the API call fails due to connectivity, the transaction is saved locally
   /// and will auto-sync when connection is restored.
-  Future<bool> checkout() async {
+  Future<CheckoutResult> checkout() async {
     state = state.copyWith(isSubmitting: true);
     try {
       final dio = ref.read(dioProvider);
@@ -129,17 +129,19 @@ class TransaksiNotifier extends StateNotifier<TransaksiState> {
         )).toList(),
       );
 
-      await dio.post('/transactions/', data: input.toJson());
+      final response = await dio.post('/transactions/', data: input.toJson());
+      final serverTx = response.data['transaction'] as Map<String, dynamic>;
+      final int serverId = serverTx['id'] as int;
       reset();
-      return true;
+      return CheckoutResult(success: true, transactionId: serverId, wasOffline: false, transactionData: serverTx);
     } on DioException catch (e) {
       // If it's a connection error, save offline
       if (_isConnectionError(e)) {
         return _saveOffline();
       }
-      return false;
+      return CheckoutResult(success: false);
     } catch (e) {
-      return false;
+      return CheckoutResult(success: false);
     } finally {
       state = state.copyWith(isSubmitting: false);
     }
@@ -154,7 +156,7 @@ class TransaksiNotifier extends StateNotifier<TransaksiState> {
   }
 
   /// Save the current cart as an offline pending transaction
-  Future<bool> _saveOffline() async {
+  Future<CheckoutResult> _saveOffline() async {
     try {
       final syncService = ref.read(offlineSyncServiceProvider);
 
@@ -167,7 +169,7 @@ class TransaksiNotifier extends StateNotifier<TransaksiState> {
         'subtotal': cartItem.subtotal,
       }).toList();
 
-      await syncService.saveOfflineTransaction(
+      final txId = await syncService.saveOfflineTransaction(
         status: 'completed',
         total: state.finalTotal,
         discount: state.discount,
@@ -178,11 +180,30 @@ class TransaksiNotifier extends StateNotifier<TransaksiState> {
         items: items,
       );
 
+      final txData = {
+        'id': txId,
+        'created_at': DateTime.now().toIso8601String(),
+        'items': items,
+        'subtotal': state.totalBeforeDiscount,
+        'discount': state.discount,
+        'total': state.finalTotal,
+        'payment_type': state.paymentType,
+        'payment': state.paymentAmount,
+        'change': state.change,
+        'note': state.note,
+        'syncStatus': 'pending_sync',
+      };
+
       state = state.copyWith(lastCheckoutWasOffline: true);
       reset();
-      return true;
+      return CheckoutResult(
+        success: true,
+        transactionId: txId,
+        wasOffline: true,
+        transactionData: txData,
+      );
     } catch (e) {
-      return false;
+      return CheckoutResult(success: false);
     }
   }
 

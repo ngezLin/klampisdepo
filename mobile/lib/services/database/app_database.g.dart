@@ -47,8 +47,8 @@ class $ItemsTable extends Items with TableInfo<$ItemsTable, Item> {
       const VerificationMeta('buyPrice');
   @override
   late final GeneratedColumn<double> buyPrice = GeneratedColumn<double>(
-      'buy_price', aliasedName, false,
-      type: DriftSqlType.double, requiredDuringInsert: true);
+      'buy_price', aliasedName, true,
+      type: DriftSqlType.double, requiredDuringInsert: false);
   static const VerificationMeta _priceMeta = const VerificationMeta('price');
   @override
   late final GeneratedColumn<double> price = GeneratedColumn<double>(
@@ -116,8 +116,6 @@ class $ItemsTable extends Items with TableInfo<$ItemsTable, Item> {
     if (data.containsKey('buy_price')) {
       context.handle(_buyPriceMeta,
           buyPrice.isAcceptableOrUnknown(data['buy_price']!, _buyPriceMeta));
-    } else if (isInserting) {
-      context.missing(_buyPriceMeta);
     }
     if (data.containsKey('price')) {
       context.handle(
@@ -155,7 +153,7 @@ class $ItemsTable extends Items with TableInfo<$ItemsTable, Item> {
       isStockManaged: attachedDatabase.typeMapping
           .read(DriftSqlType.bool, data['${effectivePrefix}is_stock_managed'])!,
       buyPrice: attachedDatabase.typeMapping
-          .read(DriftSqlType.double, data['${effectivePrefix}buy_price'])!,
+          .read(DriftSqlType.double, data['${effectivePrefix}buy_price']),
       price: attachedDatabase.typeMapping
           .read(DriftSqlType.double, data['${effectivePrefix}price'])!,
       imageUrl: attachedDatabase.typeMapping
@@ -177,7 +175,7 @@ class Item extends DataClass implements Insertable<Item> {
   final String? description;
   final int stock;
   final bool isStockManaged;
-  final double buyPrice;
+  final double? buyPrice;
   final double price;
   final String? imageUrl;
   final DateTime updatedAt;
@@ -187,7 +185,7 @@ class Item extends DataClass implements Insertable<Item> {
       this.description,
       required this.stock,
       required this.isStockManaged,
-      required this.buyPrice,
+      this.buyPrice,
       required this.price,
       this.imageUrl,
       required this.updatedAt});
@@ -201,7 +199,9 @@ class Item extends DataClass implements Insertable<Item> {
     }
     map['stock'] = Variable<int>(stock);
     map['is_stock_managed'] = Variable<bool>(isStockManaged);
-    map['buy_price'] = Variable<double>(buyPrice);
+    if (!nullToAbsent || buyPrice != null) {
+      map['buy_price'] = Variable<double>(buyPrice);
+    }
     map['price'] = Variable<double>(price);
     if (!nullToAbsent || imageUrl != null) {
       map['image_url'] = Variable<String>(imageUrl);
@@ -219,7 +219,9 @@ class Item extends DataClass implements Insertable<Item> {
           : Value(description),
       stock: Value(stock),
       isStockManaged: Value(isStockManaged),
-      buyPrice: Value(buyPrice),
+      buyPrice: buyPrice == null && nullToAbsent
+          ? const Value.absent()
+          : Value(buyPrice),
       price: Value(price),
       imageUrl: imageUrl == null && nullToAbsent
           ? const Value.absent()
@@ -237,7 +239,7 @@ class Item extends DataClass implements Insertable<Item> {
       description: serializer.fromJson<String?>(json['description']),
       stock: serializer.fromJson<int>(json['stock']),
       isStockManaged: serializer.fromJson<bool>(json['isStockManaged']),
-      buyPrice: serializer.fromJson<double>(json['buyPrice']),
+      buyPrice: serializer.fromJson<double?>(json['buyPrice']),
       price: serializer.fromJson<double>(json['price']),
       imageUrl: serializer.fromJson<String?>(json['imageUrl']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
@@ -252,7 +254,7 @@ class Item extends DataClass implements Insertable<Item> {
       'description': serializer.toJson<String?>(description),
       'stock': serializer.toJson<int>(stock),
       'isStockManaged': serializer.toJson<bool>(isStockManaged),
-      'buyPrice': serializer.toJson<double>(buyPrice),
+      'buyPrice': serializer.toJson<double?>(buyPrice),
       'price': serializer.toJson<double>(price),
       'imageUrl': serializer.toJson<String?>(imageUrl),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
@@ -265,7 +267,7 @@ class Item extends DataClass implements Insertable<Item> {
           Value<String?> description = const Value.absent(),
           int? stock,
           bool? isStockManaged,
-          double? buyPrice,
+          Value<double?> buyPrice = const Value.absent(),
           double? price,
           Value<String?> imageUrl = const Value.absent(),
           DateTime? updatedAt}) =>
@@ -275,7 +277,7 @@ class Item extends DataClass implements Insertable<Item> {
         description: description.present ? description.value : this.description,
         stock: stock ?? this.stock,
         isStockManaged: isStockManaged ?? this.isStockManaged,
-        buyPrice: buyPrice ?? this.buyPrice,
+        buyPrice: buyPrice.present ? buyPrice.value : this.buyPrice,
         price: price ?? this.price,
         imageUrl: imageUrl.present ? imageUrl.value : this.imageUrl,
         updatedAt: updatedAt ?? this.updatedAt,
@@ -337,7 +339,7 @@ class ItemsCompanion extends UpdateCompanion<Item> {
   final Value<String?> description;
   final Value<int> stock;
   final Value<bool> isStockManaged;
-  final Value<double> buyPrice;
+  final Value<double?> buyPrice;
   final Value<double> price;
   final Value<String?> imageUrl;
   final Value<DateTime> updatedAt;
@@ -358,12 +360,11 @@ class ItemsCompanion extends UpdateCompanion<Item> {
     this.description = const Value.absent(),
     this.stock = const Value.absent(),
     this.isStockManaged = const Value.absent(),
-    required double buyPrice,
+    this.buyPrice = const Value.absent(),
     required double price,
     this.imageUrl = const Value.absent(),
     required DateTime updatedAt,
   })  : name = Value(name),
-        buyPrice = Value(buyPrice),
         price = Value(price),
         updatedAt = Value(updatedAt);
   static Insertable<Item> custom({
@@ -396,7 +397,7 @@ class ItemsCompanion extends UpdateCompanion<Item> {
       Value<String?>? description,
       Value<int>? stock,
       Value<bool>? isStockManaged,
-      Value<double>? buyPrice,
+      Value<double?>? buyPrice,
       Value<double>? price,
       Value<String?>? imageUrl,
       Value<DateTime>? updatedAt}) {
@@ -541,6 +542,12 @@ class $TransactionsTable extends Transactions
   late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
       'created_at', aliasedName, false,
       type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  static const VerificationMeta _conflictDetailsMeta =
+      const VerificationMeta('conflictDetails');
+  @override
+  late final GeneratedColumn<String> conflictDetails = GeneratedColumn<String>(
+      'conflict_details', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
   @override
   List<GeneratedColumn> get $columns => [
         id,
@@ -553,7 +560,8 @@ class $TransactionsTable extends Transactions
         transactionType,
         note,
         syncStatus,
-        createdAt
+        createdAt,
+        conflictDetails
       ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -622,6 +630,12 @@ class $TransactionsTable extends Transactions
     } else if (isInserting) {
       context.missing(_createdAtMeta);
     }
+    if (data.containsKey('conflict_details')) {
+      context.handle(
+          _conflictDetailsMeta,
+          conflictDetails.isAcceptableOrUnknown(
+              data['conflict_details']!, _conflictDetailsMeta));
+    }
     return context;
   }
 
@@ -653,6 +667,8 @@ class $TransactionsTable extends Transactions
           .read(DriftSqlType.string, data['${effectivePrefix}sync_status'])!,
       createdAt: attachedDatabase.typeMapping
           .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
+      conflictDetails: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}conflict_details']),
     );
   }
 
@@ -674,6 +690,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
   final String? note;
   final String syncStatus;
   final DateTime createdAt;
+  final String? conflictDetails;
   const Transaction(
       {required this.id,
       this.serverId,
@@ -685,7 +702,8 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       required this.transactionType,
       this.note,
       required this.syncStatus,
-      required this.createdAt});
+      required this.createdAt,
+      this.conflictDetails});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -708,6 +726,9 @@ class Transaction extends DataClass implements Insertable<Transaction> {
     }
     map['sync_status'] = Variable<String>(syncStatus);
     map['created_at'] = Variable<DateTime>(createdAt);
+    if (!nullToAbsent || conflictDetails != null) {
+      map['conflict_details'] = Variable<String>(conflictDetails);
+    }
     return map;
   }
 
@@ -730,6 +751,9 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       note: note == null && nullToAbsent ? const Value.absent() : Value(note),
       syncStatus: Value(syncStatus),
       createdAt: Value(createdAt),
+      conflictDetails: conflictDetails == null && nullToAbsent
+          ? const Value.absent()
+          : Value(conflictDetails),
     );
   }
 
@@ -748,6 +772,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       note: serializer.fromJson<String?>(json['note']),
       syncStatus: serializer.fromJson<String>(json['syncStatus']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      conflictDetails: serializer.fromJson<String?>(json['conflictDetails']),
     );
   }
   @override
@@ -765,6 +790,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       'note': serializer.toJson<String?>(note),
       'syncStatus': serializer.toJson<String>(syncStatus),
       'createdAt': serializer.toJson<DateTime>(createdAt),
+      'conflictDetails': serializer.toJson<String?>(conflictDetails),
     };
   }
 
@@ -779,7 +805,8 @@ class Transaction extends DataClass implements Insertable<Transaction> {
           String? transactionType,
           Value<String?> note = const Value.absent(),
           String? syncStatus,
-          DateTime? createdAt}) =>
+          DateTime? createdAt,
+          Value<String?> conflictDetails = const Value.absent()}) =>
       Transaction(
         id: id ?? this.id,
         serverId: serverId.present ? serverId.value : this.serverId,
@@ -793,6 +820,9 @@ class Transaction extends DataClass implements Insertable<Transaction> {
         note: note.present ? note.value : this.note,
         syncStatus: syncStatus ?? this.syncStatus,
         createdAt: createdAt ?? this.createdAt,
+        conflictDetails: conflictDetails.present
+            ? conflictDetails.value
+            : this.conflictDetails,
       );
   Transaction copyWithCompanion(TransactionsCompanion data) {
     return Transaction(
@@ -813,6 +843,9 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       syncStatus:
           data.syncStatus.present ? data.syncStatus.value : this.syncStatus,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      conflictDetails: data.conflictDetails.present
+          ? data.conflictDetails.value
+          : this.conflictDetails,
     );
   }
 
@@ -829,14 +862,26 @@ class Transaction extends DataClass implements Insertable<Transaction> {
           ..write('transactionType: $transactionType, ')
           ..write('note: $note, ')
           ..write('syncStatus: $syncStatus, ')
-          ..write('createdAt: $createdAt')
+          ..write('createdAt: $createdAt, ')
+          ..write('conflictDetails: $conflictDetails')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, serverId, status, total, discount,
-      paymentAmount, paymentType, transactionType, note, syncStatus, createdAt);
+  int get hashCode => Object.hash(
+      id,
+      serverId,
+      status,
+      total,
+      discount,
+      paymentAmount,
+      paymentType,
+      transactionType,
+      note,
+      syncStatus,
+      createdAt,
+      conflictDetails);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -851,7 +896,8 @@ class Transaction extends DataClass implements Insertable<Transaction> {
           other.transactionType == this.transactionType &&
           other.note == this.note &&
           other.syncStatus == this.syncStatus &&
-          other.createdAt == this.createdAt);
+          other.createdAt == this.createdAt &&
+          other.conflictDetails == this.conflictDetails);
 }
 
 class TransactionsCompanion extends UpdateCompanion<Transaction> {
@@ -866,6 +912,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
   final Value<String?> note;
   final Value<String> syncStatus;
   final Value<DateTime> createdAt;
+  final Value<String?> conflictDetails;
   const TransactionsCompanion({
     this.id = const Value.absent(),
     this.serverId = const Value.absent(),
@@ -878,6 +925,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     this.note = const Value.absent(),
     this.syncStatus = const Value.absent(),
     this.createdAt = const Value.absent(),
+    this.conflictDetails = const Value.absent(),
   });
   TransactionsCompanion.insert({
     this.id = const Value.absent(),
@@ -891,6 +939,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     this.note = const Value.absent(),
     this.syncStatus = const Value.absent(),
     required DateTime createdAt,
+    this.conflictDetails = const Value.absent(),
   })  : status = Value(status),
         total = Value(total),
         createdAt = Value(createdAt);
@@ -906,6 +955,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     Expression<String>? note,
     Expression<String>? syncStatus,
     Expression<DateTime>? createdAt,
+    Expression<String>? conflictDetails,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -919,6 +969,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
       if (note != null) 'note': note,
       if (syncStatus != null) 'sync_status': syncStatus,
       if (createdAt != null) 'created_at': createdAt,
+      if (conflictDetails != null) 'conflict_details': conflictDetails,
     });
   }
 
@@ -933,7 +984,8 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
       Value<String>? transactionType,
       Value<String?>? note,
       Value<String>? syncStatus,
-      Value<DateTime>? createdAt}) {
+      Value<DateTime>? createdAt,
+      Value<String?>? conflictDetails}) {
     return TransactionsCompanion(
       id: id ?? this.id,
       serverId: serverId ?? this.serverId,
@@ -946,6 +998,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
       note: note ?? this.note,
       syncStatus: syncStatus ?? this.syncStatus,
       createdAt: createdAt ?? this.createdAt,
+      conflictDetails: conflictDetails ?? this.conflictDetails,
     );
   }
 
@@ -985,6 +1038,9 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
+    if (conflictDetails.present) {
+      map['conflict_details'] = Variable<String>(conflictDetails.value);
+    }
     return map;
   }
 
@@ -1001,7 +1057,8 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
           ..write('transactionType: $transactionType, ')
           ..write('note: $note, ')
           ..write('syncStatus: $syncStatus, ')
-          ..write('createdAt: $createdAt')
+          ..write('createdAt: $createdAt, ')
+          ..write('conflictDetails: $conflictDetails')
           ..write(')'))
         .toString();
   }
@@ -1456,7 +1513,7 @@ typedef $$ItemsTableCreateCompanionBuilder = ItemsCompanion Function({
   Value<String?> description,
   Value<int> stock,
   Value<bool> isStockManaged,
-  required double buyPrice,
+  Value<double?> buyPrice,
   required double price,
   Value<String?> imageUrl,
   required DateTime updatedAt,
@@ -1467,7 +1524,7 @@ typedef $$ItemsTableUpdateCompanionBuilder = ItemsCompanion Function({
   Value<String?> description,
   Value<int> stock,
   Value<bool> isStockManaged,
-  Value<double> buyPrice,
+  Value<double?> buyPrice,
   Value<double> price,
   Value<String?> imageUrl,
   Value<DateTime> updatedAt,
@@ -1613,7 +1670,7 @@ class $$ItemsTableTableManager extends RootTableManager<
             Value<String?> description = const Value.absent(),
             Value<int> stock = const Value.absent(),
             Value<bool> isStockManaged = const Value.absent(),
-            Value<double> buyPrice = const Value.absent(),
+            Value<double?> buyPrice = const Value.absent(),
             Value<double> price = const Value.absent(),
             Value<String?> imageUrl = const Value.absent(),
             Value<DateTime> updatedAt = const Value.absent(),
@@ -1635,7 +1692,7 @@ class $$ItemsTableTableManager extends RootTableManager<
             Value<String?> description = const Value.absent(),
             Value<int> stock = const Value.absent(),
             Value<bool> isStockManaged = const Value.absent(),
-            required double buyPrice,
+            Value<double?> buyPrice = const Value.absent(),
             required double price,
             Value<String?> imageUrl = const Value.absent(),
             required DateTime updatedAt,
@@ -1683,6 +1740,7 @@ typedef $$TransactionsTableCreateCompanionBuilder = TransactionsCompanion
   Value<String?> note,
   Value<String> syncStatus,
   required DateTime createdAt,
+  Value<String?> conflictDetails,
 });
 typedef $$TransactionsTableUpdateCompanionBuilder = TransactionsCompanion
     Function({
@@ -1697,6 +1755,7 @@ typedef $$TransactionsTableUpdateCompanionBuilder = TransactionsCompanion
   Value<String?> note,
   Value<String> syncStatus,
   Value<DateTime> createdAt,
+  Value<String?> conflictDetails,
 });
 
 final class $$TransactionsTableReferences
@@ -1764,6 +1823,10 @@ class $$TransactionsTableFilterComposer
   ColumnFilters<DateTime> get createdAt => $composableBuilder(
       column: $table.createdAt, builder: (column) => ColumnFilters(column));
 
+  ColumnFilters<String> get conflictDetails => $composableBuilder(
+      column: $table.conflictDetails,
+      builder: (column) => ColumnFilters(column));
+
   Expression<bool> transactionItemsRefs(
       Expression<bool> Function($$TransactionItemsTableFilterComposer f) f) {
     final $$TransactionItemsTableFilterComposer composer = $composerBuilder(
@@ -1829,6 +1892,10 @@ class $$TransactionsTableOrderingComposer
 
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
       column: $table.createdAt, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get conflictDetails => $composableBuilder(
+      column: $table.conflictDetails,
+      builder: (column) => ColumnOrderings(column));
 }
 
 class $$TransactionsTableAnnotationComposer
@@ -1872,6 +1939,9 @@ class $$TransactionsTableAnnotationComposer
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<String> get conflictDetails => $composableBuilder(
+      column: $table.conflictDetails, builder: (column) => column);
 
   Expression<T> transactionItemsRefs<T extends Object>(
       Expression<T> Function($$TransactionItemsTableAnnotationComposer a) f) {
@@ -1929,6 +1999,7 @@ class $$TransactionsTableTableManager extends RootTableManager<
             Value<String?> note = const Value.absent(),
             Value<String> syncStatus = const Value.absent(),
             Value<DateTime> createdAt = const Value.absent(),
+            Value<String?> conflictDetails = const Value.absent(),
           }) =>
               TransactionsCompanion(
             id: id,
@@ -1942,6 +2013,7 @@ class $$TransactionsTableTableManager extends RootTableManager<
             note: note,
             syncStatus: syncStatus,
             createdAt: createdAt,
+            conflictDetails: conflictDetails,
           ),
           createCompanionCallback: ({
             Value<int> id = const Value.absent(),
@@ -1955,6 +2027,7 @@ class $$TransactionsTableTableManager extends RootTableManager<
             Value<String?> note = const Value.absent(),
             Value<String> syncStatus = const Value.absent(),
             required DateTime createdAt,
+            Value<String?> conflictDetails = const Value.absent(),
           }) =>
               TransactionsCompanion.insert(
             id: id,
@@ -1968,6 +2041,7 @@ class $$TransactionsTableTableManager extends RootTableManager<
             note: note,
             syncStatus: syncStatus,
             createdAt: createdAt,
+            conflictDetails: conflictDetails,
           ),
           withReferenceMapper: (p0) => p0
               .map((e) => (

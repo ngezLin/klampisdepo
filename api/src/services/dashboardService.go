@@ -26,8 +26,12 @@ func (s *dashboardService) GetDashboardStats() (*dtos.DashboardStats, error) {
 	var lowStock int64
 	var topItems []dtos.TopItem
 
-	today := time.Now().Format("2006-01-02")
-	thisMonth := time.Now().Format("2006-01")
+	now := time.Now()
+	todayStart := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+	todayEnd := todayStart.AddDate(0, 0, 1)
+
+	monthStart := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, now.Location())
+	monthEnd := monthStart.AddDate(0, 1, 0)
 
 	// Calculate today's profit and omzet using SQL aggregation (no loading into Go memory)
 	var todayResult struct {
@@ -41,7 +45,7 @@ func (s *dashboardService) GetDashboardStats() (*dtos.DashboardStats, error) {
 		).
 		Joins("JOIN transactions ON transactions.id = transaction_items.transaction_id").
 		Joins("JOIN items ON items.id = transaction_items.item_id").
-		Where("transactions.status = ? AND DATE(transactions.created_at) = ? AND transactions.deleted_at IS NULL", "completed", today).
+		Where("transactions.status = ? AND transactions.created_at >= ? AND transactions.created_at < ? AND transactions.deleted_at IS NULL", "completed", todayStart, todayEnd).
 		Scan(&todayResult).Error; err != nil {
 		return nil, err
 	}
@@ -60,7 +64,7 @@ func (s *dashboardService) GetDashboardStats() (*dtos.DashboardStats, error) {
 		).
 		Joins("JOIN transactions ON transactions.id = transaction_items.transaction_id").
 		Joins("JOIN items ON items.id = transaction_items.item_id").
-		Where("transactions.status = ? AND DATE_FORMAT(transactions.created_at, '%Y-%m') = ? AND transactions.deleted_at IS NULL", "completed", thisMonth).
+		Where("transactions.status = ? AND transactions.created_at >= ? AND transactions.created_at < ? AND transactions.deleted_at IS NULL", "completed", monthStart, monthEnd).
 		Scan(&monthlyResult).Error; err != nil {
 		return nil, err
 	}
@@ -69,7 +73,7 @@ func (s *dashboardService) GetDashboardStats() (*dtos.DashboardStats, error) {
 
 	// Count today's transactions
 	if err := config.DB.Model(&models.Transaction{}).
-		Where("status = ? AND DATE(created_at) = ?", "completed", today).
+		Where("status = ? AND created_at >= ? AND created_at < ?", "completed", todayStart, todayEnd).
 		Count(&todayTransactions).Error; err != nil {
 		return nil, err
 	}
@@ -79,24 +83,17 @@ func (s *dashboardService) GetDashboardStats() (*dtos.DashboardStats, error) {
 		return nil, err
 	}
 
-	// Get top selling items (top 5)
+	// Get top selling items (top 5) using JOIN to fetch names directly in a single query
 	if err := config.DB.Model(&models.TransactionItem{}).
-		Select("item_id, SUM(quantity) as quantity").
+		Select("transaction_items.item_id, items.name, SUM(transaction_items.quantity) as quantity").
 		Joins("JOIN transactions ON transactions.id = transaction_items.transaction_id").
-		Where("transactions.status = ?", "completed").
-		Group("item_id").
+		Joins("JOIN items ON items.id = transaction_items.item_id").
+		Where("transactions.status = ? AND transactions.deleted_at IS NULL", "completed").
+		Group("transaction_items.item_id, items.name").
 		Order("quantity desc").
 		Limit(5).
 		Scan(&topItems).Error; err != nil {
 		return nil, err
-	}
-
-	// Populate item names for top items
-	for i, ti := range topItems {
-		var item models.Item
-		if err := config.DB.First(&item, ti.ItemID).Error; err == nil {
-			topItems[i].Name = item.Name
-		}
 	}
 
 	return &dtos.DashboardStats{

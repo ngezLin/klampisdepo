@@ -13,17 +13,28 @@ class MainLayout extends ConsumerWidget {
     final authState = ref.watch(authProvider);
     final role = authState.role;
 
+    final showDashboardTab = role == 'owner';
     final showItemTab = role == 'admin' || role == 'owner';
     final showHistoryTab = role == 'admin' || role == 'owner' || role == 'cashier';
 
-    final List<NavigationDestination> destinations = [
-      const NavigationDestination(
-        icon: Icon(Icons.shopping_cart_outlined),
-        selectedIcon: Icon(Icons.shopping_cart),
-        label: 'Transaksi',
-      ),
-    ];
-    final List<String> paths = ['/'];
+    final List<NavigationDestination> destinations = [];
+    final List<String> paths = [];
+
+    if (showDashboardTab) {
+      destinations.add(const NavigationDestination(
+        icon: Icon(Icons.analytics_outlined),
+        selectedIcon: Icon(Icons.analytics),
+        label: 'Dashboard',
+      ));
+      paths.add('/dashboard');
+    }
+
+    destinations.add(const NavigationDestination(
+      icon: Icon(Icons.shopping_cart_outlined),
+      selectedIcon: Icon(Icons.shopping_cart),
+      label: 'Transaksi',
+    ));
+    paths.add('/');
 
     if (showItemTab) {
       destinations.add(const NavigationDestination(

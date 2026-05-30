@@ -8,6 +8,7 @@ import '../../features/item/ui/item_list_screen.dart';
 import '../../features/riwayat/ui/riwayat_screen.dart';
 import '../../features/akun/ui/akun_screen.dart';
 import '../../features/auth/providers/auth_provider.dart';
+import '../../features/dashboard/ui/dashboard_screen.dart';
 
 part 'router.g.dart';
 
@@ -34,6 +35,10 @@ GoRouter router(RouterRef ref) {
       ShellRoute(
         builder: (context, state, child) => MainLayout(child: child),
         routes: [
+          GoRoute(
+            path: '/dashboard',
+            builder: (context, state) => const DashboardScreen(),
+          ),
           GoRoute(
             path: '/',
             builder: (context, state) => const TransaksiScreen(),

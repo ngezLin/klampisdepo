@@ -23,8 +23,8 @@ class MyApp extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final router = ref.watch(routerProvider);
     
-    // Initialize offline sync service so it starts monitoring connectivity
-    ref.read(offlineSyncServiceProvider);
+    // Initialize offline sync service reactively so it starts monitoring connectivity
+    ref.watch(offlineSyncServiceProvider);
     
     return MaterialApp.router(
       title: 'KlampisDepo POS',

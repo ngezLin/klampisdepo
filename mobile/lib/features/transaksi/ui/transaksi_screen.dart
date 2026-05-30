@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -9,6 +10,7 @@ import '../../../services/sync/offline_sync_service.dart';
 import '../../../services/printer/printer_service.dart';
 import '../../riwayat/ui/riwayat_screen.dart';
 import '../../../core/theme/notification_helper.dart';
+import '../../cash_session/providers/cash_session_provider.dart';
 
 class TransaksiScreen extends ConsumerStatefulWidget {
   const TransaksiScreen({super.key});
@@ -19,6 +21,7 @@ class TransaksiScreen extends ConsumerStatefulWidget {
 
 class _TransaksiScreenState extends ConsumerState<TransaksiScreen> {
   final _searchController = TextEditingController();
+  final _searchFocusNode = FocusNode();
   final _currencyFormat = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
   final _scrollController = ScrollController();
 
@@ -26,19 +29,47 @@ class _TransaksiScreenState extends ConsumerState<TransaksiScreen> {
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _searchFocusNode.requestFocus();
+    });
   }
 
   @override
   void dispose() {
+    _searchScrollFocusNodeDispose();
+    super.dispose();
+  }
+
+  void _searchScrollFocusNodeDispose() {
     _scrollController.dispose();
     _searchController.dispose();
-    super.dispose();
+    _searchFocusNode.dispose();
   }
 
   void _onScroll() {
     if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 200) {
       final searchQuery = ref.read(transaksiSearchQueryProvider);
       ref.read(paginatedItemsProvider(searchQuery).notifier).loadNextPage();
+    }
+  }
+
+  void _handleBarcodeScan(String val) {
+    if (val.trim().isEmpty) return;
+    final searchQuery = ref.read(transaksiSearchQueryProvider);
+    final paginatedState = ref.read(paginatedItemsProvider(searchQuery));
+
+    if (paginatedState.items.length == 1) {
+      final matchedItem = paginatedState.items.first;
+      ref.read(transaksiProvider.notifier).addToCart(matchedItem);
+      showTopSnackBar(
+        context,
+        '📥 "${matchedItem.name}" ditambahkan!',
+      );
+      _searchController.clear();
+      ref.read(transaksiSearchQueryProvider.notifier).state = '';
+      _searchFocusNode.requestFocus();
+    } else {
+      _searchFocusNode.requestFocus();
     }
   }
 
@@ -53,22 +84,41 @@ class _TransaksiScreenState extends ConsumerState<TransaksiScreen> {
       appBar: AppBar(
         title: const Text('Transaksi'),
         actions: [
-          // Pending sync badge
+          // Persistent sync status indicator
           Consumer(
             builder: (context, ref, _) {
-              final pendingCount = ref.watch(pendingSyncCountProvider);
-              return pendingCount.when(
-                data: (count) {
-                  if (count == 0) return const SizedBox.shrink();
+              final syncStatus = ref.watch(syncStatusStateProvider);
+              final pendingCount = ref.watch(pendingSyncCountProvider).valueOrNull ?? 0;
+              final conflictCount = ref.watch(conflictCountProvider).valueOrNull ?? 0;
+
+              switch (syncStatus) {
+                case AppSyncStatus.synced:
+                  return const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 12),
+                    child: Tooltip(
+                      message: 'Synced ✅',
+                      child: Icon(Icons.cloud_done, color: Colors.green),
+                    ),
+                  );
+                case AppSyncStatus.syncing:
+                  return const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 12),
+                    child: SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.orange),
+                    ),
+                  );
+                case AppSyncStatus.pendingSync:
                   return Padding(
                     padding: const EdgeInsets.only(right: 4),
                     child: IconButton(
                       icon: Badge(
-                        label: Text('$count'),
+                        label: Text('$pendingCount'),
                         backgroundColor: Colors.orange,
-                        child: const Icon(Icons.cloud_off_outlined),
+                        child: const Icon(Icons.cloud_upload_outlined, color: Colors.orange),
                       ),
-                      tooltip: '$count transaksi menunggu sync',
+                      tooltip: 'Pending sync ⏳ (Ketuk untuk sync sekarang)',
                       onPressed: () async {
                         final result = await ref.read(transaksiProvider.notifier).syncNow();
                         if (context.mounted) {
@@ -80,10 +130,26 @@ class _TransaksiScreenState extends ConsumerState<TransaksiScreen> {
                       },
                     ),
                   );
-                },
-                loading: () => const SizedBox.shrink(),
-                error: (_, __) => const SizedBox.shrink(),
-              );
+                case AppSyncStatus.conflict:
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 4),
+                    child: IconButton(
+                      icon: Badge(
+                        label: Text('$conflictCount'),
+                        backgroundColor: Colors.red,
+                        child: const Icon(Icons.warning_amber_rounded, color: Colors.red),
+                      ),
+                      tooltip: 'Konflik harga terdeteksi! ⚠️ (Ketuk untuk selesaikan)',
+                      onPressed: () {
+                        showDialog(
+                          context: context,
+                          barrierDismissible: false,
+                          builder: (context) => const _ConflictResolutionDialog(),
+                        );
+                      },
+                    ),
+                  );
+              }
             },
           ),
           IconButton(
@@ -116,11 +182,15 @@ class _TransaksiScreenState extends ConsumerState<TransaksiScreen> {
                 Padding(
                   padding: const EdgeInsets.all(12),
                   child: SearchBar(
+                    focusNode: _searchFocusNode,
                     controller: _searchController,
                     hintText: 'Cari item...',
                     leading: const Icon(Icons.search),
                     onChanged: (val) {
                       ref.read(transaksiSearchQueryProvider.notifier).state = val;
+                    },
+                    onSubmitted: (val) {
+                      _handleBarcodeScan(val);
                     },
                   ),
                 ),
@@ -324,6 +394,128 @@ class _ItemCard extends StatelessWidget {
 
 class _CartPanel extends ConsumerWidget {
   const _CartPanel();
+
+  Future<void> _openScaleDialog(BuildContext context, WidgetRef ref, CartItem cartItem) async {
+    double weight = 1.0;
+    bool isScanning = true;
+    bool isConnected = false;
+
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            if (isScanning) {
+              Future.delayed(const Duration(seconds: 1), () {
+                if (context.mounted) {
+                  setState(() {
+                    isScanning = false;
+                    isConnected = true;
+                  });
+                }
+              });
+            }
+
+            final double calculatedPrice = cartItem.item.price * weight;
+            final currencyFormat = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
+
+            return AlertDialog(
+              title: const Row(
+                children: [
+                  Icon(Icons.scale, color: Color(0xFF00AA5B)),
+                  SizedBox(width: 8),
+                  Text('Timbangan Bluetooth', style: TextStyle(fontWeight: FontWeight.bold)),
+                ],
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (isScanning) ...[
+                    const SizedBox(height: 16),
+                    const Center(child: CircularProgressIndicator()),
+                    const SizedBox(height: 16),
+                    const Text('Mencari timbangan Bluetooth... ⚖️', style: TextStyle(fontStyle: FontStyle.italic)),
+                  ] else ...[
+                    Container(
+                      padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+                      decoration: BoxDecoration(
+                        color: Colors.black,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.green, width: 2),
+                      ),
+                      child: Center(
+                        child: Text(
+                          '${weight.toStringAsFixed(2)} kg',
+                          style: const TextStyle(
+                            fontFamily: 'monospace',
+                            fontSize: 48,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.greenAccent,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.bluetooth_connected, color: Colors.blue, size: 16),
+                        SizedBox(width: 4),
+                        Text('KD-Scale Pro Terhubung', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Harga Item: ${currencyFormat.format(cartItem.item.price)} / kg',
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                    Text(
+                      'Subtotal Timbang: ${currencyFormat.format(calculatedPrice)}',
+                      style: TextStyle(fontWeight: FontWeight.bold, color: Theme.of(context).primaryColor, fontSize: 16),
+                    ),
+                    const SizedBox(height: 24),
+                    const Text('Simulasi Beban Timbangan (Geser Slider):', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                    Slider(
+                      value: weight,
+                      min: 0.1,
+                      max: 10.0,
+                      divisions: 99,
+                      label: '${weight.toStringAsFixed(2)} kg',
+                      onChanged: (val) {
+                        setState(() {
+                          weight = val;
+                        });
+                      },
+                    ),
+                  ],
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Batal'),
+                ),
+                if (!isScanning && isConnected)
+                  ElevatedButton(
+                    onPressed: () {
+                      ref.read(transaksiProvider.notifier).setCustomPrice(cartItem.item.id, calculatedPrice);
+                      ref.read(transaksiProvider.notifier).updateQuantity(cartItem.item.id, 1 - cartItem.quantity);
+                      Navigator.pop(context);
+                      showTopSnackBar(
+                        context,
+                        '⚖️ Hasil timbang ${weight.toStringAsFixed(2)} kg berhasil diterapkan!',
+                      );
+                    },
+                    child: const Text('Gunakan Berat'),
+                  ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
 
   Future<void> _editCustomPrice(BuildContext context, WidgetRef ref, CartItem item) async {
     final textController = TextEditingController(
@@ -531,6 +723,11 @@ class _CartPanel extends ConsumerWidget {
                 trailing: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    IconButton(
+                      icon: const Icon(Icons.scale, color: Color(0xFF00AA5B)),
+                      tooltip: 'Timbang Item',
+                      onPressed: () => _openScaleDialog(context, ref, item),
+                    ),
                     IconButton(
                       icon: const Icon(Icons.remove_circle_outline),
                       onPressed: () => ref.read(transaksiProvider.notifier).updateQuantity(item.item.id, -1),
@@ -907,9 +1104,17 @@ class _CheckoutSheetContentState extends ConsumerState<_CheckoutSheetContent> {
               onPressed: (state.paymentType == 'cash' && state.change < 0) || state.isSubmitting
                   ? null
                   : () async {
+                      if (state.paymentType == 'cash') {
+                        final sessionState = ref.read(cashSessionProvider);
+                        if (!sessionState.isOpen) {
+                          _showOpenSessionDialog(context);
+                          return;
+                        }
+                      }
+
                       final notifier = ref.read(transaksiProvider.notifier);
-                      final success = await notifier.checkout();
-                      if (success && context.mounted) {
+                      final result = await notifier.checkout();
+                      if (result.success && context.mounted) {
                         // Invalidate history provider so it displays this new transaction automatically
                         ref.invalidate(historyProvider);
                         // Check if checkout was saved offline
@@ -921,7 +1126,7 @@ class _CheckoutSheetContentState extends ConsumerState<_CheckoutSheetContent> {
                               ? '📴 Transaksi disimpan offline. Akan otomatis sync saat koneksi kembali.'
                               : '✅ Transaksi Berhasil Disimpan!',
                           backgroundColor: wasOffline ? Colors.orange[700] : null,
-                          duration: Duration(seconds: wasOffline ? 4 : 2),
+                          duration: const Duration(seconds: 4),
                         );
                       } else if (context.mounted) {
                         showTopSnackBar(
@@ -944,6 +1149,109 @@ class _CheckoutSheetContentState extends ConsumerState<_CheckoutSheetContent> {
           ],
         ),
       ),
+    );
+  }
+
+  void _showOpenSessionDialog(BuildContext context) {
+    final cashController = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+    bool isSubmitting = false;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: const Row(
+                children: [
+                  Icon(Icons.lock_open, color: Color(0xFF00AA5B)),
+                  SizedBox(width: 8),
+                  Text('Buka Shift Kasir', style: TextStyle(fontWeight: FontWeight.bold)),
+                ],
+              ),
+              content: Form(
+                key: formKey,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Laci kas belum terbuka. Masukkan jumlah modal awal di laci kas untuk memulai shift.'),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: cashController,
+                      keyboardType: TextInputType.number,
+                      autofocus: true,
+                      decoration: InputDecoration(
+                        labelText: 'Modal Awal (Rupiah)',
+                        prefixText: 'Rp ',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      validator: (val) {
+                        if (val == null || val.isEmpty) {
+                          return 'Harap masukkan modal awal';
+                        }
+                        if (double.tryParse(val) == null) {
+                          return 'Harus berupa angka';
+                        }
+                        if (double.parse(val) < 0) {
+                          return 'Tidak boleh kurang dari 0';
+                        }
+                        return null;
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: isSubmitting ? null : () => Navigator.pop(context),
+                  child: const Text('Batal'),
+                ),
+                ElevatedButton(
+                  onPressed: isSubmitting
+                      ? null
+                      : () async {
+                          if (!formKey.currentState!.validate()) return;
+                          setState(() => isSubmitting = true);
+                          final startingCash = double.parse(cashController.text.trim());
+                          final success = await ref.read(cashSessionProvider.notifier).openSession(startingCash);
+                          setState(() => isSubmitting = false);
+                          if (success && context.mounted) {
+                            Navigator.pop(context); // Close open session dialog
+                            showTopSnackBar(context, 'Shift Kasir Berhasil Dibuka!');
+                            
+                            // Re-trigger checkout since they successfully opened the session!
+                            final result = await ref.read(transaksiProvider.notifier).checkout();
+                            if (result.success && context.mounted) {
+                              ref.invalidate(historyProvider);
+                              final wasOffline = ref.read(transaksiProvider).lastCheckoutWasOffline;
+                              Navigator.pop(context); // Close checkout sheet
+                              showTopSnackBar(
+                                context,
+                                wasOffline
+                                    ? '📴 Transaksi disimpan offline. Akan otomatis sync saat koneksi kembali.'
+                                    : '✅ Transaksi Berhasil Disimpan!',
+                                backgroundColor: wasOffline ? Colors.orange[700] : null,
+                              );
+                            }
+                          } else if (context.mounted) {
+                            final err = ref.read(cashSessionProvider).error ?? 'Gagal membuka shift.';
+                            showTopSnackBar(context, err, backgroundColor: Colors.red[700]);
+                          }
+                        },
+                  child: isSubmitting
+                      ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                      : const Text('Buka Shift'),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 }
@@ -975,7 +1283,7 @@ class _DraftsDialog extends ConsumerWidget {
                 final int id = draft['id'] as int;
                 final double total = (draft['total'] as num).toDouble();
                 final String dateStr = draft['created_at'] as String;
-                final String formattedDate = dateFormat.format(DateTime.parse(dateStr));
+                final String formattedDate = dateFormat.format(DateTime.parse(dateStr).toLocal());
                 final String? note = draft['note'] as String?;
                 final itemsList = draft['items'] as List<dynamic>;
 
@@ -1241,6 +1549,141 @@ class _PrinterSetupDialogState extends ConsumerState<_PrinterSetupDialog> {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _ConflictResolutionDialog extends ConsumerStatefulWidget {
+  const _ConflictResolutionDialog();
+
+  @override
+  ConsumerState<_ConflictResolutionDialog> createState() => _ConflictResolutionDialogState();
+}
+
+class _ConflictResolutionDialogState extends ConsumerState<_ConflictResolutionDialog> {
+  bool _isLoading = true;
+  List<dynamic> _conflictedTxs = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadConflicts();
+  }
+
+  Future<void> _loadConflicts() async {
+    setState(() => _isLoading = true);
+    final db = ref.read(appDatabaseProvider);
+    final conflicted = await (db.select(db.transactions)
+          ..where((t) => t.syncStatus.equals('conflict')))
+        .get();
+
+    if (mounted) {
+      setState(() {
+        _conflictedTxs = conflicted;
+        _isLoading = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final currencyFormat = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
+
+    return AlertDialog(
+      title: const Row(
+        children: [
+          Icon(Icons.warning_amber_rounded, color: Colors.red),
+          SizedBox(width: 8),
+          Text('Konflik Harga Offline', style: TextStyle(fontWeight: FontWeight.bold)),
+        ],
+      ),
+      content: SizedBox(
+        width: double.maxFinite,
+        height: 450,
+        child: _isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : _conflictedTxs.isEmpty
+                ? const Center(child: Text('Semua konflik telah diselesaikan!'))
+                : ListView.separated(
+                    itemCount: _conflictedTxs.length,
+                    separatorBuilder: (_, __) => const Divider(height: 32),
+                    itemBuilder: (context, index) {
+                      final tx = _conflictedTxs[index];
+                      final int txId = tx.id;
+                      final List<dynamic> conflicts = json.decode(tx.conflictDetails ?? '[]');
+
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Transaksi #$txId (Total Offline: ${currencyFormat.format(tx.total)})',
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                          ),
+                          const SizedBox(height: 8),
+                          ...conflicts.map((c) {
+                            final itemName = c['item_name'] ?? '-';
+                            final double checkoutPrice = (c['checkout_price'] as num).toDouble();
+                            final double serverPrice = (c['server_price'] as num).toDouble();
+                            final int qty = (c['quantity'] as num).toInt();
+
+                            return Container(
+                              margin: const EdgeInsets.only(bottom: 8),
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Colors.grey[50],
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: Colors.grey[200]!),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(itemName, style: const TextStyle(fontWeight: FontWeight.w600)),
+                                  const SizedBox(height: 4),
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text('Offline ($qty x): ${currencyFormat.format(checkoutPrice)}', style: const TextStyle(color: Colors.red, fontSize: 12)),
+                                      Text('Server: ${currencyFormat.format(serverPrice)}', style: const TextStyle(color: Colors.green, fontSize: 12)),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            );
+                          }).toList(),
+                          const SizedBox(height: 12),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: [
+                              OutlinedButton(
+                                onPressed: () async {
+                                  setState(() => _isLoading = true);
+                                  await ref.read(offlineSyncServiceProvider).resolveConflictKeepOffline(txId);
+                                  await _loadConflicts();
+                                },
+                                child: const Text('Tetap Harga Offline', style: TextStyle(fontSize: 12)),
+                              ),
+                              const SizedBox(width: 8),
+                              ElevatedButton(
+                                onPressed: () async {
+                                  setState(() => _isLoading = true);
+                                  await ref.read(offlineSyncServiceProvider).resolveConflictUseServerPrice(txId);
+                                  await _loadConflicts();
+                                },
+                                child: const Text('Gunakan Harga Server', style: TextStyle(fontSize: 12)),
+                              ),
+                            ],
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Tutup'),
+        ),
+      ],
     );
   }
 }

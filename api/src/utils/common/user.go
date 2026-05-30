@@ -19,14 +19,21 @@ func GetUserID(c *gin.Context) *uint {
 	
 	for _, key := range keys {
 		if value, exists := c.Get(key); exists {
-			switch v := value.(type) {
+			switch val := value.(type) {
 			case uint:
-				return &v
-			case int, int64, uint64:
-				id := uint(v.(int))
+				id := val
+				return &id
+			case int:
+				id := uint(val)
+				return &id
+			case int64:
+				id := uint(val)
+				return &id
+			case uint64:
+				id := uint(val)
 				return &id
 			case float64:
-				id := uint(v)
+				id := uint(val)
 				return &id
 			}
 		}

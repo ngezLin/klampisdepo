@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../../core/network/dio_client.dart';
 import '../../../core/theme/notification_helper.dart';
+import '../../../services/printer/printer_service.dart';
 
 class RiwayatScreen extends ConsumerStatefulWidget {
   const RiwayatScreen({super.key});
@@ -138,7 +139,7 @@ class _RiwayatScreenState extends ConsumerState<RiwayatScreen> {
                                   children: [
                                     const SizedBox(height: 4),
                                     Text(_currencyFormat.format(tx['total']), style: TextStyle(color: Theme.of(context).primaryColor, fontWeight: FontWeight.bold)),
-                                    Text(_dateFormat.format(DateTime.parse(tx['created_at']))),
+                                    Text(_dateFormat.format(DateTime.parse(tx['created_at']).toLocal())),
                                   ],
                                 ),
                                 trailing: const Icon(Icons.chevron_right),
@@ -260,7 +261,7 @@ class _ReceiptDetailDialog extends ConsumerWidget {
     final double total = (tx['total'] as num).toDouble();
     final double discount = (tx['discount'] as num?)?.toDouble() ?? 0.0;
     final String dateStr = tx['created_at'];
-    final String formattedDate = dateFormat.format(DateTime.parse(dateStr));
+    final String formattedDate = dateFormat.format(DateTime.parse(dateStr).toLocal());
     final String? note = tx['note'];
     final String paymentType = tx['payment_type'] ?? 'CASH';
     final double? paymentAmount = tx['payment'] != null ? (tx['payment'] as num).toDouble() : null;
@@ -380,6 +381,48 @@ class _ReceiptDetailDialog extends ConsumerWidget {
               ],
               if (status == 'completed') ...[
                 const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Theme.of(context).primaryColor,
+                      foregroundColor: Colors.white,
+                    ),
+                    icon: const Icon(Icons.print),
+                    label: const Text('CETAK STRUK (REPRINT)'),
+                    onPressed: () async {
+                      final printer = ref.read(printerServiceProvider);
+                      if (printer.isConnected) {
+                        final success = await printer.printReceipt(tx);
+                        if (context.mounted) {
+                          showTopSnackBar(
+                            context,
+                            success ? 'Struk berhasil dicetak!' : 'Gagal mencetak: ${printer.lastError}',
+                            backgroundColor: success ? null : Colors.red[700],
+                          );
+                        }
+                      } else {
+                        showTopSnackBar(
+                          context,
+                          '⚠️ Printer belum terhubung! Silakan hubungkan printer di menu Transaksi.',
+                          backgroundColor: Colors.amber[800],
+                        );
+                      }
+                    },
+                  ),
+                ),
+                const SizedBox(height: 8),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    icon: const Icon(Icons.share),
+                    label: const Text('BAGIKAN STRUK (DIGITAL)'),
+                    onPressed: () async {
+                      await ref.read(printerServiceProvider).shareReceipt(tx);
+                    },
+                  ),
+                ),
+                const SizedBox(height: 8),
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton.icon(

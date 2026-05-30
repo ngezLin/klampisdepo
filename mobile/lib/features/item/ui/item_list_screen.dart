@@ -8,6 +8,9 @@ import '../providers/item_provider.dart';
 import '../../transaksi/models/transaction_models.dart';
 import '../../../core/network/dio_client.dart';
 import '../../../core/theme/notification_helper.dart';
+import 'dart:io';
+import 'package:path_provider/path_provider.dart';
+import '../../auth/providers/auth_provider.dart';
 
 class ItemListScreen extends ConsumerStatefulWidget {
   const ItemListScreen({super.key});
@@ -65,10 +68,20 @@ class _ItemListScreenState extends ConsumerState<ItemListScreen> {
   Widget build(BuildContext context) {
     final searchQuery = ref.watch(itemManagementSearchQueryProvider);
     final paginatedState = ref.watch(paginatedItemsProvider(searchQuery));
+    final auth = ref.watch(authProvider);
+    final showExport = auth.role == 'owner' || auth.role == 'admin';
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Manajemen Item'),
+        actions: [
+          if (showExport)
+            IconButton(
+              icon: const Icon(Icons.download_outlined),
+              tooltip: 'Ekspor CSV',
+              onPressed: () => _exportInventoryCsv(context, ref),
+            ),
+        ],
       ),
       body: Column(
         children: [
@@ -208,6 +221,37 @@ class _ItemListScreenState extends ConsumerState<ItemListScreen> {
       }
     }
   }
+
+  Future<void> _exportInventoryCsv(BuildContext context, WidgetRef ref) async {
+    try {
+      _showTopSnackBar('Mengunduh data inventoris...');
+      final dio = ref.read(dioProvider);
+      final response = await dio.get('/items/export/csv');
+      
+      final String csvData = response.data.toString();
+      
+      final Directory? dir = await getExternalStorageDirectory() ?? await getApplicationDocumentsDirectory();
+      if (dir == null) {
+        if (context.mounted) {
+          _showTopSnackBar('Gagal mengakses penyimpanan perangkat.', isError: true);
+        }
+        return;
+      }
+      
+      final String timestamp = DateFormat('yyyyMMdd_HHmmss').format(DateTime.now());
+      final String filePath = '${dir.path}/KlampisDepo_Inventory_$timestamp.csv';
+      final File file = File(filePath);
+      await file.writeAsString(csvData);
+
+      if (context.mounted) {
+        _showTopSnackBar('✅ Inventoris diekspor ke: $filePath');
+      }
+    } catch (e) {
+      if (context.mounted) {
+        _showTopSnackBar('Gagal mengekspor inventoris: $e', isError: true);
+      }
+    }
+  }
 }
 
 // ─── Mobile-Friendly Bottom Sheet Form with Image Upload ─────────
@@ -231,6 +275,8 @@ class _ItemFormSheetState extends ConsumerState<_ItemFormSheet> {
   late bool _isStockManaged;
   bool _isLoading = false;
   bool _isUploading = false;
+  List<dynamic> _stockChanges = [];
+  bool _isLoadingStockChanges = false;
 
   @override
   void initState() {
@@ -239,9 +285,31 @@ class _ItemFormSheetState extends ConsumerState<_ItemFormSheet> {
     _descriptionController = TextEditingController(text: widget.initialItem?.description ?? '');
     _stockController = TextEditingController(text: widget.initialItem?.stock.toString() ?? '0');
     _priceController = TextEditingController(text: widget.initialItem?.price.toStringAsFixed(0) ?? '0');
-    _buyPriceController = TextEditingController(text: widget.initialItem?.buyPrice.toStringAsFixed(0) ?? '0');
+    _buyPriceController = TextEditingController(text: widget.initialItem?.buyPrice?.toStringAsFixed(0) ?? '0');
     _imageUrlController = TextEditingController(text: widget.initialItem?.imageUrl ?? '');
     _isStockManaged = widget.initialItem?.isStockManaged ?? true;
+    
+    if (widget.initialItem != null) {
+      _loadStockChanges(widget.initialItem!.id);
+    }
+  }
+
+  Future<void> _loadStockChanges(int itemId) async {
+    setState(() => _isLoadingStockChanges = true);
+    try {
+      final dio = ref.read(dioProvider);
+      final response = await dio.get('/items/$itemId/manual-changes');
+      if (mounted) {
+        setState(() {
+          _stockChanges = response.data as List<dynamic>;
+          _isLoadingStockChanges = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoadingStockChanges = false);
+      }
+    }
   }
 
   @override
@@ -511,6 +579,72 @@ class _ItemFormSheetState extends ConsumerState<_ItemFormSheet> {
                     ),
                   ),
                   const SizedBox(height: 24),
+                  if (isEditing) ...[
+                    const Divider(height: 32),
+                    const Row(
+                      children: [
+                        Icon(Icons.history, size: 18, color: Colors.grey),
+                        SizedBox(width: 6),
+                        Text(
+                          'Riwayat Penyesuaian Stok',
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.grey),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    _isLoadingStockChanges
+                        ? const Center(child: CircularProgressIndicator())
+                        : _stockChanges.isEmpty
+                            ? const Text('Belum ada riwayat penyesuaian stok manual.', style: TextStyle(fontSize: 12, color: Colors.grey, fontStyle: FontStyle.italic))
+                            : Container(
+                                constraints: const BoxConstraints(maxHeight: 180),
+                                decoration: BoxDecoration(
+                                  border: Border.all(color: const Color(0xFFE5E7EB)),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: ListView.separated(
+                                  shrinkWrap: true,
+                                  itemCount: _stockChanges.length,
+                                  separatorBuilder: (_, __) => const Divider(height: 1),
+                                  itemBuilder: (context, index) {
+                                    final log = _stockChanges[index] as Map<String, dynamic>;
+                                    final String source = log['source'] ?? 'manual';
+                                    final int difference = log['difference'] as int? ?? 0;
+                                    final String? note = log['note'];
+                                    final String createdAtStr = log['created_at'] ?? '';
+                                    final String formattedDate = createdAtStr.isNotEmpty
+                                        ? DateFormat('dd/MM/yy HH:mm').format(DateTime.parse(createdAtStr))
+                                        : '-';
+
+                                    final isPos = difference > 0;
+                                    final Color diffColor = isPos ? Colors.green : Colors.red;
+                                    final String diffStr = isPos ? '+$difference' : '$difference';
+
+                                    return ListTile(
+                                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+                                      title: Row(
+                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Text(
+                                            'Sumber: ${source.toUpperCase()}',
+                                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                                          ),
+                                          Text(
+                                            diffStr,
+                                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: diffColor),
+                                          ),
+                                        ],
+                                      ),
+                                      subtitle: Text(
+                                        'Tanggal: $formattedDate\nKeterangan: ${note ?? "-"}',
+                                        style: const TextStyle(fontSize: 11),
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ),
+                    const SizedBox(height: 16),
+                  ],
                   // ─── Submit Button ─────────────────
                   SizedBox(
                     width: double.infinity,

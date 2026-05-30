@@ -63,6 +63,7 @@ func (s *transactionService) CreateTransaction(input dtos.CreateTransactionInput
 		var total float64
 		var transactionItems []models.TransactionItem
 		var localWarnings []string
+		loadedItems := make(map[uint]models.Item) // Cache map to prevent redundant database reads
 
 		for _, i := range input.Items {
 			var item models.Item
@@ -88,6 +89,8 @@ func (s *transactionService) CreateTransaction(input dtos.CreateTransactionInput
 				Price:    price,
 				Subtotal: subtotal,
 			})
+			
+			loadedItems[item.ID] = item // Save to locked items map cache
 		}
 
 		discount := 0.0
@@ -138,9 +141,11 @@ func (s *transactionService) CreateTransaction(input dtos.CreateTransactionInput
 			}
 
 			for _, tItem := range transactionItems {
-				var item models.Item
-				if err := tx.First(&item, tItem.ItemID).Error; err != nil {
-					return err
+				item, exists := loadedItems[tItem.ItemID]
+				if !exists {
+					if err := tx.First(&item, tItem.ItemID).Error; err != nil {
+						return err
+					}
 				}
 
 				if item.IsStockManaged == nil || !*item.IsStockManaged {
@@ -162,6 +167,8 @@ func (s *transactionService) CreateTransaction(input dtos.CreateTransactionInput
 				if err := tx.Save(&item).Error; err != nil {
 					return err
 				}
+				
+				loadedItems[item.ID] = item // Update map cache with modified stock
 			}
 		}
 
@@ -179,9 +186,11 @@ func (s *transactionService) CreateTransaction(input dtos.CreateTransactionInput
 		if input.Status == "completed" {
 			invService := NewInventoryService()
 			for _, tItem := range transactionItems {
-				var item models.Item
-				if err := tx.First(&item, tItem.ItemID).Error; err != nil {
-					return err
+				item, exists := loadedItems[tItem.ItemID]
+				if !exists {
+					if err := tx.First(&item, tItem.ItemID).Error; err != nil {
+						return err
+					}
 				}
 
 				if item.IsStockManaged == nil || !*item.IsStockManaged {

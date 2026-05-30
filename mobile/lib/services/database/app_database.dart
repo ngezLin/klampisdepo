@@ -9,7 +9,7 @@ class Items extends Table {
   TextColumn get description => text().nullable()();
   IntColumn get stock => integer().withDefault(const Constant(0))();
   BoolColumn get isStockManaged => boolean().withDefault(const Constant(true))();
-  RealColumn get buyPrice => real()();
+  RealColumn get buyPrice => real().nullable()();
   RealColumn get price => real()();
   TextColumn get imageUrl => text().nullable()();
   DateTimeColumn get updatedAt => dateTime()();
@@ -28,8 +28,9 @@ class Transactions extends Table {
   TextColumn get paymentType => text().nullable()();
   TextColumn get transactionType => text().withDefault(const Constant('onsite'))();
   TextColumn get note => text().nullable()();
-  TextColumn get syncStatus => text().withDefault(const Constant('synced'))(); // synced, pending_sync, draft_local
+  TextColumn get syncStatus => text().withDefault(const Constant('synced'))(); // synced, pending_sync, draft_local, conflict
   DateTimeColumn get createdAt => dateTime()();
+  TextColumn get conflictDetails => text().nullable()(); // JSON string detailing conflicts
 }
 
 class TransactionItems extends Table {
@@ -48,7 +49,38 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+        onCreate: (m) async {
+          await m.createAll();
+        },
+        onUpgrade: (m, from, to) async {
+          if (from < 2) {
+            await m.addColumn(transactions, transactions.conflictDetails);
+          }
+        },
+      );
+
+  // Bulk upsert items cached from remote
+  Future<void> upsertItems(List<Item> itemsList) async {
+    await batch((batch) {
+      batch.insertAll(
+        items,
+        itemsList,
+        mode: InsertMode.insertOrReplace,
+      );
+    });
+  }
+
+  // Retrieve cached items offline matching search query
+  Future<List<Item>> getItemsOffline(String search) {
+    if (search.isEmpty) {
+      return select(items).get();
+    }
+    return (select(items)..where((t) => t.name.like('%$search%'))).get();
+  }
 }
 
 QueryExecutor _openConnection() {

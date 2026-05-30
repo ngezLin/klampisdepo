@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:unified_esc_pos_printer/unified_esc_pos_printer.dart' as esc;
 import '../../core/network/dio_client.dart';
+import 'package:share_plus/share_plus.dart';
 
 /// Represents a discovered printer
 class PrinterDevice {
@@ -144,10 +145,25 @@ class PrinterService extends ChangeNotifier {
   String? storePhone;
   String? cashierName;
 
+  // Multiple printer designations
+  PrinterDevice? _receiptPrinter;
+  PrinterDevice? _kitchenPrinter;
+
   PrinterDevice? get connectedPrinter => _connectedPrinter;
+  PrinterDevice? get receiptPrinter => _receiptPrinter;
+  PrinterDevice? get kitchenPrinter => _kitchenPrinter;
   PrinterStatus get status => _status;
   String? get lastError => _lastError;
   bool get isConnected => _status == PrinterStatus.connected;
+
+  void designatePrinter(PrinterDevice device, String role) {
+    if (role == 'receipt') {
+      _receiptPrinter = device;
+    } else if (role == 'kitchen') {
+      _kitchenPrinter = device;
+    }
+    notifyListeners();
+  }
 
   /// Fetch store information from public store.json
   Future<void> fetchStoreInfo(Ref ref) async {
@@ -168,7 +184,6 @@ class PrinterService extends ChangeNotifier {
 
   /// Scan for available printers
   Future<List<PrinterDevice>> scanPrinters() async {
-    // On web, we can't scan for printers
     if (kIsWeb) {
       return [
         PrinterDevice(
@@ -179,7 +194,6 @@ class PrinterService extends ChangeNotifier {
       ];
     }
 
-    // For native, scan Bluetooth and Network
     final List<PrinterDevice> discovered = [];
 
     discovered.add(PrinterDevice(
@@ -238,7 +252,6 @@ class PrinterService extends ChangeNotifier {
     notifyListeners();
 
     try {
-      // For web, just mark as connected (preview mode)
       if (kIsWeb || device.address == 'browser') {
         _connectedPrinter = device;
         _status = PrinterStatus.connected;
@@ -252,7 +265,6 @@ class PrinterService extends ChangeNotifier {
         return false;
       }
 
-      // Convert our custom PrinterDevice back to esc.PrinterDevice
       esc.PrinterDevice escDevice;
       if (device.type == PrinterConnectionType.bluetooth) {
         if (device.address.contains('-')) {
@@ -313,12 +325,38 @@ class PrinterService extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Print a receipt for a transaction
-  Future<bool> printReceipt(Map<String, dynamic> transaction) async {
-    if (_status != PrinterStatus.connected) {
-      _lastError = 'Printer belum terhubung';
+  /// Trigger cash drawer open via ESC/POS command
+  Future<bool> openCashDrawer() async {
+    if (_status != PrinterStatus.connected) return false;
+    if (kIsWeb || _connectedPrinter?.address == 'browser') return true;
+    if (_manager == null) return false;
+    try {
+      // ESC p m t1 t2 - Trigger cash drawer pin 2 and pin 5
+      final List<int> openDrawer = [
+        0x1B, 0x70, 0x00, 0x19, 0x78,
+        0x1B, 0x70, 0x01, 0x19, 0x78,
+      ];
+      await _manager!.printBytes(openDrawer);
+      return true;
+    } catch (e) {
+      debugPrint('Failed to open cash drawer: $e');
+      return false;
+    }
+  }
+
+  /// Print a receipt for a transaction (with role selection support)
+  Future<bool> printReceipt(Map<String, dynamic> transaction, {String role = 'receipt'}) async {
+    final targetPrinter = role == 'kitchen' ? _kitchenPrinter : (_receiptPrinter ?? _connectedPrinter);
+    if (targetPrinter == null) {
+      _lastError = 'Printer $role belum terhubung';
       notifyListeners();
       return false;
+    }
+
+    // Connect to target printer if needed
+    if (_connectedPrinter?.address != targetPrinter.address) {
+      final success = await connectToPrinter(targetPrinter);
+      if (!success) return false;
     }
 
     _status = PrinterStatus.printing;
@@ -326,12 +364,14 @@ class PrinterService extends ChangeNotifier {
 
     try {
       final items = (transaction['items'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+      final DateTime date = transaction['created_at'] != null
+          ? DateTime.parse(transaction['created_at'] as String).toLocal()
+          : DateTime.now();
+
       final receipt = ReceiptFormatter.formatReceipt(
         storeName: storeName,
         transactionId: transaction['id'] as int? ?? 0,
-        date: transaction['created_at'] != null
-            ? DateTime.parse(transaction['created_at'] as String)
-            : DateTime.now(),
+        date: date,
         items: items,
         subtotal: _toDouble(transaction['subtotal'] ?? transaction['total']),
         discount: _toDouble(transaction['discount'] ?? 0),
@@ -346,16 +386,26 @@ class PrinterService extends ChangeNotifier {
       );
 
       if (kIsWeb || _connectedPrinter?.address == 'browser') {
-        // On web, just print via debugPrint for preview
-        debugPrint('══════ RECEIPT PREVIEW ══════');
+        debugPrint('══════ RECEIPT PREVIEW ($role) ══════');
         debugPrint(receipt);
         debugPrint('════════════════════════════');
       } else {
         if (_manager == null) return false;
-        // Encode receipt text to UTF-8 bytes and send to printer with partial cut command (GS V 1)
+        
         final List<int> bytes = utf8.encode(receipt);
         final List<int> cutCommand = [0x1D, 0x56, 0x01];
-        await _manager!.printBytes([...bytes, ...cutCommand]);
+
+        // 1. Cash drawer pulse (Receipt printer only)
+        final List<int> openDrawer = role == 'receipt'
+            ? [0x1B, 0x70, 0x00, 0x19, 0x78, 0x1B, 0x70, 0x01, 0x19, 0x78]
+            : [];
+
+        // 2. WhatsApp QR code feedback URL (Receipt printer only)
+        final List<int> qrBytes = role == 'receipt'
+            ? _getQrCodeBytes(transaction['id'] as int? ?? 0)
+            : [];
+
+        await _manager!.printBytes([...openDrawer, ...bytes, ...qrBytes, ...cutCommand]);
       }
 
       _status = PrinterStatus.connected;
@@ -367,6 +417,65 @@ class PrinterService extends ChangeNotifier {
       notifyListeners();
       return false;
     }
+  }
+
+  /// Generate ESC/POS bytes for WhatsApp Feedback QR Code
+  List<int> _getQrCodeBytes(int transactionId) {
+    final cleanPhone = storePhone?.replaceAll(RegExp(r'\D'), '') ?? '628123456789';
+    final url = 'https://wa.me/$cleanPhone?text=Feedback%20KlampisDepo%20No%20%23$transactionId';
+    final List<int> dataBytes = utf8.encode(url);
+    final int len = dataBytes.length + 3;
+    final int pL = len % 256;
+    final int pH = len ~/ 256;
+
+    return [
+      0x0A, 0x0A,
+      // Center align
+      0x1B, 0x61, 0x01,
+      // Model 2 QR
+      0x1D, 0x28, 0x6B, 0x04, 0x00, 0x31, 0x41, 0x32, 0x00,
+      // Size 5
+      0x1D, 0x28, 0x6B, 0x03, 0x00, 0x31, 0x43, 0x05,
+      // EC Level M
+      0x1D, 0x28, 0x6B, 0x03, 0x00, 0x31, 0x44, 0x31,
+      // Store data
+      0x1D, 0x28, 0x6B, pL, pH, 0x31, 0x50, 0x30, ...dataBytes,
+      // Print QR code
+      0x1D, 0x28, 0x6B, 0x03, 0x00, 0x31, 0x51, 0x30,
+      0x0A,
+      ...utf8.encode('PINDAI UNTUK FEEDBACK WA'),
+      0x0A,
+      // Left align (default)
+      0x1B, 0x61, 0x00,
+      0x0A, 0x0A,
+    ];
+  }
+
+  /// Share digital receipt via WhatsApp/Telegram
+  Future<void> shareReceipt(Map<String, dynamic> transaction) async {
+    final items = (transaction['items'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+    final DateTime date = transaction['created_at'] != null
+        ? DateTime.parse(transaction['created_at'] as String).toLocal()
+        : DateTime.now();
+
+    final receipt = ReceiptFormatter.formatReceipt(
+      storeName: storeName,
+      transactionId: transaction['id'] as int? ?? 0,
+      date: date,
+      items: items,
+      subtotal: _toDouble(transaction['subtotal'] ?? transaction['total']),
+      discount: _toDouble(transaction['discount'] ?? 0),
+      total: _toDouble(transaction['total'] ?? 0),
+      paymentType: transaction['payment_type'] as String? ?? 'cash',
+      paymentAmount: _toDouble(transaction['payment'] ?? transaction['total'] ?? 0),
+      change: _toDouble(transaction['change'] ?? 0),
+      note: transaction['note'] as String?,
+      cashierName: cashierName,
+      storeAddress: storeAddress,
+      storePhone: storePhone,
+    );
+
+    await Share.share(receipt, subject: 'Struk Belanja #${transaction['id']}');
   }
 
   /// Print a receipt directly from current checkout state
@@ -403,7 +512,7 @@ class PrinterService extends ChangeNotifier {
       storeName: storeName,
       transactionId: transaction['id'] as int? ?? 0,
       date: transaction['created_at'] != null
-          ? DateTime.parse(transaction['created_at'] as String)
+          ? DateTime.parse(transaction['created_at'] as String).toLocal()
           : DateTime.now(),
       items: items,
       subtotal: _toDouble(transaction['subtotal'] ?? transaction['total']),

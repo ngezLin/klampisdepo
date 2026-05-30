@@ -7,6 +7,7 @@ class AuthState {
   final String? token;
   final String? role;
   final String? username;
+  final int? userId;
   final bool isLoading;
   final String? error;
 
@@ -14,6 +15,7 @@ class AuthState {
     this.token,
     this.role,
     this.username,
+    this.userId,
     this.isLoading = false,
     this.error,
   });
@@ -22,6 +24,7 @@ class AuthState {
     String? token,
     String? role,
     String? username,
+    int? userId,
     bool? isLoading,
     String? error,
   }) {
@@ -29,6 +32,7 @@ class AuthState {
       token: token ?? this.token,
       role: role ?? this.role,
       username: username ?? this.username,
+      userId: userId ?? this.userId,
       isLoading: isLoading ?? this.isLoading,
       error: error ?? this.error,
     );
@@ -51,6 +55,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
         token: token,
         role: payload['role'],
         username: payload['username'],
+        userId: payload['user_id'] as int?,
       );
     }
   }
@@ -66,6 +71,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
       final token = response.data['token'];
       final role = response.data['role'];
+      final payload = JwtDecoder.decode(token);
 
       await _storage.write(key: 'token', value: token);
       
@@ -73,6 +79,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
         token: token,
         role: role,
         username: username,
+        userId: payload['user_id'] as int?,
         isLoading: false,
       );
       return true;
