@@ -139,7 +139,7 @@ class _RiwayatScreenState extends ConsumerState<RiwayatScreen> {
                                   children: [
                                     const SizedBox(height: 4),
                                     Text(_currencyFormat.format(tx['total']), style: TextStyle(color: Theme.of(context).primaryColor, fontWeight: FontWeight.bold)),
-                                    Text(_dateFormat.format(DateTime.parse(tx['created_at']).toLocal())),
+                                    Text(_dateFormat.format(_parseDateTime(tx['created_at']))),
                                   ],
                                 ),
                                 trailing: const Icon(Icons.chevron_right),
@@ -260,8 +260,8 @@ class _ReceiptDetailDialog extends ConsumerWidget {
     final String status = tx['status'];
     final double total = (tx['total'] as num).toDouble();
     final double discount = (tx['discount'] as num?)?.toDouble() ?? 0.0;
-    final String dateStr = tx['created_at'];
-    final String formattedDate = dateFormat.format(DateTime.parse(dateStr).toLocal());
+    final dynamic dateVal = tx['created_at'];
+    final String formattedDate = dateFormat.format(_parseDateTime(dateVal));
     final String? note = tx['note'];
     final String paymentType = tx['payment_type'] ?? 'CASH';
     final double? paymentAmount = tx['payment'] != null ? (tx['payment'] as num).toDouble() : null;
@@ -482,5 +482,26 @@ class _ReceiptDetailDialog extends ConsumerWidget {
         ),
       ),
     );
+  }
+}
+
+DateTime _parseDateTime(dynamic raw) {
+  if (raw == null) return DateTime.now();
+  if (raw is num) {
+    return DateTime.fromMillisecondsSinceEpoch(raw.toInt() * 1000).toLocal();
+  }
+  final str = raw.toString();
+  final parsedInt = int.tryParse(str);
+  if (parsedInt != null) {
+    return DateTime.fromMillisecondsSinceEpoch(parsedInt * 1000).toLocal();
+  }
+  try {
+    if (!str.contains('Z') && !str.contains('+') && !RegExp(r'-\d{2}:\d{2}$').hasMatch(str)) {
+      final formatted = str.replaceAll(' ', 'T') + 'Z';
+      return DateTime.parse(formatted).toLocal();
+    }
+    return DateTime.parse(str).toLocal();
+  } catch (e) {
+    return DateTime.parse(str).toLocal();
   }
 }

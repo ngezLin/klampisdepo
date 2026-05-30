@@ -302,60 +302,24 @@ class AkunScreen extends ConsumerWidget {
   }
 
   void _showPrinterSettings(BuildContext context, WidgetRef ref) {
-    final printer = ref.read(printerServiceProvider);
-    final ipController = TextEditingController();
-
-    showDialog(
+    showModalBottomSheet(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Pengaturan Printer'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: ipController,
-              decoration: const InputDecoration(
-                labelText: 'IP Printer',
-                hintText: '192.168.1.100:9100',
-              ),
-            ),
-            const SizedBox(height: 16),
-            if (printer.isConnected)
-              ListTile(
-                leading: const Icon(Icons.check_circle, color: Color(0xFF00AA5B)),
-                title: Text('Terhubung: ${printer.connectedPrinter?.name}'),
-                trailing: TextButton(
-                  onPressed: () {
-                    printer.disconnect();
-                    Navigator.pop(context);
-                  },
-                  child: const Text('Putuskan', style: TextStyle(color: Colors.red)),
-                ),
-              ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Tutup'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              final ip = ipController.text.trim();
-              if (ip.isNotEmpty) {
-                final device = PrinterDevice(
-                  name: 'Network Printer',
-                  address: ip.contains(':') ? ip : '$ip:9100',
-                  type: PrinterConnectionType.network,
-                );
-                await printer.connectToPrinter(device);
-                if (context.mounted) Navigator.pop(context);
-              }
-            },
-            child: const Text('Hubungkan'),
-          ),
-        ],
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
+      builder: (context) {
+        return DraggableScrollableSheet(
+          initialChildSize: 0.85,
+          minChildSize: 0.5,
+          maxChildSize: 0.95,
+          expand: false,
+          builder: (context, scrollController) {
+            return _PrinterSettingsSheet(scrollController: scrollController);
+          },
+        );
+      },
     );
   }
 
@@ -965,3 +929,292 @@ final _usersProvider = FutureProvider.autoDispose<List<dynamic>>((ref) async {
   final response = await dio.get('/users/');
   return response.data as List<dynamic>;
 });
+
+class _PrinterSettingsSheet extends ConsumerStatefulWidget {
+  final ScrollController scrollController;
+  const _PrinterSettingsSheet({required this.scrollController});
+
+  @override
+  ConsumerState<_PrinterSettingsSheet> createState() => _PrinterSettingsSheetState();
+}
+
+class _PrinterSettingsSheetState extends ConsumerState<_PrinterSettingsSheet> {
+  List<PrinterDevice> _devices = [];
+  bool _isScanning = false;
+  final _ipController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _scan();
+    });
+  }
+
+  Future<void> _scan() async {
+    if (_isScanning) return;
+    setState(() {
+      _isScanning = true;
+      _devices = [];
+    });
+    try {
+      final printerService = ref.read(printerServiceProvider);
+      final list = await printerService.scanPrinters();
+      setState(() {
+        _devices = list;
+      });
+    } catch (e) {
+      debugPrint('Scan error: $e');
+    } finally {
+      setState(() {
+        _isScanning = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final printer = ref.watch(printerServiceProvider);
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Pengaturan Printer',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF212121)),
+              ),
+              IconButton(
+                icon: const Icon(Icons.close),
+                onPressed: () => Navigator.pop(context),
+              ),
+            ],
+          ),
+          const Divider(),
+          const SizedBox(height: 12),
+          if (printer.isConnected) ...[
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFE5F7EE),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: const Color(0xFF00AA5B).withOpacity(0.3)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.check_circle, color: Color(0xFF00AA5B), size: 24),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Terhubung ke: ${printer.connectedPrinter?.name}',
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF212121)),
+                        ),
+                        Text(
+                          'Alamat: ${printer.connectedPrinter?.address} (${printer.connectedPrinter?.type.name.toUpperCase()})',
+                          style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+                        ),
+                      ],
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: () => printer.disconnect(),
+                    child: const Text('Putuskan', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 12)),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Perangkat Tersedia',
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey),
+              ),
+              Row(
+                children: [
+                  if (_isScanning)
+                    const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  else
+                    IconButton(
+                      icon: const Icon(Icons.refresh, size: 20),
+                      onPressed: _scan,
+                    ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Expanded(
+            child: _devices.isEmpty
+                ? Center(
+                    child: _isScanning
+                        ? const Text('Mencari printer...', style: TextStyle(color: Colors.grey))
+                        : const Text('Tidak ada printer ditemukan. Hubungkan manual di bawah.', style: TextStyle(color: Colors.grey, fontSize: 12)),
+                  )
+                : ListView.separated(
+                    controller: widget.scrollController,
+                    itemCount: _devices.length,
+                    separatorBuilder: (_, __) => const Divider(height: 1),
+                    itemBuilder: (context, index) {
+                      final dev = _devices[index];
+                      if (dev.address == 'manual') return const SizedBox.shrink();
+                      
+                      final isCurrent = printer.connectedPrinter?.address == dev.address;
+                      final isReceipt = printer.receiptPrinter?.address == dev.address;
+                      final isKitchen = printer.kitchenPrinter?.address == dev.address;
+
+                      IconData typeIcon = Icons.print;
+                      if (dev.type == PrinterConnectionType.bluetooth) typeIcon = Icons.bluetooth;
+                      if (dev.type == PrinterConnectionType.network) typeIcon = Icons.wifi;
+                      if (dev.type == PrinterConnectionType.usb) typeIcon = Icons.usb;
+
+                      return ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        leading: CircleAvatar(
+                          backgroundColor: isCurrent ? const Color(0xFFE5F7EE) : const Color(0xFFF3F4F5),
+                          child: Icon(typeIcon, color: isCurrent ? const Color(0xFF00AA5B) : const Color(0xFF212121)),
+                        ),
+                        title: Text(dev.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                        subtitle: Text('${dev.address} | ${dev.type.name.toUpperCase()}', style: const TextStyle(fontSize: 11)),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (isReceipt)
+                              const Padding(
+                                padding: EdgeInsets.only(right: 4),
+                                child: Chip(
+                                  label: Text('STRUK', style: TextStyle(fontSize: 8, color: Colors.blue)),
+                                  backgroundColor: Color(0xFFE0F2FE),
+                                ),
+                              ),
+                            if (isKitchen)
+                              const Padding(
+                                padding: EdgeInsets.only(right: 4),
+                                child: Chip(
+                                  label: Text('DAPUR', style: TextStyle(fontSize: 8, color: Colors.orange)),
+                                  backgroundColor: Color(0xFFFEF3C7),
+                                ),
+                              ),
+                            PopupMenuButton<String>(
+                              icon: const Icon(Icons.more_vert),
+                              onSelected: (val) async {
+                                if (val == 'connect') {
+                                  await printer.connectToPrinter(dev);
+                                } else if (val == 'receipt') {
+                                  printer.designatePrinter(dev, 'receipt');
+                                } else if (val == 'kitchen') {
+                                  printer.designatePrinter(dev, 'kitchen');
+                                }
+                              },
+                              itemBuilder: (context) => [
+                                PopupMenuItem(
+                                  value: 'connect',
+                                  child: Row(
+                                    children: [
+                                      Icon(Icons.link, size: 16, color: isCurrent ? const Color(0xFF00AA5B) : null),
+                                      const SizedBox(width: 8),
+                                      Text(isCurrent ? 'Hubungkan Ulang' : 'Hubungkan Utama'),
+                                    ],
+                                  ),
+                                ),
+                                const PopupMenuItem(
+                                  value: 'receipt',
+                                  child: Row(
+                                    children: [
+                                      Icon(Icons.receipt_long, size: 16, color: Colors.blue),
+                                      const SizedBox(width: 8),
+                                      Text('Jadikan Printer Struk'),
+                                    ],
+                                  ),
+                                ),
+                                const PopupMenuItem(
+                                  value: 'kitchen',
+                                  child: Row(
+                                    children: [
+                                      Icon(Icons.restaurant_menu, size: 16, color: Colors.orange),
+                                      const SizedBox(width: 8),
+                                      Text('Jadikan Printer Dapur'),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+          ),
+          const Divider(),
+          const SizedBox(height: 8),
+          const Text(
+            'Tambah Printer IP Manual',
+            style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _ipController,
+                  decoration: InputDecoration(
+                    hintText: '192.168.1.100:9100',
+                    hintStyle: const TextStyle(fontSize: 12),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF00AA5B),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                ),
+                icon: const Icon(Icons.add, size: 18),
+                label: const Text('Simpan', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                onPressed: () async {
+                  final ip = _ipController.text.trim();
+                  if (ip.isNotEmpty) {
+                    final device = PrinterDevice(
+                      name: 'Network Printer (Manual)',
+                      address: ip.contains(':') ? ip : '$ip:9100',
+                      type: PrinterConnectionType.network,
+                    );
+                    final success = await printer.connectToPrinter(device);
+                    if (success) {
+                      printer.designatePrinter(device, 'receipt');
+                      _ipController.clear();
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Printer manual ditambahkan sebagai printer struk')),
+                        );
+                      }
+                    }
+                  }
+                },
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}

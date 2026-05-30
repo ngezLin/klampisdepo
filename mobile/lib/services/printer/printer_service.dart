@@ -364,9 +364,7 @@ class PrinterService extends ChangeNotifier {
 
     try {
       final items = (transaction['items'] as List?)?.cast<Map<String, dynamic>>() ?? [];
-      final DateTime date = transaction['created_at'] != null
-          ? DateTime.parse(transaction['created_at'] as String).toLocal()
-          : DateTime.now();
+      final DateTime date = _parseDateTime(transaction['created_at']);
 
       final receipt = ReceiptFormatter.formatReceipt(
         storeName: storeName,
@@ -454,9 +452,7 @@ class PrinterService extends ChangeNotifier {
   /// Share digital receipt via WhatsApp/Telegram
   Future<void> shareReceipt(Map<String, dynamic> transaction) async {
     final items = (transaction['items'] as List?)?.cast<Map<String, dynamic>>() ?? [];
-    final DateTime date = transaction['created_at'] != null
-        ? DateTime.parse(transaction['created_at'] as String).toLocal()
-        : DateTime.now();
+    final DateTime date = _parseDateTime(transaction['created_at']);
 
     final receipt = ReceiptFormatter.formatReceipt(
       storeName: storeName,
@@ -511,9 +507,7 @@ class PrinterService extends ChangeNotifier {
     return ReceiptFormatter.formatReceipt(
       storeName: storeName,
       transactionId: transaction['id'] as int? ?? 0,
-      date: transaction['created_at'] != null
-          ? DateTime.parse(transaction['created_at'] as String).toLocal()
-          : DateTime.now(),
+      date: _parseDateTime(transaction['created_at']),
       items: items,
       subtotal: _toDouble(transaction['subtotal'] ?? transaction['total']),
       discount: _toDouble(transaction['discount'] ?? 0),
@@ -544,3 +538,24 @@ final printerServiceProvider = ChangeNotifierProvider<PrinterService>((ref) {
   service.fetchStoreInfo(ref);
   return service;
 });
+
+DateTime _parseDateTime(dynamic raw) {
+  if (raw == null) return DateTime.now();
+  if (raw is num) {
+    return DateTime.fromMillisecondsSinceEpoch(raw.toInt() * 1000).toLocal();
+  }
+  final str = raw.toString();
+  final parsedInt = int.tryParse(str);
+  if (parsedInt != null) {
+    return DateTime.fromMillisecondsSinceEpoch(parsedInt * 1000).toLocal();
+  }
+  try {
+    if (!str.contains('Z') && !str.contains('+') && !RegExp(r'-\d{2}:\d{2}$').hasMatch(str)) {
+      final formatted = str.replaceAll(' ', 'T') + 'Z';
+      return DateTime.parse(formatted).toLocal();
+    }
+    return DateTime.parse(str).toLocal();
+  } catch (e) {
+    return DateTime.parse(str).toLocal();
+  }
+}
