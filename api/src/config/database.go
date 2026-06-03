@@ -13,8 +13,10 @@ import (
 )
 
 var DB *gorm.DB
+var StartTime time.Time
 
 func ConnectDatabase() {
+	StartTime = time.Now()
 	user := os.Getenv("DB_USER")
 	pass := os.Getenv("DB_PASS")
 	host := os.Getenv("DB_HOST")
@@ -53,7 +55,6 @@ func ConnectDatabase() {
 		&models.TransactionItem{},
 		&models.User{},
 		&models.Attendance{},
-		&models.AuditLog{},
 		&models.CashSession{},
 		&models.InventoryLog{},
 	)

@@ -180,9 +180,13 @@ func ExportItems(c *gin.Context) {
 // GetManualStockChanges returns only manual/adjustment stock logs for the specified item.
 // This helps identify inventory changes that weren't part of a sale or refund.
 func GetManualStockChanges(c *gin.Context) {
-    // item id comes from path
     idParam := c.Param("id")
-    // we still bind query to allow optional date filters
+    
+    // Inject item_id into the query parameters so ShouldBindQuery validation succeeds
+    q := c.Request.URL.Query()
+    q.Set("item_id", idParam)
+    c.Request.URL.RawQuery = q.Encode()
+
     var filter dtos.InventoryFilter
     if err := c.ShouldBindQuery(&filter); err != nil {
         c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})

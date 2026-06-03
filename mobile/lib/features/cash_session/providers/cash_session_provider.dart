@@ -13,7 +13,8 @@ class CashSessionState {
     this.error,
   });
 
-  bool get isOpen => activeSession != null && activeSession!['status'] == 'open';
+  bool get isOpen => activeSession != null &&
+      (activeSession!['status'] == 'open' || activeSession!['Status'] == 'open');
 
   CashSessionState copyWith({
     Map<String, dynamic>? activeSession,
@@ -27,6 +28,34 @@ class CashSessionState {
       error: error ?? this.error,
     );
   }
+}
+
+Map<String, dynamic> _normalizeKeys(dynamic rawData) {
+  if (rawData == null || rawData is! Map) {
+    return {};
+  }
+  final Map<String, dynamic> normalized = {};
+  rawData.forEach((key, value) {
+    final String k = key.toString();
+    String newKey = k;
+    final String lowerKey = k.toLowerCase();
+    
+    if (lowerKey == 'id') newKey = 'id';
+    else if (lowerKey == 'userid' || lowerKey == 'user_id') newKey = 'user_id';
+    else if (lowerKey == 'openingcash' || lowerKey == 'opening_cash') newKey = 'opening_cash';
+    else if (lowerKey == 'totalcashin' || lowerKey == 'total_cash_in') newKey = 'total_cash_in';
+    else if (lowerKey == 'totalchange' || lowerKey == 'total_change') newKey = 'total_change';
+    else if (lowerKey == 'totalrefundcash' || lowerKey == 'total_refund_cash') newKey = 'total_refund_cash';
+    else if (lowerKey == 'expectedcash' || lowerKey == 'expected_cash') newKey = 'expected_cash';
+    else if (lowerKey == 'closingcash' || lowerKey == 'closing_cash') newKey = 'closing_cash';
+    else if (lowerKey == 'difference') newKey = 'difference';
+    else if (lowerKey == 'status') newKey = 'status';
+    else if (lowerKey == 'openedat' || lowerKey == 'opened_at') newKey = 'opened_at';
+    else if (lowerKey == 'closedat' || lowerKey == 'closed_at') newKey = 'closed_at';
+    
+    normalized[newKey] = value;
+  });
+  return normalized;
 }
 
 class CashSessionNotifier extends StateNotifier<CashSessionState> {
@@ -45,7 +74,7 @@ class CashSessionNotifier extends StateNotifier<CashSessionState> {
       // If session exists, response is successful
       if (response.data != null) {
         state = state.copyWith(
-          activeSession: response.data as Map<String, dynamic>,
+          activeSession: _normalizeKeys(response.data),
           isLoading: false,
         );
       } else {
@@ -79,7 +108,7 @@ class CashSessionNotifier extends StateNotifier<CashSessionState> {
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         state = state.copyWith(
-          activeSession: response.data as Map<String, dynamic>,
+          activeSession: _normalizeKeys(response.data),
           isLoading: false,
         );
         return true;
@@ -104,7 +133,7 @@ class CashSessionNotifier extends StateNotifier<CashSessionState> {
       });
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        final closedSession = response.data as Map<String, dynamic>;
+        final closedSession = _normalizeKeys(response.data);
         state = state.copyWith(clearActiveSession: true, isLoading: false);
         return closedSession;
       }

@@ -24,7 +24,10 @@ func (s *inventoryService) GetInventoryHistory(filter dtos.InventoryFilter) (*dt
 	var logs []models.InventoryLog
 	var total int64
 
-	db := config.DB.Model(&models.InventoryLog{}).Where("item_id = ?", filter.ItemID)
+	db := config.DB.Model(&models.InventoryLog{})
+	if filter.ItemID != 0 {
+		db = db.Where("item_id = ?", filter.ItemID)
+	}
 
 	if filter.StartDate != "" {
 		db = db.Where("created_at >= ?", filter.StartDate)
@@ -56,7 +59,7 @@ func (s *inventoryService) GetInventoryHistory(filter dtos.InventoryFilter) (*dt
 	}
 	offset := (filter.Page - 1) * filter.Limit
 
-	if err := db.Preload("User").
+	if err := db.Preload("User").Preload("Item").
 		Order("created_at DESC").
 		Limit(filter.Limit).
 		Offset(offset).

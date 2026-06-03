@@ -29,7 +29,7 @@ func (s *cashSessionService) OpenCashSession(input dtos.OpenCashSessionInput, us
 		First(&existing).Error
 
 	if err == nil {
-		return nil, errors.New("cash session masih terbuka")
+		return nil, errors.New("cash session is still open")
 	}
 
 	if err != gorm.ErrRecordNotFound {
@@ -55,7 +55,7 @@ func (s *cashSessionService) GetCurrentSession(userID uint) (*models.CashSession
 	if err := config.DB.Where("user_id = ? AND status = 'open'", userID).
 		First(&session).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
-			return nil, errors.New("tidak ada cash session aktif")
+			return nil, errors.New("no active cash session")
 		}
 		return nil, err
 	}
@@ -66,7 +66,7 @@ func (s *cashSessionService) CloseCashSession(input dtos.CloseCashSessionInput, 
 	var session models.CashSession
 	if err := config.DB.Where("user_id = ? AND status = 'open'", userID).
 		First(&session).Error; err != nil {
-		return nil, errors.New("tidak ada cash session terbuka")
+		return nil, errors.New("no open cash session")
 	}
 
 	var result struct {

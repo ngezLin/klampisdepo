@@ -5,6 +5,21 @@ export default function ProductCard({ item }) {
   const placeholder =
     "https://lh5.googleusercontent.com/proxy/211Ca3xFzqt_aKp8B3LjO8T7etZyEKVXv2NN4wHJDIH0ZmcGBWKho21SCa19Bh6AmanXwC3MeP3mmaiWcGkFV_mDYZLhZ0UszlBVMLo7eGRvXXgnFAr9mvAJe6czDTPMKU-ja5rX0ItRgR2tpK077vt5yOV6ottZGMon2A=w160-h120-k-no";
 
+  const renderDescription = (desc) => {
+    if (!desc) return "Deskripsi tidak tersedia.";
+    try {
+      const parsed = JSON.parse(desc);
+      if (parsed && typeof parsed === "object") {
+        return Object.entries(parsed)
+          .map(([key, val]) => `${key}: ${val}`)
+          .join(" | ");
+      }
+    } catch (e) {
+      // Return raw string if parsing fails
+    }
+    return desc;
+  };
+
   return (
     <motion.div
       whileHover={{ y: -12, scale: 1.02 }}
@@ -33,7 +48,7 @@ export default function ProductCard({ item }) {
           {item?.name}
         </h3>
         <p className="text-gray-400 text-sm mb-4 line-clamp-2 leading-relaxed h-10">
-          {item?.description || "Deskripsi tidak tersedia."}
+          {renderDescription(item?.description)}
         </p>
         <p className="font-bold text-blue-400 text-2xl tracking-tight">
           Rp {(item?.price ?? 0).toLocaleString("id-ID")}

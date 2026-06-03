@@ -24,10 +24,10 @@ func NewAttendanceService() AttendanceService {
 func (s *attendanceService) CreateAttendance(input dtos.CreateAttendanceInput) (*models.Attendance, error) {
 	today := time.Now().Truncate(24 * time.Hour)
 
-	// cek absensi hari ini
+	// check today's attendance
 	var existing models.Attendance
 	if err := config.DB.Where("user_id = ? AND date = ?", input.UserID, today).First(&existing).Error; err == nil {
-		return nil, errors.New("Cashier sudah diabsen hari ini")
+		return nil, errors.New("cashier has already clocked in today")
 	}
 
 	attendance := models.Attendance{

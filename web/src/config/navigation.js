@@ -4,7 +4,6 @@ import {
   Box,
   Receipt,
   History,
-  ClipboardList,
   CalendarCheck,
   FileText,
 } from "lucide-react";
@@ -42,20 +41,14 @@ export const navigationItems = [
   },
   {
     label: "Mutasi Stok",
-    path: "/inventory-history",
-    icon: <ClipboardList />,
+    path: "/logs",
+    icon: <FileText />,
     roles: ["owner"],
   },
   {
     label: "Presensi",
     path: "/attendance",
     icon: <CalendarCheck />,
-    roles: ["owner"],
-  },
-  {
-    label: "Log Audit",
-    path: "/audit-logs",
-    icon: <FileText />,
     roles: ["owner"],
   },
 ];

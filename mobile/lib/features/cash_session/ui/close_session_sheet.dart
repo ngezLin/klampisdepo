@@ -35,10 +35,10 @@ class _CloseSessionSheetState extends ConsumerState<CloseSessionSheet> {
       );
     }
 
-    final double openingCash = (activeSession['opening_cash'] as num).toDouble();
+    final double openingCash = (activeSession['opening_cash'] as num?)?.toDouble() ?? 0.0;
     final String openedAtStr = activeSession['opened_at'] ?? '';
     final String formattedOpen = openedAtStr.isNotEmpty 
-        ? DateFormat('dd/MM HH:mm').format(DateTime.parse(openedAtStr)) 
+        ? DateFormat('dd/MM HH:mm').format(_parseDateTime(openedAtStr)) 
         : '-';
 
     return Container(
@@ -194,11 +194,11 @@ class _CloseSessionSheetState extends ConsumerState<CloseSessionSheet> {
   }
 
   void _showSummaryDialog(Map<String, dynamic> result) {
-    final double exp = (result['expected_cash'] as num).toDouble();
-    final double actual = (result['closing_cash'] as num).toDouble();
-    final double diff = (result['difference'] as num).toDouble();
-    final double cashIn = (result['total_cash_in'] as num).toDouble();
-    final double change = (result['total_change'] as num).toDouble();
+    final double exp = (result['expected_cash'] as num?)?.toDouble() ?? 0.0;
+    final double actual = (result['closing_cash'] as num?)?.toDouble() ?? 0.0;
+    final double diff = (result['difference'] as num?)?.toDouble() ?? 0.0;
+    final double cashIn = (result['total_cash_in'] as num?)?.toDouble() ?? 0.0;
+    final double change = (result['total_change'] as num?)?.toDouble() ?? 0.0;
     
     showDialog(
       context: context,
@@ -282,5 +282,32 @@ class _CloseSessionSheetState extends ConsumerState<CloseSessionSheet> {
         ],
       ),
     );
+  }
+}
+
+DateTime _parseDateTime(dynamic raw) {
+  if (raw == null) return DateTime.now();
+  if (raw is DateTime) return raw;
+  if (raw is num) {
+    return DateTime.fromMillisecondsSinceEpoch(raw.toInt() * 1000).toLocal();
+  }
+  final str = raw.toString().trim();
+  if (str.isEmpty) return DateTime.now();
+  final parsedInt = int.tryParse(str);
+  if (parsedInt != null) {
+    return DateTime.fromMillisecondsSinceEpoch(parsedInt * 1000).toLocal();
+  }
+  try {
+    if (!str.contains('Z') && !str.contains('+') && !RegExp(r'-\d{2}:\d{2}$').hasMatch(str)) {
+      final formatted = str.replaceAll(' ', 'T') + 'Z';
+      return DateTime.parse(formatted).toLocal();
+    }
+    return DateTime.parse(str).toLocal();
+  } catch (_) {
+    try {
+      return DateTime.parse(str).toLocal();
+    } catch (_) {
+      return DateTime.now();
+    }
   }
 }

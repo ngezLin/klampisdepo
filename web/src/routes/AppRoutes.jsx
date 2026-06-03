@@ -10,8 +10,7 @@ import Items from "../pages/Items";
 import Transactions from "../pages/Transactions";
 import History from "../pages/History";
 import Attendance from "../pages/Attendance";
-import InventoryHistory from "../pages/InventoryHistory";
-import AuditLogs from "../pages/AuditLogs";
+import Logs from "../pages/Logs";
 import CashSessions from "../pages/CashSessions";
 import Login from "../pages/Login";
 import LandingPage from "../pages/LandingPage";
@@ -112,12 +111,12 @@ export default function AppRoutes() {
           }
         />
         <Route
-          path="/inventory-history"
+          path="/logs"
           element={
             <ProtectedRoute roles={["owner"]}>
               <Layout>
                 <PageTransition>
-                  <InventoryHistory />
+                  <Logs />
                 </PageTransition>
               </Layout>
             </ProtectedRoute>
@@ -130,18 +129,6 @@ export default function AppRoutes() {
               <Layout>
                 <PageTransition>
                   <Attendance />
-                </PageTransition>
-              </Layout>
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/audit-logs"
-          element={
-            <ProtectedRoute roles={["owner"]}>
-              <Layout>
-                <PageTransition>
-                  <AuditLogs />
                 </PageTransition>
               </Layout>
             </ProtectedRoute>

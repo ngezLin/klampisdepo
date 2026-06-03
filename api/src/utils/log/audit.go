@@ -1,9 +1,6 @@
 package log
 
 import (
-	"kd-api/src/models"
-	"kd-api/src/utils/common"
-
 	"gorm.io/gorm"
 )
 
@@ -19,16 +16,5 @@ func CreateAuditLog(
 	ipAddress string,
 	description string,
 ) error {
-	auditLog := models.AuditLog{
-		EntityType:  entityType,
-		EntityID:    entityID,
-		Action:      action,
-		UserID:      userID,
-		OldValue:    common.ToJSONString(oldValue),
-		NewValue:    common.ToJSONString(newValue),
-		Changes:     changes,
-		IPAddress:   &ipAddress,
-		Description: description,
-	}
-	return db.Create(&auditLog).Error
+	return nil
 }

@@ -6,6 +6,74 @@ import 'package:intl/intl.dart';
 import 'package:unified_esc_pos_printer/unified_esc_pos_printer.dart' as esc;
 import '../../core/network/dio_client.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+
+/// Configuration class for Receipt Customizer (Receipt Format Maker)
+class ReceiptFormatConfig {
+  final bool showLogo;
+  final bool showAddress;
+  final bool showPhone;
+  final bool showFooter;
+  final bool showNotes;
+  final String customHeaderMessage;
+  final String customFooterMessage;
+  final int paperWidth; // lineWidth: 32 (58mm) or 48 (80mm)
+
+  ReceiptFormatConfig({
+    this.showLogo = true,
+    this.showAddress = true,
+    this.showPhone = true,
+    this.showFooter = true,
+    this.showNotes = true,
+    this.customHeaderMessage = '',
+    this.customFooterMessage = 'Terima kasih telah\nberbelanja!',
+    this.paperWidth = 32,
+  });
+
+  ReceiptFormatConfig copyWith({
+    bool? showLogo,
+    bool? showAddress,
+    bool? showPhone,
+    bool? showFooter,
+    bool? showNotes,
+    String? customHeaderMessage,
+    String? customFooterMessage,
+    int? paperWidth,
+  }) {
+    return ReceiptFormatConfig(
+      showLogo: showLogo ?? this.showLogo,
+      showAddress: showAddress ?? this.showAddress,
+      showPhone: showPhone ?? this.showPhone,
+      showFooter: showFooter ?? this.showFooter,
+      showNotes: showNotes ?? this.showNotes,
+      customHeaderMessage: customHeaderMessage ?? this.customHeaderMessage,
+      customFooterMessage: customFooterMessage ?? this.customFooterMessage,
+      paperWidth: paperWidth ?? this.paperWidth,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'showLogo': showLogo,
+        'showAddress': showAddress,
+        'showPhone': showPhone,
+        'showFooter': showFooter,
+        'showNotes': showNotes,
+        'customHeaderMessage': customHeaderMessage,
+        'customFooterMessage': customFooterMessage,
+        'paperWidth': paperWidth,
+      };
+
+  factory ReceiptFormatConfig.fromJson(Map<String, dynamic> json) => ReceiptFormatConfig(
+        showLogo: json['showLogo'] ?? true,
+        showAddress: json['showAddress'] ?? true,
+        showPhone: json['showPhone'] ?? true,
+        showFooter: json['showFooter'] ?? true,
+        showNotes: json['showNotes'] ?? true,
+        customHeaderMessage: json['customHeaderMessage'] ?? '',
+        customFooterMessage: json['customFooterMessage'] ?? 'Terima kasih telah\nberbelanja!',
+        paperWidth: json['paperWidth'] ?? 32,
+      );
+}
 
 /// Represents a discovered printer
 class PrinterDevice {
@@ -30,7 +98,6 @@ enum PrinterStatus { disconnected, connecting, connected, printing, error }
 
 /// Generates ESC/POS receipt text (plain text layout for any printer)
 class ReceiptFormatter {
-  static const int lineWidth = 32; // Standard 58mm thermal receipt width
   static final _currencyFormat = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
   static final _dateFormat = DateFormat('dd/MM/yyyy HH:mm');
 
@@ -50,18 +117,27 @@ class ReceiptFormatter {
     String? cashierName,
     String? storeAddress,
     String? storePhone,
+    required ReceiptFormatConfig config,
   }) {
     final buffer = StringBuffer();
+    final width = config.paperWidth;
 
     // ─── HEADER ──────────────────────────
-    buffer.writeln(_center(storeName.toUpperCase()));
-    if (storeAddress != null) buffer.writeln(_center(storeAddress));
-    if (storePhone != null) buffer.writeln(_center(storePhone));
-    buffer.writeln(_divider('='));
+    if (config.customHeaderMessage.isNotEmpty) {
+      buffer.writeln(_center(config.customHeaderMessage, width));
+    }
+    buffer.writeln(_center(storeName.toUpperCase(), width));
+    if (config.showAddress && storeAddress != null) {
+      buffer.writeln(_center(storeAddress, width));
+    }
+    if (config.showPhone && storePhone != null) {
+      buffer.writeln(_center(storePhone, width));
+    }
+    buffer.writeln(_divider('=', width));
     buffer.writeln(_dateFormat.format(date));
     buffer.writeln('No. Transaksi: #$transactionId');
     if (cashierName != null) buffer.writeln('Kasir: $cashierName');
-    buffer.writeln(_divider('-'));
+    buffer.writeln(_divider('-', width));
 
     // ─── ITEMS ───────────────────────────
     for (final item in items) {
@@ -74,36 +150,40 @@ class ReceiptFormatter {
       buffer.writeln(_columns(
         '  $qty x ${_currencyFormat.format(price)}',
         _currencyFormat.format(itemSubtotal),
+        width,
       ));
     }
 
-    buffer.writeln(_divider('-'));
+    buffer.writeln(_divider('-', width));
 
     // ─── TOTALS ──────────────────────────
-    buffer.writeln(_columns('Subtotal', _currencyFormat.format(subtotal)));
+    buffer.writeln(_columns('Subtotal', _currencyFormat.format(subtotal), width));
     if (discount > 0) {
-      buffer.writeln(_columns('Diskon', '- ${_currencyFormat.format(discount)}'));
+      buffer.writeln(_columns('Diskon', '- ${_currencyFormat.format(discount)}', width));
     }
-    buffer.writeln(_divider('-'));
-    buffer.writeln(_columns('TOTAL', _currencyFormat.format(total)));
-    buffer.writeln(_divider('='));
+    buffer.writeln(_divider('-', width));
+    buffer.writeln(_columns('TOTAL', _currencyFormat.format(total), width));
+    buffer.writeln(_divider('=', width));
 
     // ─── PAYMENT ─────────────────────────
-    buffer.writeln(_columns('Bayar (${paymentType.toUpperCase()})', _currencyFormat.format(paymentAmount)));
+    buffer.writeln(_columns('Bayar (${paymentType.toUpperCase()})', _currencyFormat.format(paymentAmount), width));
     if (paymentType.toLowerCase() == 'cash' && change > 0) {
-      buffer.writeln(_columns('Kembalian', _currencyFormat.format(change)));
+      buffer.writeln(_columns('Kembalian', _currencyFormat.format(change), width));
     }
 
-    if (note != null && note.isNotEmpty) {
-      buffer.writeln(_divider('-'));
+    if (config.showNotes && note != null && note.isNotEmpty) {
+      buffer.writeln(_divider('-', width));
       buffer.writeln('Catatan: $note');
     }
 
-    buffer.writeln(_divider('='));
+    buffer.writeln(_divider('=', width));
 
     // ─── FOOTER ──────────────────────────
-    buffer.writeln(_center('Terima kasih telah'));
-    buffer.writeln(_center('berbelanja!'));
+    if (config.showFooter && config.customFooterMessage.isNotEmpty) {
+      for (final line in config.customFooterMessage.split('\n')) {
+        buffer.writeln(_center(line, width));
+      }
+    }
     buffer.writeln('');
     buffer.writeln('');
     buffer.writeln('');
@@ -112,18 +192,18 @@ class ReceiptFormatter {
   }
 
   /// Center text within the receipt width
-  static String _center(String text) {
-    if (text.length >= lineWidth) return text;
-    final padding = (lineWidth - text.length) ~/ 2;
+  static String _center(String text, int width) {
+    if (text.length >= width) return text;
+    final padding = (width - text.length) ~/ 2;
     return ' ' * padding + text;
   }
 
   /// Create a divider line
-  static String _divider(String char) => char * lineWidth;
+  static String _divider(String char, int width) => char * width;
 
   /// Two-column layout (left-aligned and right-aligned)
-  static String _columns(String left, String right) {
-    final available = lineWidth - right.length;
+  static String _columns(String left, String right, int width) {
+    final available = width - right.length;
     if (left.length > available) {
       left = left.substring(0, available);
     }
@@ -138,6 +218,30 @@ class PrinterService extends ChangeNotifier {
   String? _lastError;
 
   final esc.PrinterManager? _manager = kIsWeb ? null : esc.PrinterManager();
+  final _storage = const FlutterSecureStorage();
+  ReceiptFormatConfig formatConfig = ReceiptFormatConfig();
+
+  Future<void> loadFormatConfig() async {
+    try {
+      final jsonStr = await _storage.read(key: 'receipt_format_config');
+      if (jsonStr != null) {
+        formatConfig = ReceiptFormatConfig.fromJson(jsonDecode(jsonStr));
+        notifyListeners();
+      }
+    } catch (e) {
+      debugPrint('Failed to load format config: $e');
+    }
+  }
+
+  Future<void> updateFormatConfig(ReceiptFormatConfig newConfig) async {
+    formatConfig = newConfig;
+    notifyListeners();
+    try {
+      await _storage.write(key: 'receipt_format_config', value: jsonEncode(newConfig.toJson()));
+    } catch (e) {
+      debugPrint('Failed to save format config: $e');
+    }
+  }
 
   // Store info for receipts
   String storeName = 'KlampisDepo';
@@ -381,6 +485,7 @@ class PrinterService extends ChangeNotifier {
         cashierName: cashierName,
         storeAddress: storeAddress,
         storePhone: storePhone,
+        config: formatConfig,
       );
 
       if (kIsWeb || _connectedPrinter?.address == 'browser') {
@@ -469,6 +574,7 @@ class PrinterService extends ChangeNotifier {
       cashierName: cashierName,
       storeAddress: storeAddress,
       storePhone: storePhone,
+      config: formatConfig,
     );
 
     await Share.share(receipt, subject: 'Struk Belanja #${transaction['id']}');
@@ -519,6 +625,7 @@ class PrinterService extends ChangeNotifier {
       cashierName: cashierName,
       storeAddress: storeAddress,
       storePhone: storePhone,
+      config: formatConfig,
     );
   }
 
@@ -536,15 +643,18 @@ class PrinterService extends ChangeNotifier {
 final printerServiceProvider = ChangeNotifierProvider<PrinterService>((ref) {
   final service = PrinterService();
   service.fetchStoreInfo(ref);
+  service.loadFormatConfig();
   return service;
 });
 
 DateTime _parseDateTime(dynamic raw) {
   if (raw == null) return DateTime.now();
+  if (raw is DateTime) return raw;
   if (raw is num) {
     return DateTime.fromMillisecondsSinceEpoch(raw.toInt() * 1000).toLocal();
   }
-  final str = raw.toString();
+  final str = raw.toString().trim();
+  if (str.isEmpty) return DateTime.now();
   final parsedInt = int.tryParse(str);
   if (parsedInt != null) {
     return DateTime.fromMillisecondsSinceEpoch(parsedInt * 1000).toLocal();
@@ -555,7 +665,11 @@ DateTime _parseDateTime(dynamic raw) {
       return DateTime.parse(formatted).toLocal();
     }
     return DateTime.parse(str).toLocal();
-  } catch (e) {
-    return DateTime.parse(str).toLocal();
+  } catch (_) {
+    try {
+      return DateTime.parse(str).toLocal();
+    } catch (_) {
+      return DateTime.now();
+    }
   }
 }

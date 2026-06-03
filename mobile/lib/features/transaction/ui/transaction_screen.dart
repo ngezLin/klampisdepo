@@ -3,23 +3,24 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import '../providers/transaksi_provider.dart';
+import '../providers/transaction_provider.dart';
 import '../models/transaction_models.dart';
 import '../../item/providers/item_provider.dart';
 import '../../../services/sync/offline_sync_service.dart';
 import '../../../services/printer/printer_service.dart';
-import '../../riwayat/ui/riwayat_screen.dart';
+import '../../history/ui/history_screen.dart';
 import '../../../core/theme/notification_helper.dart';
 import '../../cash_session/providers/cash_session_provider.dart';
+import '../../../core/ui/item_image.dart';
 
-class TransaksiScreen extends ConsumerStatefulWidget {
-  const TransaksiScreen({super.key});
+class TransactionScreen extends ConsumerStatefulWidget {
+  const TransactionScreen({super.key});
 
   @override
-  ConsumerState<TransaksiScreen> createState() => _TransaksiScreenState();
+  ConsumerState<TransactionScreen> createState() => _TransactionScreenState();
 }
 
-class _TransaksiScreenState extends ConsumerState<TransaksiScreen> {
+class _TransactionScreenState extends ConsumerState<TransactionScreen> {
   final _searchController = TextEditingController();
   final _searchFocusNode = FocusNode();
   final _currencyFormat = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
@@ -48,25 +49,25 @@ class _TransaksiScreenState extends ConsumerState<TransaksiScreen> {
 
   void _onScroll() {
     if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 200) {
-      final searchQuery = ref.read(transaksiSearchQueryProvider);
+      final searchQuery = ref.read(transactionSearchQueryProvider);
       ref.read(paginatedItemsProvider(searchQuery).notifier).loadNextPage();
     }
   }
 
   void _handleBarcodeScan(String val) {
     if (val.trim().isEmpty) return;
-    final searchQuery = ref.read(transaksiSearchQueryProvider);
+    final searchQuery = ref.read(transactionSearchQueryProvider);
     final paginatedState = ref.read(paginatedItemsProvider(searchQuery));
 
     if (paginatedState.items.length == 1) {
       final matchedItem = paginatedState.items.first;
-      ref.read(transaksiProvider.notifier).addToCart(matchedItem);
+      ref.read(transactionProvider.notifier).addToCart(matchedItem);
       showTopSnackBar(
         context,
         '📥 "${matchedItem.name}" ditambahkan!',
       );
       _searchController.clear();
-      ref.read(transaksiSearchQueryProvider.notifier).state = '';
+      ref.read(transactionSearchQueryProvider.notifier).state = '';
       _searchFocusNode.requestFocus();
     } else {
       _searchFocusNode.requestFocus();
@@ -75,9 +76,9 @@ class _TransaksiScreenState extends ConsumerState<TransaksiScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final searchQuery = ref.watch(transaksiSearchQueryProvider);
+    final searchQuery = ref.watch(transactionSearchQueryProvider);
     final paginatedState = ref.watch(paginatedItemsProvider(searchQuery));
-    final transaksi = ref.watch(transaksiProvider);
+    final transaksi = ref.watch(transactionProvider);
     final isTablet = MediaQuery.of(context).size.width > 900;
 
     return Scaffold(
@@ -120,7 +121,7 @@ class _TransaksiScreenState extends ConsumerState<TransaksiScreen> {
                       ),
                       tooltip: 'Pending sync ⏳ (Ketuk untuk sync sekarang)',
                       onPressed: () async {
-                        final result = await ref.read(transaksiProvider.notifier).syncNow();
+                        final result = await ref.read(transactionProvider.notifier).syncNow();
                         if (context.mounted) {
                           showTopSnackBar(
                             context,
@@ -187,7 +188,7 @@ class _TransaksiScreenState extends ConsumerState<TransaksiScreen> {
                     hintText: 'Cari item...',
                     leading: const Icon(Icons.search),
                     onChanged: (val) {
-                      ref.read(transaksiSearchQueryProvider.notifier).state = val;
+                      ref.read(transactionSearchQueryProvider.notifier).state = val;
                     },
                     onSubmitted: (val) {
                       _handleBarcodeScan(val);
@@ -215,7 +216,7 @@ class _TransaksiScreenState extends ConsumerState<TransaksiScreen> {
                                 }
                                 return _ItemCard(
                                   item: paginatedState.items[index],
-                                  onTap: () => ref.read(transaksiProvider.notifier).addToCart(paginatedState.items[index]),
+                                  onTap: () => ref.read(transactionProvider.notifier).addToCart(paginatedState.items[index]),
                                 );
                               },
                             ),
@@ -317,18 +318,10 @@ class _ItemCard extends StatelessWidget {
               child: Stack(
                 fit: StackFit.expand,
                 children: [
-                  if (item.imageUrl != null)
-                    CachedNetworkImage(
-                      imageUrl: item.imageUrl!,
-                      fit: BoxFit.cover,
-                      placeholder: (context, url) => Container(color: Colors.grey[100]),
-                      errorWidget: (context, url, error) => const Icon(Icons.image_not_supported),
-                    )
-                  else
-                    Container(
-                      color: Colors.grey[100],
-                      child: const Icon(Icons.inventory_2, color: Colors.grey),
-                    ),
+                  ItemImage(
+                    imageUrl: item.imageUrl,
+                    fit: BoxFit.cover,
+                  ),
                   if (item.isStockManaged)
                     Positioned(
                       top: 8,
@@ -499,8 +492,8 @@ class _CartPanel extends ConsumerWidget {
                 if (!isScanning && isConnected)
                   ElevatedButton(
                     onPressed: () {
-                      ref.read(transaksiProvider.notifier).setCustomPrice(cartItem.item.id, calculatedPrice);
-                      ref.read(transaksiProvider.notifier).updateQuantity(cartItem.item.id, 1 - cartItem.quantity);
+                      ref.read(transactionProvider.notifier).setCustomPrice(cartItem.item.id, calculatedPrice);
+                      ref.read(transactionProvider.notifier).updateQuantity(cartItem.item.id, 1 - cartItem.quantity);
                       Navigator.pop(context);
                       showTopSnackBar(
                         context,
@@ -562,9 +555,9 @@ class _CartPanel extends ConsumerWidget {
 
     if (newPrice != null) {
       if (newPrice < 0) {
-        ref.read(transaksiProvider.notifier).setCustomPrice(item.item.id, null);
+        ref.read(transactionProvider.notifier).setCustomPrice(item.item.id, null);
       } else {
-        ref.read(transaksiProvider.notifier).setCustomPrice(item.item.id, newPrice);
+        ref.read(transactionProvider.notifier).setCustomPrice(item.item.id, newPrice);
       }
     }
   }
@@ -609,7 +602,7 @@ class _CartPanel extends ConsumerWidget {
     );
 
     if (newDiscount != null) {
-      ref.read(transaksiProvider.notifier).setDiscount(newDiscount);
+      ref.read(transactionProvider.notifier).setDiscount(newDiscount);
     }
   }
 
@@ -650,13 +643,13 @@ class _CartPanel extends ConsumerWidget {
     );
 
     if (newNote != null) {
-      ref.read(transaksiProvider.notifier).setNote(newNote);
+      ref.read(transactionProvider.notifier).setNote(newNote);
     }
   }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final transaksi = ref.watch(transaksiProvider);
+    final transaksi = ref.watch(transactionProvider);
     final currencyFormat = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
     final isTablet = MediaQuery.of(context).size.width > 900;
 
@@ -682,7 +675,7 @@ class _CartPanel extends ConsumerWidget {
               ),
               TextButton(
                 onPressed: () {
-                  ref.read(transaksiProvider.notifier).reset();
+                  ref.read(transactionProvider.notifier).reset();
                   if (!isTablet) {
                     Navigator.pop(context);
                   }
@@ -699,45 +692,67 @@ class _CartPanel extends ConsumerWidget {
             separatorBuilder: (_, __) => const Divider(),
             itemBuilder: (context, index) {
               final item = transaksi.cart[index];
-              return ListTile(
-                contentPadding: EdgeInsets.zero,
-                title: Text(item.item.name),
-                subtitle: InkWell(
-                  onTap: () => _editCustomPrice(context, ref, item),
-                  child: Padding(
-                    padding: const EdgeInsets.only(top: 4),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        if (item.customPrice != null) ...[
-                          Text(currencyFormat.format(item.item.price), style: const TextStyle(decoration: TextDecoration.lineThrough, fontSize: 12, color: Colors.grey)),
+              return Dismissible(
+                key: ValueKey(item.item.id),
+                direction: DismissDirection.endToStart,
+                background: Container(
+                  color: Colors.red,
+                  alignment: Alignment.centerRight,
+                  padding: const EdgeInsets.only(right: 20.0),
+                  child: const Icon(Icons.delete, color: Colors.white),
+                ),
+                onDismissed: (direction) {
+                  ref.read(transactionProvider.notifier).removeFromCart(item.item.id);
+                  showTopSnackBar(
+                    context,
+                    '🗑️ "${item.item.name}" dihapus dari keranjang',
+                  );
+                },
+                child: ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(item.item.name),
+                  subtitle: InkWell(
+                    onTap: () => _editCustomPrice(context, ref, item),
+                    child: Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (item.customPrice != null) ...[
+                            Text(currencyFormat.format(item.item.price), style: const TextStyle(decoration: TextDecoration.lineThrough, fontSize: 12, color: Colors.grey)),
+                            const SizedBox(width: 4),
+                          ],
+                          Text(currencyFormat.format(item.currentPrice), style: TextStyle(color: Theme.of(context).primaryColor, fontWeight: FontWeight.bold)),
                           const SizedBox(width: 4),
+                          const Icon(Icons.edit, size: 14, color: Colors.grey),
                         ],
-                        Text(currencyFormat.format(item.currentPrice), style: TextStyle(color: Theme.of(context).primaryColor, fontWeight: FontWeight.bold)),
-                        const SizedBox(width: 4),
-                        const Icon(Icons.edit, size: 14, color: Colors.grey),
-                      ],
+                      ),
                     ),
                   ),
-                ),
-                trailing: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.scale, color: Color(0xFF00AA5B)),
-                      tooltip: 'Timbang Item',
-                      onPressed: () => _openScaleDialog(context, ref, item),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.remove_circle_outline),
-                      onPressed: () => ref.read(transaksiProvider.notifier).updateQuantity(item.item.id, -1),
-                    ),
-                    Text('${item.quantity}', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                    IconButton(
-                      icon: const Icon(Icons.add_circle_outline),
-                      onPressed: () => ref.read(transaksiProvider.notifier).updateQuantity(item.item.id, 1),
-                    ),
-                  ],
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.scale, color: Color(0xFF00AA5B)),
+                        tooltip: 'Timbang Item',
+                        onPressed: () => _openScaleDialog(context, ref, item),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.remove_circle_outline),
+                        onPressed: () => ref.read(transactionProvider.notifier).updateQuantity(item.item.id, -1),
+                      ),
+                      Text('${item.quantity}', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                      IconButton(
+                        icon: const Icon(Icons.add_circle_outline),
+                        onPressed: () => ref.read(transactionProvider.notifier).updateQuantity(item.item.id, 1),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.delete_outline, color: Colors.red),
+                        tooltip: 'Hapus Item',
+                        onPressed: () => ref.read(transactionProvider.notifier).removeFromCart(item.item.id),
+                      ),
+                    ],
+                  ),
                 ),
               );
             },
@@ -756,16 +771,16 @@ class _CartPanel extends ConsumerWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   const Text('Tipe Transaksi', style: TextStyle(color: Colors.grey, fontSize: 14)),
-                  DropdownButton<String>(
-                    value: transaksi.transactionType,
-                    underline: const SizedBox(),
-                    items: const [
-                      DropdownMenuItem(value: 'onsite', child: Text('Onsite (Makan di Sini)', style: TextStyle(fontSize: 14))),
-                      DropdownMenuItem(value: 'deliver', child: Text('Deliver (Kirim)', style: TextStyle(fontSize: 14))),
-                    ],
+                    DropdownButton<String>(
+                      value: transaksi.transactionType,
+                      underline: const SizedBox(),
+                      items: const [
+                        DropdownMenuItem(value: 'onsite', child: Text('Onsite (Ambil di Toko)', style: TextStyle(fontSize: 14))),
+                        DropdownMenuItem(value: 'deliver', child: Text('Deliver (Kirim)', style: TextStyle(fontSize: 14))),
+                      ],
                     onChanged: (val) {
                       if (val != null) {
-                        ref.read(transaksiProvider.notifier).setTransactionType(val);
+                        ref.read(transactionProvider.notifier).setTransactionType(val);
                       }
                     },
                   ),
@@ -855,7 +870,7 @@ class _CartPanel extends ConsumerWidget {
                   Expanded(
                     child: OutlinedButton(
                       onPressed: () {
-                        ref.read(transaksiProvider.notifier).saveDraft();
+                        ref.read(transactionProvider.notifier).saveDraft();
                         if (!isTablet) {
                           Navigator.pop(context);
                         }
@@ -908,15 +923,15 @@ class _CheckoutSheetContentState extends ConsumerState<_CheckoutSheetContent> {
   @override
   void initState() {
     super.initState();
-    final state = ref.read(transaksiProvider);
+    final state = ref.read(transactionProvider);
     _paymentAmountController = TextEditingController(text: state.finalTotal.toStringAsFixed(0));
     _discountController = TextEditingController(text: state.discount > 0 ? state.discount.toStringAsFixed(0) : '');
     _noteController = TextEditingController(text: state.note ?? '');
 
     // Set initial values in notifier
     Future.microtask(() {
-      ref.read(transaksiProvider.notifier).setPaymentAmount(state.finalTotal);
-      ref.read(transaksiProvider.notifier).setPaymentType('cash');
+      ref.read(transactionProvider.notifier).setPaymentAmount(state.finalTotal);
+      ref.read(transactionProvider.notifier).setPaymentType('cash');
     });
   }
 
@@ -930,7 +945,7 @@ class _CheckoutSheetContentState extends ConsumerState<_CheckoutSheetContent> {
 
   @override
   Widget build(BuildContext context) {
-    final state = ref.watch(transaksiProvider);
+    final state = ref.watch(transactionProvider);
     final currencyFormat = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
 
     return Padding(
@@ -969,9 +984,9 @@ class _CheckoutSheetContentState extends ConsumerState<_CheckoutSheetContent> {
                   selected: isSelected,
                   onSelected: (val) {
                     if (val) {
-                      ref.read(transaksiProvider.notifier).setPaymentType(type);
+                      ref.read(transactionProvider.notifier).setPaymentType(type);
                       if (type != 'cash') {
-                        ref.read(transaksiProvider.notifier).setPaymentAmount(state.finalTotal);
+                        ref.read(transactionProvider.notifier).setPaymentAmount(state.finalTotal);
                         _paymentAmountController.text = state.finalTotal.toStringAsFixed(0);
                       }
                     }
@@ -988,7 +1003,7 @@ class _CheckoutSheetContentState extends ConsumerState<_CheckoutSheetContent> {
                 prefixIcon: Icon(Icons.notes),
               ),
               onChanged: (val) {
-                ref.read(transaksiProvider.notifier).setNote(val);
+                ref.read(transactionProvider.notifier).setNote(val);
               },
             ),
             const SizedBox(height: 16),
@@ -1002,12 +1017,12 @@ class _CheckoutSheetContentState extends ConsumerState<_CheckoutSheetContent> {
               keyboardType: TextInputType.number,
               onChanged: (val) {
                 final discount = double.tryParse(val) ?? 0;
-                ref.read(transaksiProvider.notifier).setDiscount(discount);
+                ref.read(transactionProvider.notifier).setDiscount(discount);
                 
                 // If payment type is not cash, update paymentAmount to finalTotal automatically
                 if (state.paymentType != 'cash') {
                   final newTotal = state.totalBeforeDiscount - discount;
-                  ref.read(transaksiProvider.notifier).setPaymentAmount(newTotal);
+                  ref.read(transactionProvider.notifier).setPaymentAmount(newTotal);
                   _paymentAmountController.text = newTotal.toStringAsFixed(0);
                 }
               },
@@ -1025,7 +1040,7 @@ class _CheckoutSheetContentState extends ConsumerState<_CheckoutSheetContent> {
                 ),
                 onChanged: (val) {
                   final amt = double.tryParse(val) ?? 0;
-                  ref.read(transaksiProvider.notifier).setPaymentAmount(amt);
+                  ref.read(transactionProvider.notifier).setPaymentAmount(amt);
                 },
               ),
               const SizedBox(height: 12),
@@ -1038,7 +1053,7 @@ class _CheckoutSheetContentState extends ConsumerState<_CheckoutSheetContent> {
                         minimumSize: const Size(0, 40),
                       ),
                       onPressed: () {
-                        ref.read(transaksiProvider.notifier).setPaymentAmount(state.finalTotal);
+                        ref.read(transactionProvider.notifier).setPaymentAmount(state.finalTotal);
                         _paymentAmountController.text = state.finalTotal.toStringAsFixed(0);
                       },
                       child: const Text('Pas'),
@@ -1051,7 +1066,7 @@ class _CheckoutSheetContentState extends ConsumerState<_CheckoutSheetContent> {
                         minimumSize: const Size(0, 40),
                       ),
                       onPressed: () {
-                        ref.read(transaksiProvider.notifier).setPaymentAmount(50000);
+                        ref.read(transactionProvider.notifier).setPaymentAmount(50000);
                         _paymentAmountController.text = '50000';
                       },
                       child: const Text('50rb'),
@@ -1064,7 +1079,7 @@ class _CheckoutSheetContentState extends ConsumerState<_CheckoutSheetContent> {
                         minimumSize: const Size(0, 40),
                       ),
                       onPressed: () {
-                        ref.read(transaksiProvider.notifier).setPaymentAmount(100000);
+                        ref.read(transactionProvider.notifier).setPaymentAmount(100000);
                         _paymentAmountController.text = '100000';
                       },
                       child: const Text('100rb'),
@@ -1112,13 +1127,13 @@ class _CheckoutSheetContentState extends ConsumerState<_CheckoutSheetContent> {
                         }
                       }
 
-                      final notifier = ref.read(transaksiProvider.notifier);
+                      final notifier = ref.read(transactionProvider.notifier);
                       final result = await notifier.checkout();
                       if (result.success && context.mounted) {
                         // Invalidate history provider so it displays this new transaction automatically
                         ref.invalidate(historyProvider);
                         // Check if checkout was saved offline
-                        final wasOffline = ref.read(transaksiProvider).lastCheckoutWasOffline;
+                        final wasOffline = ref.read(transactionProvider).lastCheckoutWasOffline;
                         Navigator.pop(context);
                         showTopSnackBar(
                           context,
@@ -1152,17 +1167,17 @@ class _CheckoutSheetContentState extends ConsumerState<_CheckoutSheetContent> {
     );
   }
 
-  void _showOpenSessionDialog(BuildContext context) {
+  void _showOpenSessionDialog(BuildContext sheetContext) {
     final cashController = TextEditingController();
     final formKey = GlobalKey<FormState>();
     bool isSubmitting = false;
 
     showDialog(
-      context: context,
+      context: sheetContext,
       barrierDismissible: false,
-      builder: (context) {
+      builder: (dialogContext) {
         return StatefulBuilder(
-          builder: (context, setState) {
+          builder: (statefulContext, setState) {
             return AlertDialog(
               title: const Row(
                 children: [
@@ -1208,7 +1223,7 @@ class _CheckoutSheetContentState extends ConsumerState<_CheckoutSheetContent> {
               ),
               actions: [
                 TextButton(
-                  onPressed: isSubmitting ? null : () => Navigator.pop(context),
+                  onPressed: isSubmitting ? null : () => Navigator.pop(dialogContext),
                   child: const Text('Batal'),
                 ),
                 ElevatedButton(
@@ -1220,27 +1235,27 @@ class _CheckoutSheetContentState extends ConsumerState<_CheckoutSheetContent> {
                           final startingCash = double.parse(cashController.text.trim());
                           final success = await ref.read(cashSessionProvider.notifier).openSession(startingCash);
                           setState(() => isSubmitting = false);
-                          if (success && context.mounted) {
-                            Navigator.pop(context); // Close open session dialog
-                            showTopSnackBar(context, 'Shift Kasir Berhasil Dibuka!');
+                          if (success && statefulContext.mounted) {
+                            Navigator.pop(dialogContext); // Close open session dialog
+                            showTopSnackBar(sheetContext, 'Shift Kasir Berhasil Dibuka!');
                             
                             // Re-trigger checkout since they successfully opened the session!
-                            final result = await ref.read(transaksiProvider.notifier).checkout();
-                            if (result.success && context.mounted) {
+                            final result = await ref.read(transactionProvider.notifier).checkout();
+                            if (result.success && sheetContext.mounted) {
                               ref.invalidate(historyProvider);
-                              final wasOffline = ref.read(transaksiProvider).lastCheckoutWasOffline;
-                              Navigator.pop(context); // Close checkout sheet
+                              final wasOffline = ref.read(transactionProvider).lastCheckoutWasOffline;
+                              Navigator.pop(sheetContext); // Close checkout sheet
                               showTopSnackBar(
-                                context,
+                                sheetContext,
                                 wasOffline
                                     ? '📴 Transaksi disimpan offline. Akan otomatis sync saat koneksi kembali.'
                                     : '✅ Transaksi Berhasil Disimpan!',
                                 backgroundColor: wasOffline ? Colors.orange[700] : null,
                               );
                             }
-                          } else if (context.mounted) {
+                          } else if (statefulContext.mounted) {
                             final err = ref.read(cashSessionProvider).error ?? 'Gagal membuka shift.';
-                            showTopSnackBar(context, err, backgroundColor: Colors.red[700]);
+                            showTopSnackBar(statefulContext, err, backgroundColor: Colors.red[700]);
                           }
                         },
                   child: isSubmitting
@@ -1283,49 +1298,127 @@ class _DraftsDialog extends ConsumerWidget {
                 final int id = draft['id'] as int;
                 final double total = (draft['total'] as num).toDouble();
                 final String dateStr = draft['created_at'] as String;
-                final String formattedDate = dateFormat.format(DateTime.parse(dateStr).toLocal());
+                final String formattedDate = dateFormat.format(_parseDateTime(dateStr));
                 final String? note = draft['note'] as String?;
                 final itemsList = draft['items'] as List<dynamic>;
 
-                return ListTile(
-                  title: Text('Draft #$id', style: const TextStyle(fontWeight: FontWeight.bold)),
-                  subtitle: Text('$formattedDate\n${itemsList.length} item | ${note ?? "Tanpa catatan"}'),
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        currencyFormat.format(total),
-                        style: TextStyle(fontWeight: FontWeight.bold, color: Theme.of(context).primaryColor),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.delete_outline, color: Colors.red),
-                        onPressed: () async {
-                          final confirm = await showDialog<bool>(
-                            context: context,
-                            builder: (context) => AlertDialog(
-                              title: const Text('Hapus Draft?'),
-                              content: const Text('Apakah Anda yakin ingin menghapus draft ini?'),
-                              actions: [
-                                TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Batal')),
-                                TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Hapus', style: TextStyle(color: Colors.red))),
-                              ],
-                            ),
-                          );
-                          if (confirm == true) {
-                            await ref.read(transaksiProvider.notifier).deleteDraft(id);
-                          }
-                        },
-                      ),
-                    ],
-                  ),
+                return InkWell(
                   onTap: () {
-                    ref.read(transaksiProvider.notifier).loadDraft(draft);
+                    ref.read(transactionProvider.notifier).loadDraft(draft);
                     Navigator.pop(context);
                     showTopSnackBar(
                       context,
                       'Draft #$id berhasil dimuat!',
                     );
                   },
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 10.0, horizontal: 12.0),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Draft #$id',
+                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                '$formattedDate\n${itemsList.length} item | ${note ?? "Tanpa catatan"}',
+                                style: const TextStyle(color: Colors.grey, fontSize: 11, height: 1.3),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Text(
+                              currencyFormat.format(total),
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: Theme.of(context).primaryColor,
+                                fontSize: 14,
+                              ),
+                            ),
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                IconButton(
+                                  icon: const Icon(Icons.print_outlined, color: Colors.blue, size: 20),
+                                  padding: EdgeInsets.zero,
+                                  constraints: const BoxConstraints(),
+                                  onPressed: () async {
+                                    final printer = ref.read(printerServiceProvider);
+                                    if (printer.isConnected) {
+                                      final draftTransaction = {
+                                        'id': id,
+                                        'created_at': dateStr,
+                                        'items': itemsList.map((it) {
+                                          final itemObj = it['item'] ?? {};
+                                          return {
+                                            'item_name': itemObj['name'] ?? it['name'] ?? '-',
+                                            'quantity': it['quantity'] ?? 1,
+                                            'price': it['price'] ?? 0.0,
+                                            'subtotal': it['subtotal'] ?? 0.0,
+                                          };
+                                        }).toList(),
+                                        'subtotal': total,
+                                        'discount': (draft['discount'] as num?)?.toDouble() ?? 0.0,
+                                        'total': total,
+                                        'payment_type': 'draft',
+                                        'payment': total,
+                                        'change': 0.0,
+                                        'note': note,
+                                      };
+                                      final success = await printer.printReceipt(draftTransaction);
+                                      if (context.mounted) {
+                                        showTopSnackBar(
+                                          context,
+                                          success ? 'Draft berhasil dicetak!' : 'Gagal mencetak: ${printer.lastError}',
+                                          backgroundColor: success ? null : Colors.red[700],
+                                        );
+                                      }
+                                    } else {
+                                      showTopSnackBar(
+                                        context,
+                                        '⚠️ Printer belum terhubung! Silakan hubungkan printer.',
+                                        backgroundColor: Colors.amber[800],
+                                      );
+                                    }
+                                  },
+                                ),
+                                const SizedBox(width: 12),
+                                IconButton(
+                                  icon: const Icon(Icons.delete_outline, color: Colors.red, size: 20),
+                                  padding: EdgeInsets.zero,
+                                  constraints: const BoxConstraints(),
+                                  onPressed: () async {
+                                    final confirm = await showDialog<bool>(
+                                      context: context,
+                                      builder: (context) => AlertDialog(
+                                        title: const Text('Hapus Draft?'),
+                                        content: const Text('Apakah Anda yakin ingin menghapus draft ini?'),
+                                        actions: [
+                                          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Batal')),
+                                          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Hapus', style: TextStyle(color: Colors.red))),
+                                        ],
+                                      ),
+                                    );
+                                    if (confirm == true) {
+                                      await ref.read(transactionProvider.notifier).deleteDraft(id);
+                                    }
+                                  },
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
                 );
               },
             );
@@ -1685,6 +1778,33 @@ class _ConflictResolutionDialogState extends ConsumerState<_ConflictResolutionDi
         ),
       ],
     );
+  }
+}
+
+DateTime _parseDateTime(dynamic raw) {
+  if (raw == null) return DateTime.now();
+  if (raw is DateTime) return raw;
+  if (raw is num) {
+    return DateTime.fromMillisecondsSinceEpoch(raw.toInt() * 1000).toLocal();
+  }
+  final str = raw.toString().trim();
+  if (str.isEmpty) return DateTime.now();
+  final parsedInt = int.tryParse(str);
+  if (parsedInt != null) {
+    return DateTime.fromMillisecondsSinceEpoch(parsedInt * 1000).toLocal();
+  }
+  try {
+    if (!str.contains('Z') && !str.contains('+') && !RegExp(r'-\d{2}:\d{2}$').hasMatch(str)) {
+      final formatted = str.replaceAll(' ', 'T') + 'Z';
+      return DateTime.parse(formatted).toLocal();
+    }
+    return DateTime.parse(str).toLocal();
+  } catch (_) {
+    try {
+      return DateTime.parse(str).toLocal();
+    } catch (_) {
+      return DateTime.now();
+    }
   }
 }
 

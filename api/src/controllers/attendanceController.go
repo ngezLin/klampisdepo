@@ -8,7 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// tambah absensi manual
+// Add manual attendance
 func CreateAttendance(c *gin.Context) {
     var input dtos.CreateAttendanceInput
 
@@ -21,7 +21,7 @@ func CreateAttendance(c *gin.Context) {
     attendance, err := service.CreateAttendance(input)
 
     if err != nil {
-        if err.Error() == "Cashier sudah diabsen hari ini" {
+        if err.Error() == "cashier has already clocked in today" {
              c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
              return
         }
@@ -33,7 +33,7 @@ func CreateAttendance(c *gin.Context) {
 }
 
 
-// Lihat semua absensi hari ini
+// Get all attendances today
 func GetTodayAttendance(c *gin.Context) {
     service := services.NewAttendanceService()
     attendances, err := service.GetTodayAttendance()
@@ -46,7 +46,7 @@ func GetTodayAttendance(c *gin.Context) {
     c.JSON(http.StatusOK, attendances)
 }
 
-// Riwayat absensi semua cashier
+// Employee attendance history
 func GetAttendanceHistory(c *gin.Context) {
     service := services.NewAttendanceService()
     attendances, err := service.GetAttendanceHistory()

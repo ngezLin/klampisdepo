@@ -5,7 +5,7 @@ import (
 )
 
 type InventoryFilter struct {
-	ItemID    uint   `form:"item_id" binding:"required"`
+	ItemID    uint   `form:"item_id"`
 	StartDate string `form:"start_date"` // YYYY-MM-DD
 	EndDate   string `form:"end_date"`   // YYYY-MM-DD
 	Type      string `form:"type"`       // specific type filter

@@ -10,6 +10,7 @@ import (
 func RegisterRoutes(r *gin.Engine) {
 
 	r.POST("/login", middlewares.LoginRateLimiter(), controllers.Login)
+	r.GET("/health", controllers.GetHealthStatus)
 
 	// Public items buat landing page
 	r.GET("/public/items", controllers.GetItems)
@@ -73,14 +74,14 @@ func RegisterRoutes(r *gin.Engine) {
 		dashboard.GET("/", controllers.GetDashboard)
 	}
 
-	// Attendance (owner only)
+	// Attendance
 	attendance := r.Group("/attendance")
-	attendance.Use(middlewares.AuthMiddleware(), middlewares.RoleMiddleware("owner"))
+	attendance.Use(middlewares.AuthMiddleware())
 	{
-		attendance.GET("/", controllers.GetAttendances)
-		attendance.POST("/", controllers.CreateAttendance)
-		attendance.GET("/today", controllers.GetTodayAttendance)
-		attendance.GET("/history", controllers.GetAttendanceHistory)
+		attendance.GET("/", middlewares.RoleMiddleware("owner"), controllers.GetAttendances)
+		attendance.POST("/", middlewares.RoleMiddleware("owner", "admin", "cashier"), controllers.CreateAttendance)
+		attendance.GET("/today", middlewares.RoleMiddleware("owner", "admin", "cashier"), controllers.GetTodayAttendance)
+		attendance.GET("/history", middlewares.RoleMiddleware("owner", "admin"), controllers.GetAttendanceHistory)
 	}
 
 	// Users (owner only)
@@ -90,15 +91,10 @@ func RegisterRoutes(r *gin.Engine) {
 		users.GET("/", controllers.GetUsers)
 	}
 
-	// Audit logs (owner and admin)
-	audit := r.Group("/audit-logs")
-	audit.Use(middlewares.AuthMiddleware(), middlewares.RoleMiddleware("owner", "admin"))
-	{
-		audit.GET("/", controllers.GetAuditLogs)
-	}
+
 
 	cash := r.Group("/cash-sessions")
-	cash.Use(middlewares.AuthMiddleware(), middlewares.RoleMiddleware("owner", "admin"))
+	cash.Use(middlewares.AuthMiddleware(), middlewares.RoleMiddleware("owner", "admin", "cashier"))
 	{
 		cash.GET("/current", controllers.GetCurrentCashSession)
 		cash.GET("/history", controllers.GetCashSessionHistory)

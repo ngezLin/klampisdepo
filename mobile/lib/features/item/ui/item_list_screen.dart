@@ -5,12 +5,14 @@ import 'package:dio/dio.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:image_picker/image_picker.dart';
 import '../providers/item_provider.dart';
-import '../../transaksi/models/transaction_models.dart';
+import '../../transaction/models/transaction_models.dart';
 import '../../../core/network/dio_client.dart';
 import '../../../core/theme/notification_helper.dart';
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../../../core/ui/item_image.dart';
 
 class ItemListScreen extends ConsumerStatefulWidget {
   const ItemListScreen({super.key});
@@ -129,22 +131,10 @@ class _ItemListScreenState extends ConsumerState<ItemListScreen> {
                                   child: SizedBox(
                                     width: 48,
                                     height: 48,
-                                    child: item.imageUrl != null && item.imageUrl!.isNotEmpty
-                                        ? CachedNetworkImage(
-                                            imageUrl: item.imageUrl!.startsWith('http')
-                                                ? item.imageUrl!
-                                                : '$apiBaseUrl${item.imageUrl}',
-                                            fit: BoxFit.cover,
-                                            placeholder: (_, __) => Container(color: Colors.grey[100]),
-                                            errorWidget: (_, __, ___) => Container(
-                                              color: const Color(0xFFE5F7EE),
-                                              child: const Icon(Icons.inventory_2, color: Color(0xFF00AA5B), size: 20),
-                                            ),
-                                          )
-                                        : Container(
-                                            color: const Color(0xFFE5F7EE),
-                                            child: const Icon(Icons.inventory_2, color: Color(0xFF00AA5B), size: 20),
-                                          ),
+                                    child: ItemImage(
+                                      imageUrl: item.imageUrl,
+                                      fit: BoxFit.cover,
+                                    ),
                                   ),
                                 ),
                                 title: Text(item.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
@@ -243,8 +233,14 @@ class _ItemListScreenState extends ConsumerState<ItemListScreen> {
       final File file = File(filePath);
       await file.writeAsString(csvData);
 
+      // Trigger standard share dialog to let the user save or send the CSV file
+      await Share.shareXFiles(
+        [XFile(filePath)],
+        subject: 'Ekspor Inventoris KlampisDepo',
+      );
+
       if (context.mounted) {
-        _showTopSnackBar('✅ Inventoris diekspor ke: $filePath');
+        _showTopSnackBar('✅ Inventoris berhasil diekspor!');
       }
     } catch (e) {
       if (context.mounted) {
@@ -301,7 +297,7 @@ class _ItemFormSheetState extends ConsumerState<_ItemFormSheet> {
       final response = await dio.get('/items/$itemId/manual-changes');
       if (mounted) {
         setState(() {
-          _stockChanges = response.data as List<dynamic>;
+          _stockChanges = (response.data['data'] ?? []) as List<dynamic>;
           _isLoadingStockChanges = false;
         });
       }
@@ -326,7 +322,7 @@ class _ItemFormSheetState extends ConsumerState<_ItemFormSheet> {
   String? get _previewUrl {
     final url = _imageUrlController.text.trim();
     if (url.isEmpty) return null;
-    return url.startsWith('http') ? url : '$apiBaseUrl$url';
+    return url;
   }
 
   Future<void> _pickAndUploadImage(ImageSource source) async {
@@ -447,11 +443,10 @@ class _ItemFormSheetState extends ConsumerState<_ItemFormSheet> {
                                   children: [
                                     ClipRRect(
                                       borderRadius: BorderRadius.circular(11),
-                                      child: CachedNetworkImage(
-                                        imageUrl: _previewUrl!,
+                                      child: ItemImage(
+                                        imageUrl: _imageUrlController.text.trim(),
                                         fit: BoxFit.cover,
-                                        placeholder: (_, __) => Container(color: Colors.grey[100]),
-                                        errorWidget: (_, __, ___) => const Center(child: Icon(Icons.broken_image, color: Colors.grey)),
+                                        errorWidget: const Center(child: Icon(Icons.broken_image, color: Colors.grey)),
                                       ),
                                     ),
                                     Positioned(
@@ -613,7 +608,7 @@ class _ItemFormSheetState extends ConsumerState<_ItemFormSheet> {
                                     final String? note = log['note'];
                                     final String createdAtStr = log['created_at'] ?? '';
                                     final String formattedDate = createdAtStr.isNotEmpty
-                                        ? DateFormat('dd/MM/yy HH:mm').format(DateTime.parse(createdAtStr))
+                                        ? DateFormat('dd/MM/yy HH:mm').format(_parseDateTime(createdAtStr))
                                         : '-';
 
                                     final isPos = difference > 0;
@@ -802,6 +797,33 @@ class _ItemFormSheetState extends ConsumerState<_ItemFormSheet> {
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
+    }
+  }
+}
+
+DateTime _parseDateTime(dynamic raw) {
+  if (raw == null) return DateTime.now();
+  if (raw is DateTime) return raw;
+  if (raw is num) {
+    return DateTime.fromMillisecondsSinceEpoch(raw.toInt() * 1000).toLocal();
+  }
+  final str = raw.toString().trim();
+  if (str.isEmpty) return DateTime.now();
+  final parsedInt = int.tryParse(str);
+  if (parsedInt != null) {
+    return DateTime.fromMillisecondsSinceEpoch(parsedInt * 1000).toLocal();
+  }
+  try {
+    if (!str.contains('Z') && !str.contains('+') && !RegExp(r'-\d{2}:\d{2}$').hasMatch(str)) {
+      final formatted = str.replaceAll(' ', 'T') + 'Z';
+      return DateTime.parse(formatted).toLocal();
+    }
+    return DateTime.parse(str).toLocal();
+  } catch (_) {
+    try {
+      return DateTime.parse(str).toLocal();
+    } catch (_) {
+      return DateTime.now();
     }
   }
 }

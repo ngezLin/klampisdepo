@@ -1,10 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../transaksi/models/transaction_models.dart';
+import '../../transaction/models/transaction_models.dart';
 import '../../../core/network/dio_client.dart';
 import '../../../services/database/app_database.dart';
 import '../../../services/sync/offline_sync_service.dart';
 
-final transaksiSearchQueryProvider = StateProvider.autoDispose<String>((ref) => '');
+final transactionSearchQueryProvider = StateProvider.autoDispose<String>((ref) => '');
 final itemManagementSearchQueryProvider = StateProvider.autoDispose<String>((ref) => '');
 
 final itemsProvider = FutureProvider.family<List<ItemModel>, String>((ref, search) async {

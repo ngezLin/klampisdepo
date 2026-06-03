@@ -142,6 +142,14 @@ class AkunScreen extends ConsumerWidget {
               _showPrinterSettings(context, ref);
             },
           ),
+          _SettingsTile(
+            icon: Icons.receipt_long_outlined,
+            title: 'Format Struk',
+            subtitle: 'Kustomisasi layout, lebar kertas, & header/footer',
+            onTap: () {
+              _showReceiptFormatDialog(context, ref);
+            },
+          ),
 
           const SizedBox(height: 24),
 
@@ -175,7 +183,7 @@ class AkunScreen extends ConsumerWidget {
           ],
           const SizedBox(height: 24),
 
-          // ─── Toko Section (Owner only) ──────────
+          // ─── Toko Section (Owner & Admin) ───────
           if (auth.role == 'owner' || auth.role == 'admin') ...[
             _SectionHeader(title: 'Toko'),
             const SizedBox(height: 8),
@@ -187,14 +195,24 @@ class AkunScreen extends ConsumerWidget {
                 _showStoreInfoDialog(context, ref);
               },
             ),
-            _SettingsTile(
-              icon: Icons.people_outline,
-              title: 'Manajemen Pengguna',
-              subtitle: 'Lihat daftar pengguna & role',
-              onTap: () {
-                _showUsersDialog(context, ref);
-              },
-            ),
+            if (auth.role == 'owner')
+              _SettingsTile(
+                icon: Icons.people_outline,
+                title: 'Manajemen Pengguna',
+                subtitle: 'Lihat daftar pengguna & role',
+                onTap: () {
+                  _showUsersDialog(context, ref);
+                },
+              ),
+            if (auth.role == 'owner')
+              _SettingsTile(
+                icon: Icons.receipt_long_outlined,
+                title: 'Riwayat Inventori Toko',
+                subtitle: 'Pantau mutasi stok inventori toko',
+                onTap: () {
+                  _showStoreLogsDialog(context, ref);
+                },
+              ),
             const SizedBox(height: 24),
           ],
 
@@ -323,6 +341,28 @@ class AkunScreen extends ConsumerWidget {
     );
   }
 
+  void _showReceiptFormatDialog(BuildContext context, WidgetRef ref) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) {
+        return DraggableScrollableSheet(
+          initialChildSize: 0.85,
+          minChildSize: 0.5,
+          maxChildSize: 0.95,
+          expand: false,
+          builder: (context, scrollController) {
+            return _ReceiptFormatSettingsSheet(scrollController: scrollController);
+          },
+        );
+      },
+    );
+  }
+
   void _showStoreInfoDialog(BuildContext context, WidgetRef ref) {
     final printer = ref.read(printerServiceProvider);
     final nameCtrl = TextEditingController(text: printer.storeName);
@@ -370,6 +410,13 @@ class AkunScreen extends ConsumerWidget {
     );
   }
 
+  void _showStoreLogsDialog(BuildContext context, WidgetRef ref) {
+    showDialog(
+      context: context,
+      builder: (context) => const _StoreLogsDialog(),
+    );
+  }
+
   Widget _buildShiftTile(BuildContext context, WidgetRef ref) {
     final sessionState = ref.watch(cashSessionProvider);
     final activeSession = sessionState.activeSession;
@@ -388,7 +435,7 @@ class AkunScreen extends ConsumerWidget {
     }
 
     if (activeSession != null) {
-      final double openingCash = (activeSession['opening_cash'] as num).toDouble();
+      final double openingCash = (activeSession['opening_cash'] as num?)?.toDouble() ?? 0.0;
       return _SettingsTile(
         icon: Icons.lock_open_outlined,
         title: 'Shift Kasir Aktif',
@@ -426,17 +473,17 @@ class AkunScreen extends ConsumerWidget {
     );
   }
 
-  void _showOpenShiftDialog(BuildContext context, WidgetRef ref) {
+  void _showOpenShiftDialog(BuildContext parentContext, WidgetRef ref) {
     final cashController = TextEditingController();
     final formKey = GlobalKey<FormState>();
     bool isSubmitting = false;
 
     showDialog(
-      context: context,
+      context: parentContext,
       barrierDismissible: false,
-      builder: (context) {
+      builder: (dialogContext) {
         return StatefulBuilder(
-          builder: (context, setState) {
+          builder: (statefulContext, setState) {
             return AlertDialog(
               title: const Row(
                 children: [
@@ -482,7 +529,7 @@ class AkunScreen extends ConsumerWidget {
               ),
               actions: [
                 TextButton(
-                  onPressed: isSubmitting ? null : () => Navigator.pop(context),
+                  onPressed: isSubmitting ? null : () => Navigator.pop(dialogContext),
                   child: const Text('Batal'),
                 ),
                 ElevatedButton(
@@ -494,12 +541,12 @@ class AkunScreen extends ConsumerWidget {
                           final startingCash = double.parse(cashController.text.trim());
                           final success = await ref.read(cashSessionProvider.notifier).openSession(startingCash);
                           setState(() => isSubmitting = false);
-                          if (success && context.mounted) {
-                            Navigator.pop(context);
-                            showTopSnackBar(context, 'Shift Kasir Berhasil Dibuka!');
-                          } else if (context.mounted) {
+                          if (success && statefulContext.mounted) {
+                            Navigator.pop(dialogContext);
+                            showTopSnackBar(parentContext, 'Shift Kasir Berhasil Dibuka!');
+                          } else if (statefulContext.mounted) {
                             final err = ref.read(cashSessionProvider).error ?? 'Gagal membuka shift.';
-                            showTopSnackBar(context, err, backgroundColor: Colors.red[700]);
+                            showTopSnackBar(statefulContext, err, backgroundColor: Colors.red[700]);
                           }
                         },
                   child: isSubmitting
@@ -544,8 +591,8 @@ class AkunScreen extends ConsumerWidget {
                     final String openedAtStr = sess['OpenedAt'] ?? '';
                     final String closedAtStr = sess['ClosedAt'] ?? '';
                     
-                    final openTime = openedAtStr.isNotEmpty ? dateFormat.format(DateTime.parse(openedAtStr)) : '-';
-                    final closeTime = closedAtStr.isNotEmpty ? dateFormat.format(DateTime.parse(closedAtStr)) : 'Aktif';
+                    final openTime = openedAtStr.isNotEmpty ? dateFormat.format(_parseDateTime(openedAtStr)) : '-';
+                    final closeTime = closedAtStr.isNotEmpty ? dateFormat.format(_parseDateTime(closedAtStr)) : 'Aktif';
 
                     return ListTile(
                       title: Text(
@@ -748,7 +795,7 @@ class AkunScreen extends ConsumerWidget {
                     final String? note = log['note'];
                     final String dateStr = log['date'] ?? '';
                     final String formattedDate = dateStr.isNotEmpty 
-                        ? dateFormat.format(DateTime.parse(dateStr))
+                        ? dateFormat.format(_parseDateTime(dateStr))
                         : '-';
 
                     Color statusColor = Colors.grey;
@@ -921,6 +968,33 @@ class _UsersListDialog extends ConsumerWidget {
         ),
       ],
     );
+  }
+}
+
+DateTime _parseDateTime(dynamic raw) {
+  if (raw == null) return DateTime.now();
+  if (raw is DateTime) return raw;
+  if (raw is num) {
+    return DateTime.fromMillisecondsSinceEpoch(raw.toInt() * 1000).toLocal();
+  }
+  final str = raw.toString().trim();
+  if (str.isEmpty) return DateTime.now();
+  final parsedInt = int.tryParse(str);
+  if (parsedInt != null) {
+    return DateTime.fromMillisecondsSinceEpoch(parsedInt * 1000).toLocal();
+  }
+  try {
+    if (!str.contains('Z') && !str.contains('+') && !RegExp(r'-\d{2}:\d{2}$').hasMatch(str)) {
+      final formatted = str.replaceAll(' ', 'T') + 'Z';
+      return DateTime.parse(formatted).toLocal();
+    }
+    return DateTime.parse(str).toLocal();
+  } catch (_) {
+    try {
+      return DateTime.parse(str).toLocal();
+    } catch (_) {
+      return DateTime.now();
+    }
   }
 }
 
@@ -1218,3 +1292,411 @@ class _PrinterSettingsSheetState extends ConsumerState<_PrinterSettingsSheet> {
     );
   }
 }
+
+class _ReceiptFormatSettingsSheet extends ConsumerStatefulWidget {
+  final ScrollController scrollController;
+  const _ReceiptFormatSettingsSheet({required this.scrollController});
+
+  @override
+  ConsumerState<_ReceiptFormatSettingsSheet> createState() => _ReceiptFormatSettingsSheetState();
+}
+
+class _ReceiptFormatSettingsSheetState extends ConsumerState<_ReceiptFormatSettingsSheet> {
+  late TextEditingController _headerController;
+  late TextEditingController _footerController;
+  late int _paperWidth;
+  late bool _showLogo;
+  late bool _showAddress;
+  late bool _showPhone;
+  late bool _showFooter;
+  late bool _showNotes;
+
+  @override
+  void initState() {
+    super.initState();
+    final printer = ref.read(printerServiceProvider);
+    final config = printer.formatConfig;
+    _headerController = TextEditingController(text: config.customHeaderMessage);
+    _footerController = TextEditingController(text: config.customFooterMessage);
+    _paperWidth = config.paperWidth;
+    _showLogo = config.showLogo;
+    _showAddress = config.showAddress;
+    _showPhone = config.showPhone;
+    _showFooter = config.showFooter;
+    _showNotes = config.showNotes;
+  }
+
+  @override
+  void dispose() {
+    _headerController.dispose();
+    _footerController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final printer = ref.watch(printerServiceProvider);
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Kustomisasi Format Struk',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF212121)),
+              ),
+              IconButton(
+                icon: const Icon(Icons.close),
+                onPressed: () => Navigator.pop(context),
+              ),
+            ],
+          ),
+          const Divider(),
+          const SizedBox(height: 12),
+          Expanded(
+            child: ListView(
+              controller: widget.scrollController,
+              children: [
+                const Text(
+                  'Ukuran Kertas',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey),
+                ),
+                const SizedBox(height: 8),
+                DropdownButtonFormField<int>(
+                  value: _paperWidth,
+                  decoration: const InputDecoration(
+                    border: OutlineInputBorder(),
+                    contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  ),
+                  items: const [
+                    DropdownMenuItem(value: 32, child: Text('58mm (32 Karakter)')),
+                    DropdownMenuItem(value: 48, child: Text('80mm (48 Karakter)')),
+                  ],
+                  onChanged: (val) {
+                    if (val != null) {
+                      setState(() => _paperWidth = val);
+                    }
+                  },
+                ),
+                const SizedBox(height: 20),
+                const Text(
+                  'Pengaturan Visibilitas',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey),
+                ),
+                const SizedBox(height: 8),
+                SwitchListTile(
+                  title: const Text('Tampilkan Logo Toko', style: TextStyle(fontSize: 14)),
+                  value: _showLogo,
+                  activeColor: const Color(0xFF00AA5B),
+                  onChanged: (val) => setState(() => _showLogo = val),
+                ),
+                SwitchListTile(
+                  title: const Text('Tampilkan Alamat Toko', style: TextStyle(fontSize: 14)),
+                  value: _showAddress,
+                  activeColor: const Color(0xFF00AA5B),
+                  onChanged: (val) => setState(() => _showAddress = val),
+                ),
+                SwitchListTile(
+                  title: const Text('Tampilkan Telepon Toko', style: TextStyle(fontSize: 14)),
+                  value: _showPhone,
+                  activeColor: const Color(0xFF00AA5B),
+                  onChanged: (val) => setState(() => _showPhone = val),
+                ),
+                SwitchListTile(
+                  title: const Text('Tampilkan Catatan Transaksi', style: TextStyle(fontSize: 14)),
+                  value: _showNotes,
+                  activeColor: const Color(0xFF00AA5B),
+                  onChanged: (val) => setState(() => _showNotes = val),
+                ),
+                SwitchListTile(
+                  title: const Text('Tampilkan Pesan Footer', style: TextStyle(fontSize: 14)),
+                  value: _showFooter,
+                  activeColor: const Color(0xFF00AA5B),
+                  onChanged: (val) => setState(() => _showFooter = val),
+                ),
+                const SizedBox(height: 20),
+                const Text(
+                  'Pesan Header Tambahan',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey),
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: _headerController,
+                  decoration: const InputDecoration(
+                    border: OutlineInputBorder(),
+                    hintText: 'Misal: Selamat Datang!',
+                    hintStyle: TextStyle(fontSize: 12),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                const Text(
+                  'Pesan Footer',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey),
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: _footerController,
+                  maxLines: 3,
+                  decoration: const InputDecoration(
+                    border: OutlineInputBorder(),
+                    hintText: 'Terima kasih telah berbelanja!',
+                    hintStyle: TextStyle(fontSize: 12),
+                  ),
+                ),
+                const SizedBox(height: 32),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF00AA5B),
+                    foregroundColor: Colors.white,
+                    minimumSize: const Size(double.infinity, 48),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                  onPressed: () async {
+                    final newConfig = ReceiptFormatConfig(
+                      showLogo: _showLogo,
+                      showAddress: _showAddress,
+                      showPhone: _showPhone,
+                      showFooter: _showFooter,
+                      showNotes: _showNotes,
+                      customHeaderMessage: _headerController.text.trim(),
+                      customFooterMessage: _footerController.text.trim(),
+                      paperWidth: _paperWidth,
+                    );
+                    await printer.updateFormatConfig(newConfig);
+                    if (mounted) {
+                      Navigator.pop(context);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Format struk berhasil disimpan!')),
+                      );
+                    }
+                  },
+                  child: const Text('Simpan Pengaturan', style: TextStyle(fontWeight: FontWeight.bold)),
+                ),
+                const SizedBox(height: 20),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StoreLogsDialog extends StatelessWidget {
+  const _StoreLogsDialog();
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Row(
+        children: [
+          Icon(Icons.receipt_long_outlined, color: Color(0xFF00AA5B)),
+          SizedBox(width: 8),
+          Text('Riwayat Inventori Toko', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+        ],
+      ),
+      titlePadding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
+      contentPadding: const EdgeInsets.fromLTRB(24, 10, 24, 0),
+      content: const SizedBox(
+        width: double.maxFinite,
+        height: 500,
+        child: _GlobalInventoryView(),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Tutup'),
+        ),
+      ],
+    );
+  }
+}
+
+class _GlobalInventoryView extends ConsumerStatefulWidget {
+  const _GlobalInventoryView();
+
+  @override
+  ConsumerState<_GlobalInventoryView> createState() => _GlobalInventoryViewState();
+}
+
+class _GlobalInventoryViewState extends ConsumerState<_GlobalInventoryView> {
+  final List<dynamic> _logs = [];
+  bool _isLoading = false;
+  bool _hasMore = true;
+  int _page = 1;
+  final int _limit = 20;
+  final _scrollController = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    _loadMore();
+    _scrollController.addListener(() {
+      if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 100) {
+        _loadMore();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadMore() async {
+    if (_isLoading || !_hasMore) return;
+    setState(() => _isLoading = true);
+
+    try {
+      final dio = ref.read(dioProvider);
+      final response = await dio.get('/inventory/history', queryParameters: {
+        'page': _page,
+        'limit': _limit,
+      });
+
+      final dataMap = response.data as Map<String, dynamic>;
+      final List<dynamic> newLogs = dataMap['data'] ?? [];
+
+      setState(() {
+        _logs.addAll(newLogs);
+        _page++;
+        _isLoading = false;
+        _hasMore = newLogs.length == _limit;
+      });
+    } catch (e) {
+      setState(() => _isLoading = false);
+      if (mounted) {
+        showTopSnackBar(context, 'Gagal memuat riwayat: $e', backgroundColor: Colors.red[700]);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final dateFormat = DateFormat('dd/MM/yyyy HH:mm');
+
+    return _logs.isEmpty && _isLoading
+        ? const Center(child: CircularProgressIndicator())
+        : _logs.isEmpty
+            ? const Center(child: Text('Tidak ada riwayat inventori.'))
+            : ListView.separated(
+                controller: _scrollController,
+                itemCount: _logs.length + (_hasMore ? 1 : 0),
+                separatorBuilder: (_, __) => const Divider(height: 1),
+                itemBuilder: (context, index) {
+                  if (index >= _logs.length) {
+                    return const Center(
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(vertical: 12.0),
+                        child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)),
+                      ),
+                    );
+                  }
+
+                  final log = _logs[index] as Map<String, dynamic>;
+                  final itemObj = log['item'] ?? {};
+                  final userObj = log['user'] ?? {};
+                  
+                  final itemName = itemObj['name'] as String? ?? 'Item #${log['item_id']}';
+                  final change = (log['change'] as num?)?.toInt() ?? 0;
+                  final finalStock = (log['final_stock'] as num?)?.toInt() ?? 0;
+                  final String type = log['type'] ?? 'adjustment';
+                  final String refId = log['reference_id'] ?? '';
+                  final String note = log['note'] ?? '';
+                  final String username = userObj['username'] as String? ?? 'System';
+                  final String dateStr = log['created_at'] ?? '';
+                  final formattedDate = dateStr.isNotEmpty 
+                      ? dateFormat.format(_parseDateTime(dateStr)) 
+                      : '-';
+
+                  Color changeColor = Colors.grey;
+                  String changeSign = '';
+                  if (change > 0) {
+                    changeColor = const Color(0xFF00AA5B);
+                    changeSign = '+';
+                  } else if (change < 0) {
+                    changeColor = Colors.red;
+                  }
+
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 10.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Expanded(
+                              child: Text(
+                                itemName,
+                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: changeColor.withOpacity(0.12),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                '$changeSign$change',
+                                style: TextStyle(
+                                  color: changeColor,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'Tipe: ${type.toUpperCase()}${refId.isNotEmpty ? " ($refId)" : ""}',
+                              style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+                            ),
+                            Text(
+                              'Stok Akhir: $finalStock',
+                              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+                            ),
+                          ],
+                        ),
+                        if (note.isNotEmpty) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            'Catatan: $note',
+                            style: const TextStyle(fontSize: 11, fontStyle: FontStyle.italic, color: Colors.black54),
+                          ),
+                        ],
+                        const SizedBox(height: 4),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'Oleh: $username',
+                              style: const TextStyle(fontSize: 10, color: Colors.grey),
+                            ),
+                            Text(
+                              formattedDate,
+                              style: const TextStyle(fontSize: 10, color: Colors.grey),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              );
+  }
+}
+
+

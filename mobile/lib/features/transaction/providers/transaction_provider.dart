@@ -4,7 +4,7 @@ import '../models/transaction_models.dart';
 import '../../../core/network/dio_client.dart';
 import '../../../services/sync/offline_sync_service.dart';
 
-class TransaksiState {
+class TransactionState {
   final List<CartItem> cart;
   final double discount;
   final String? note;
@@ -15,7 +15,7 @@ class TransaksiState {
   final bool isSubmitting;
   final bool lastCheckoutWasOffline; // Notify UI that checkout was saved offline
 
-  TransaksiState({
+  TransactionState({
     this.cart = const [],
     this.discount = 0,
     this.note,
@@ -31,7 +31,7 @@ class TransaksiState {
   double get finalTotal => totalBeforeDiscount - discount;
   double get change => paymentAmount - finalTotal;
 
-  TransaksiState copyWith({
+  TransactionState copyWith({
     List<CartItem>? cart,
     double? discount,
     String? note,
@@ -42,7 +42,7 @@ class TransaksiState {
     bool? isSubmitting,
     bool? lastCheckoutWasOffline,
   }) {
-    return TransaksiState(
+    return TransactionState(
       cart: cart ?? this.cart,
       discount: discount ?? this.discount,
       note: note ?? this.note,
@@ -56,10 +56,10 @@ class TransaksiState {
   }
 }
 
-class TransaksiNotifier extends StateNotifier<TransaksiState> {
+class TransactionNotifier extends StateNotifier<TransactionState> {
   final Ref ref;
 
-  TransaksiNotifier(this.ref) : super(TransaksiState());
+  TransactionNotifier(this.ref) : super(TransactionState());
 
   void addToCart(ItemModel item) {
     final existingIndex = state.cart.indexWhere((i) => i.item.id == item.id);
@@ -78,11 +78,11 @@ class TransaksiNotifier extends StateNotifier<TransaksiState> {
     final updatedCart = state.cart.map((i) {
       if (i.item.id == itemId) {
         final newQty = i.quantity + delta;
-        return i.copyWith(quantity: newQty < 1 ? 1 : newQty);
+        return i.copyWith(quantity: newQty);
       }
       return i;
     }).toList();
-    state = state.copyWith(cart: updatedCart);
+    state = state.copyWith(cart: updatedCart.where((i) => i.quantity > 0).toList());
   }
 
   void removeFromCart(int itemId) {
@@ -104,7 +104,7 @@ class TransaksiNotifier extends StateNotifier<TransaksiState> {
   void setPaymentAmount(double amount) => state = state.copyWith(paymentAmount: amount);
 
   void reset() {
-    state = TransaksiState();
+    state = TransactionState();
   }
 
   /// Checkout with automatic offline fallback.
@@ -290,8 +290,8 @@ class TransaksiNotifier extends StateNotifier<TransaksiState> {
   }
 }
 
-final transaksiProvider = StateNotifierProvider<TransaksiNotifier, TransaksiState>((ref) {
-  return TransaksiNotifier(ref);
+final transactionProvider = StateNotifierProvider<TransactionNotifier, TransactionState>((ref) {
+  return TransactionNotifier(ref);
 });
 
 final draftsProvider = FutureProvider.autoDispose<List<dynamic>>((ref) async {

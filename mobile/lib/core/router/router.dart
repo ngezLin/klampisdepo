@@ -3,9 +3,9 @@ import 'package:go_router/go_router.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../features/auth/ui/login_screen.dart';
 import '../../features/home/ui/main_layout.dart';
-import '../../features/transaksi/ui/transaksi_screen.dart';
+import '../../features/transaction/ui/transaction_screen.dart';
 import '../../features/item/ui/item_list_screen.dart';
-import '../../features/riwayat/ui/riwayat_screen.dart';
+import '../../features/history/ui/history_screen.dart';
 import '../../features/akun/ui/akun_screen.dart';
 import '../../features/auth/providers/auth_provider.dart';
 import '../../features/dashboard/ui/dashboard_screen.dart';
@@ -37,26 +37,47 @@ GoRouter router(RouterRef ref) {
         routes: [
           GoRoute(
             path: '/dashboard',
-            builder: (context, state) => const DashboardScreen(),
+            pageBuilder: (context, state) => _slideRoute(state: state, child: const DashboardScreen()),
           ),
           GoRoute(
             path: '/',
-            builder: (context, state) => const TransaksiScreen(),
+            pageBuilder: (context, state) => _slideRoute(state: state, child: const TransactionScreen()),
           ),
           GoRoute(
             path: '/items',
-            builder: (context, state) => const ItemListScreen(),
+            pageBuilder: (context, state) => _slideRoute(state: state, child: const ItemListScreen()),
           ),
           GoRoute(
             path: '/history',
-            builder: (context, state) => const RiwayatScreen(),
+            pageBuilder: (context, state) => _slideRoute(state: state, child: const HistoryScreen()),
           ),
           GoRoute(
             path: '/akun',
-            builder: (context, state) => const AkunScreen(),
+            pageBuilder: (context, state) => _slideRoute(state: state, child: const AkunScreen()),
           ),
         ],
       ),
     ],
+  );
+}
+
+CustomTransitionPage<T> _slideRoute<T>({
+  required GoRouterState state,
+  required Widget child,
+}) {
+  return CustomTransitionPage<T>(
+    key: state.pageKey,
+    child: child,
+    transitionsBuilder: (context, animation, secondaryAnimation, child) {
+      return SlideTransition(
+        position: animation.drive(
+          Tween<Offset>(
+            begin: const Offset(1.0, 0.0),
+            end: Offset.zero,
+          ).chain(CurveTween(curve: Curves.easeOutCubic)),
+        ),
+        child: child,
+      );
+    },
   );
 }
