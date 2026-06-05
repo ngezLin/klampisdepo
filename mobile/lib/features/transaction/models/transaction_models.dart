@@ -65,11 +65,13 @@ class CheckoutResult {
   final int? transactionId;
   final bool wasOffline;
   final Map<String, dynamic>? transactionData;
+  final String? errorMessage;
 
   CheckoutResult({
     required this.success,
     this.transactionId,
     this.wasOffline = false,
     this.transactionData,
+    this.errorMessage,
   });
 }

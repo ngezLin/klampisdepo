@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/transaction_models.dart';
@@ -14,6 +15,7 @@ class TransactionState {
   final int? currentDraftId;
   final bool isSubmitting;
   final bool lastCheckoutWasOffline; // Notify UI that checkout was saved offline
+  final String? idempotencyKey;
 
   TransactionState({
     this.cart = const [],
@@ -25,6 +27,7 @@ class TransactionState {
     this.currentDraftId,
     this.isSubmitting = false,
     this.lastCheckoutWasOffline = false,
+    this.idempotencyKey,
   });
 
   double get totalBeforeDiscount => cart.fold(0, (sum, item) => sum + item.subtotal);
@@ -41,7 +44,16 @@ class TransactionState {
     int? currentDraftId,
     bool? isSubmitting,
     bool? lastCheckoutWasOffline,
+    String? idempotencyKey,
   }) {
+    final hasChanges = cart != null ||
+        discount != null ||
+        note != null ||
+        transactionType != null ||
+        paymentType != null ||
+        paymentAmount != null ||
+        currentDraftId != null;
+
     return TransactionState(
       cart: cart ?? this.cart,
       discount: discount ?? this.discount,
@@ -52,6 +64,7 @@ class TransactionState {
       currentDraftId: currentDraftId ?? this.currentDraftId,
       isSubmitting: isSubmitting ?? this.isSubmitting,
       lastCheckoutWasOffline: lastCheckoutWasOffline ?? false,
+      idempotencyKey: idempotencyKey ?? (hasChanges ? null : this.idempotencyKey),
     );
   }
 }
@@ -77,7 +90,7 @@ class TransactionNotifier extends StateNotifier<TransactionState> {
   void updateQuantity(int itemId, int delta) {
     final updatedCart = state.cart.map((i) {
       if (i.item.id == itemId) {
-        final newQty = i.quantity + delta;
+        final newQty = max(0, i.quantity + delta);
         return i.copyWith(quantity: newQty);
       }
       return i;
@@ -107,6 +120,15 @@ class TransactionNotifier extends StateNotifier<TransactionState> {
     state = TransactionState();
   }
 
+  String _generateIdempotencyKey() {
+    final random = Random.secure();
+    final values = List<int>.generate(16, (i) => random.nextInt(256));
+    values[6] = (values[6] & 0x0f) | 0x40; // v4
+    values[8] = (values[8] & 0x3f) | 0x80; // variant
+    final hex = values.map((b) => b.toRadixString(16).padLeft(2, '0')).toList();
+    return '${hex.sublist(0, 4).join()}-${hex.sublist(4, 6).join()}-${hex.sublist(6, 8).join()}-${hex.sublist(8, 10).join()}-${hex.sublist(10, 16).join()}';
+  }
+
   /// Checkout with automatic offline fallback.
   /// If the API call fails due to connectivity, the transaction is saved locally
   /// and will auto-sync when connection is restored.
@@ -129,19 +151,44 @@ class TransactionNotifier extends StateNotifier<TransactionState> {
         )).toList(),
       );
 
-      final response = await dio.post('/transactions/', data: input.toJson());
+      String? key = state.idempotencyKey;
+      if (key == null) {
+        key = _generateIdempotencyKey();
+        state = state.copyWith(idempotencyKey: key);
+      }
+
+      final response = await dio.post(
+        '/transactions/',
+        data: input.toJson(),
+        options: Options(
+          headers: {
+            'X-Idempotency-Key': key,
+          },
+        ),
+      );
       final serverTx = response.data['transaction'] as Map<String, dynamic>;
       final int serverId = serverTx['id'] as int;
+      final result = CheckoutResult(success: true, transactionId: serverId, wasOffline: false, transactionData: serverTx);
       reset();
-      return CheckoutResult(success: true, transactionId: serverId, wasOffline: false, transactionData: serverTx);
+      return result;
     } on DioException catch (e) {
-      // If it's a connection error, save offline
       if (_isConnectionError(e)) {
         return _saveOffline();
       }
-      return CheckoutResult(success: false);
+      String message = 'Terjadi kesalahan pada server';
+      if (e.response != null) {
+        final data = e.response?.data;
+        if (data is Map && data.containsKey('error')) {
+          message = data['error'].toString();
+        } else if (e.response?.statusCode == 401) {
+          message = 'Sesi telah berakhir, silakan login kembali.';
+        } else if (e.response?.statusCode == 422) {
+          message = 'Validasi transaksi gagal (stok tidak cukup atau data salah).';
+        }
+      }
+      return CheckoutResult(success: false, errorMessage: message);
     } catch (e) {
-      return CheckoutResult(success: false);
+      return CheckoutResult(success: false, errorMessage: e.toString());
     } finally {
       state = state.copyWith(isSubmitting: false);
     }
@@ -194,16 +241,18 @@ class TransactionNotifier extends StateNotifier<TransactionState> {
         'syncStatus': 'pending_sync',
       };
 
-      state = state.copyWith(lastCheckoutWasOffline: true);
-      reset();
-      return CheckoutResult(
+      final result = CheckoutResult(
         success: true,
         transactionId: txId,
         wasOffline: true,
         transactionData: txData,
       );
+
+      state = state.copyWith(lastCheckoutWasOffline: true);
+      reset();
+      return result;
     } catch (e) {
-      return CheckoutResult(success: false);
+      return CheckoutResult(success: false, errorMessage: 'Gagal menyimpan transaksi offline: $e');
     }
   }
 

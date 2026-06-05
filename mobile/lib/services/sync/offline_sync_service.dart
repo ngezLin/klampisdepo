@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'dart:math';
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../database/app_database.dart';
@@ -13,6 +15,7 @@ class OfflineSyncService {
   final Ref ref;
   final AppDatabase _db;
   StreamSubscription? _connectivitySubscription;
+  Timer? _debounceTimer;
 
   OfflineSyncService(this.ref, this._db);
 
@@ -21,8 +24,13 @@ class OfflineSyncService {
     if (kIsWeb) return;
     _connectivitySubscription = Connectivity().onConnectivityChanged.listen((results) {
       final hasConnection = results.any((r) => r != ConnectivityResult.none);
-      if (hasConnection && !ref.read(isSyncingProvider)) {
-        syncPendingTransactions();
+      if (hasConnection) {
+        _debounceTimer?.cancel();
+        _debounceTimer = Timer(const Duration(seconds: 3), () {
+          if (!ref.read(isSyncingProvider)) {
+            syncPendingTransactions();
+          }
+        });
       }
     });
   }
@@ -30,6 +38,7 @@ class OfflineSyncService {
   void stopListening() {
     if (kIsWeb) return;
     _connectivitySubscription?.cancel();
+    _debounceTimer?.cancel();
   }
 
   /// Save a transaction locally when offline
@@ -44,53 +53,52 @@ class OfflineSyncService {
     required List<Map<String, dynamic>> items,
   }) async {
     if (kIsWeb) return 0;
-    // Insert the transaction record
-    final txId = await _db.into(_db.transactions).insert(
-      TransactionsCompanion.insert(
-        status: status,
-        total: total,
-        discount: Value(discount),
-        paymentAmount: Value(paymentAmount),
-        paymentType: Value(paymentType),
-        transactionType: Value(transactionType),
-        note: Value(note),
-        syncStatus: const Value('pending_sync'),
-        createdAt: DateTime.now(),
-      ),
-    );
-
-    // Insert each item in the transaction and update stock
-    for (final item in items) {
-      final itemId = item['item_id'] as int;
-      final quantity = item['quantity'] as int;
-
-      await _db.into(_db.transactionItems).insert(
-        TransactionItemsCompanion.insert(
-          transactionId: txId,
-          itemId: itemId,
-          itemName: item['item_name'] as String,
-          quantity: quantity,
-          price: item['price'] as double,
-          customPrice: Value(item['custom_price'] as double?),
-          subtotal: item['subtotal'] as double,
+    
+    return _db.transaction(() async {
+      // Insert the transaction record
+      final txId = await _db.into(_db.transactions).insert(
+        TransactionsCompanion.insert(
+          status: status,
+          total: total,
+          discount: Value(discount),
+          paymentAmount: Value(paymentAmount),
+          paymentType: Value(paymentType),
+          transactionType: Value(transactionType),
+          note: Value(note),
+          syncStatus: const Value('pending_sync'),
+          createdAt: DateTime.now(),
         ),
       );
 
-      // Decrement stock in local Items cache
-      try {
+      // Insert each item in the transaction and update stock
+      for (final item in items) {
+        final itemId = item['item_id'] as int;
+        final quantity = item['quantity'] as int;
+
+        await _db.into(_db.transactionItems).insert(
+          TransactionItemsCompanion.insert(
+            transactionId: txId,
+            itemId: itemId,
+            itemName: item['item_name'] as String,
+            quantity: quantity,
+            price: item['price'] as double,
+            customPrice: Value(item['custom_price'] as double?),
+            subtotal: item['subtotal'] as double,
+          ),
+        );
+
+        // Decrement stock in local Items cache
         final existingItem = await (_db.select(_db.items)..where((t) => t.id.equals(itemId))).getSingleOrNull();
         if (existingItem != null && existingItem.isStockManaged) {
-          final newStock = (existingItem.stock - quantity).clamp(0, 999999);
+          final newStock = max(0, existingItem.stock - quantity);
           await (_db.update(_db.items)..where((t) => t.id.equals(itemId))).write(
             ItemsCompanion(stock: Value(newStock)),
           );
         }
-      } catch (e) {
-        debugPrint('Failed to update local stock during offline checkout: $e');
       }
-    }
 
-    return txId;
+      return txId;
+    });
   }
 
   /// Get count of pending transactions
@@ -131,29 +139,47 @@ class OfflineSyncService {
     try {
       final dio = ref.read(dioProvider);
 
-      // 1. Fetch latest items from server first to refresh the local cache and detect price changes
+      // 1. Fetch latest items from server first to refresh the local cache and detect price changes (PAGINATED)
       try {
-        final itemsResponse = await dio.get('/items/', queryParameters: {'page_size': 100});
-        final List data = itemsResponse.data['data'] ?? [];
-        final dbItems = data.map((e) => Item(
-          id: e['id'] as int,
-          name: e['name'] as String,
-          description: e['description'] as String?,
-          stock: e['stock'] as int? ?? 0,
-          isStockManaged: e['is_stock_managed'] as bool? ?? true,
-          buyPrice: (e['buy_price'] as num?)?.toDouble(),
-          price: (e['price'] as num).toDouble(),
-          imageUrl: e['image_url'] as String?,
-          updatedAt: DateTime.now(),
-        )).toList();
-        await _db.upsertItems(dbItems);
+        int page = 1;
+        int totalPages = 1;
+        final List<Item> dbItems = [];
+
+        do {
+          final itemsResponse = await dio.get('/items/', queryParameters: {
+            'page': page,
+            'page_size': 100,
+          });
+          final List data = itemsResponse.data['data'] ?? [];
+          dbItems.addAll(data.map((e) => Item(
+            id: e['id'] as int,
+            name: e['name'] as String,
+            description: e['description'] as String?,
+            stock: e['stock'] as int? ?? 0,
+            isStockManaged: e['is_stock_managed'] as bool? ?? true,
+            buyPrice: (e['buy_price'] as num?)?.toDouble(),
+            price: (e['price'] as num).toDouble(),
+            imageUrl: e['image_url'] as String?,
+            updatedAt: DateTime.now(),
+          )));
+
+          final meta = itemsResponse.data['meta'];
+          if (meta != null) {
+            totalPages = (meta['total_pages'] ?? meta['totalPages'] ?? 1) as int;
+          }
+          page++;
+        } while (page <= totalPages);
+
+        if (dbItems.isNotEmpty) {
+          await _db.upsertItems(dbItems);
+        }
       } catch (e) {
         debugPrint('Failed to refresh items cache during sync: $e');
       }
 
-      // Get all pending transactions
+      // Get all pending transactions where retryCount < 3
       final query = _db.select(_db.transactions)
-        ..where((t) => t.syncStatus.equals('pending_sync'));
+        ..where((t) => t.syncStatus.equals('pending_sync') & t.retryCount.isSmallerThanValue(3));
       final pendingTxs = await query.get();
 
       for (final tx in pendingTxs) {
@@ -165,7 +191,6 @@ class OfflineSyncService {
 
           // 2. Perform Conflict Check
           final List<Map<String, dynamic>> conflictsList = [];
-          double updatedTotalBeforeDiscount = 0.0;
 
           for (final txItem in txItems) {
             final serverItem = await (_db.select(_db.items)..where((t) => t.id.equals(txItem.itemId))).getSingleOrNull();
@@ -182,10 +207,6 @@ class OfflineSyncService {
                   'quantity': txItem.quantity,
                 });
               }
-              final activePrice = txItem.customPrice ?? serverPrice;
-              updatedTotalBeforeDiscount += txItem.quantity * activePrice;
-            } else {
-              updatedTotalBeforeDiscount += txItem.subtotal;
             }
           }
 
@@ -216,8 +237,19 @@ class OfflineSyncService {
             }).toList(),
           };
 
-          // Post to backend
-          final response = await dio.post('/transactions/', data: payload);
+          // Generate an idempotency key for the sync attempt
+          final idempotencyKey = 'sync-${tx.id}-${tx.retryCount}';
+
+          // Post to backend with Idempotency Key header
+          final response = await dio.post(
+            '/transactions/',
+            data: payload,
+            options: Options(
+              headers: {
+                'X-Idempotency-Key': idempotencyKey,
+              },
+            ),
+          );
 
           // Mark as synced and store server ID
           final serverData = response.data['transaction'] ?? response.data['data'] ?? response.data;
@@ -231,7 +263,41 @@ class OfflineSyncService {
             ));
 
           synced++;
+        } on DioException catch (e) {
+          final isPermanent = _isPermanentError(e);
+          final newRetryCount = tx.retryCount + 1;
+
+          if (isPermanent || newRetryCount >= 3) {
+            await (_db.update(_db.transactions)
+              ..where((t) => t.id.equals(tx.id)))
+              .write(TransactionsCompanion(
+                syncStatus: const Value('failed_permanently'),
+                conflictDetails: Value(e.message ?? e.toString()),
+              ));
+          } else {
+            await (_db.update(_db.transactions)
+              ..where((t) => t.id.equals(tx.id)))
+              .write(TransactionsCompanion(
+                retryCount: Value(newRetryCount),
+              ));
+          }
+          failed++;
         } catch (e) {
+          final newRetryCount = tx.retryCount + 1;
+          if (newRetryCount >= 3) {
+            await (_db.update(_db.transactions)
+              ..where((t) => t.id.equals(tx.id)))
+              .write(TransactionsCompanion(
+                syncStatus: const Value('failed_permanently'),
+                conflictDetails: Value(e.toString()),
+              ));
+          } else {
+            await (_db.update(_db.transactions)
+              ..where((t) => t.id.equals(tx.id)))
+              .write(TransactionsCompanion(
+                retryCount: Value(newRetryCount),
+              ));
+          }
           failed++;
         }
       }
@@ -240,6 +306,18 @@ class OfflineSyncService {
     }
 
     return SyncResult(synced: synced, failed: failed);
+  }
+
+  bool _isPermanentError(DioException e) {
+    if (e.response != null) {
+      final statusCode = e.response!.statusCode;
+      if (statusCode != null) {
+        if (statusCode >= 400 && statusCode < 500) {
+          return true;
+        }
+      }
+    }
+    return false;
   }
 
   /// Resolve conflict by keeping offline price as custom price

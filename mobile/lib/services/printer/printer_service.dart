@@ -221,15 +221,65 @@ class PrinterService extends ChangeNotifier {
   final _storage = const FlutterSecureStorage();
   ReceiptFormatConfig formatConfig = ReceiptFormatConfig();
 
+  Timer? _reconnectTimer;
+  final List<Map<String, dynamic>> _printQueue = [];
+
+  List<Map<String, dynamic>> get printQueue => _printQueue;
+
+  void startAutoReconnectTimer() {
+    _reconnectTimer?.cancel();
+    _reconnectTimer = Timer.periodic(const Duration(seconds: 15), (timer) async {
+      if (_receiptPrinter != null && _status == PrinterStatus.disconnected) {
+        debugPrint('Auto-reconnect timer: attempting background reconnect to designated receipt printer...');
+        await connectToPrinter(_receiptPrinter!);
+      }
+    });
+  }
+
   Future<void> loadFormatConfig() async {
     try {
       final jsonStr = await _storage.read(key: 'receipt_format_config');
       if (jsonStr != null) {
         formatConfig = ReceiptFormatConfig.fromJson(jsonDecode(jsonStr));
-        notifyListeners();
       }
+
+      // Load designated printers from local storage
+      final receiptStr = await _storage.read(key: 'designated_receipt_printer');
+      if (receiptStr != null) {
+        final data = jsonDecode(receiptStr);
+        _receiptPrinter = PrinterDevice(
+          name: data['name'] ?? '',
+          address: data['address'] ?? '',
+          type: PrinterConnectionType.values.firstWhere(
+            (e) => e.name == data['type'],
+            orElse: () => PrinterConnectionType.bluetooth,
+          ),
+        );
+      }
+
+      final kitchenStr = await _storage.read(key: 'designated_kitchen_printer');
+      if (kitchenStr != null) {
+        final data = jsonDecode(kitchenStr);
+        _kitchenPrinter = PrinterDevice(
+          name: data['name'] ?? '',
+          address: data['address'] ?? '',
+          type: PrinterConnectionType.values.firstWhere(
+            (e) => e.name == data['type'],
+            orElse: () => PrinterConnectionType.bluetooth,
+          ),
+        );
+      }
+
+      notifyListeners();
+      
+      // Auto-connect to receipt printer if defined
+      if (_receiptPrinter != null) {
+        connectToPrinter(_receiptPrinter!);
+      }
+      
+      startAutoReconnectTimer();
     } catch (e) {
-      debugPrint('Failed to load format config: $e');
+      debugPrint('Failed to load format config or printers: $e');
     }
   }
 
@@ -263,8 +313,25 @@ class PrinterService extends ChangeNotifier {
   void designatePrinter(PrinterDevice device, String role) {
     if (role == 'receipt') {
       _receiptPrinter = device;
+      _storage.write(
+        key: 'designated_receipt_printer',
+        value: jsonEncode({
+          'name': device.name,
+          'address': device.address,
+          'type': device.type.name,
+        }),
+      );
+      connectToPrinter(device);
     } else if (role == 'kitchen') {
       _kitchenPrinter = device;
+      _storage.write(
+        key: 'designated_kitchen_printer',
+        value: jsonEncode({
+          'name': device.name,
+          'address': device.address,
+          'type': device.type.name,
+        }),
+      );
     }
     notifyListeners();
   }
@@ -405,6 +472,9 @@ class PrinterService extends ChangeNotifier {
       _connectedPrinter = device;
       _status = PrinterStatus.connected;
       notifyListeners();
+      
+      // Auto-flush any queued print jobs when reconnected
+      processPrintQueue();
       return true;
     } catch (e) {
       _lastError = e.toString();
@@ -454,13 +524,17 @@ class PrinterService extends ChangeNotifier {
     if (targetPrinter == null) {
       _lastError = 'Printer $role belum terhubung';
       notifyListeners();
+      _addToQueue(transaction, role);
       return false;
     }
 
     // Connect to target printer if needed
     if (_connectedPrinter?.address != targetPrinter.address) {
       final success = await connectToPrinter(targetPrinter);
-      if (!success) return false;
+      if (!success) {
+        _addToQueue(transaction, role);
+        return false;
+      }
     }
 
     _status = PrinterStatus.printing;
@@ -513,12 +587,52 @@ class PrinterService extends ChangeNotifier {
 
       _status = PrinterStatus.connected;
       notifyListeners();
+      
+      // Successfully printed, remove from queue if it exists there
+      _removeFromQueue(transaction['id'] as int? ?? 0, role);
       return true;
     } catch (e) {
       _lastError = e.toString();
       _status = PrinterStatus.error;
       notifyListeners();
+      _addToQueue(transaction, role);
       return false;
+    }
+  }
+
+  void _addToQueue(Map<String, dynamic> transaction, String role) {
+    final txId = transaction['id'] as int? ?? 0;
+    final exists = _printQueue.any((q) => q['transaction']['id'] == txId && q['role'] == role);
+    if (!exists) {
+      _printQueue.add({
+        'transaction': transaction,
+        'role': role,
+        'timestamp': DateTime.now().toIso8601String(),
+      });
+      notifyListeners();
+      debugPrint('Added transaction #$txId to print queue. Queue size: ${_printQueue.length}');
+    }
+  }
+
+  void _removeFromQueue(int txId, String role) {
+    final index = _printQueue.indexWhere((q) => q['transaction']['id'] == txId && q['role'] == role);
+    if (index != -1) {
+      _printQueue.removeAt(index);
+      notifyListeners();
+      debugPrint('Removed transaction #$txId from print queue. Queue size: ${_printQueue.length}');
+    }
+  }
+
+  Future<void> processPrintQueue() async {
+    if (_printQueue.isEmpty) return;
+    debugPrint('Processing print queue: ${_printQueue.length} jobs...');
+    final jobsCopy = List<Map<String, dynamic>>.from(_printQueue);
+    for (final job in jobsCopy) {
+      final success = await printReceipt(job['transaction'], role: job['role']);
+      if (!success) {
+        // Stop if a print job fails again to prevent thundering herd print failures
+        break;
+      }
     }
   }
 

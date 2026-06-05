@@ -548,6 +548,14 @@ class $TransactionsTable extends Transactions
   late final GeneratedColumn<String> conflictDetails = GeneratedColumn<String>(
       'conflict_details', aliasedName, true,
       type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _retryCountMeta =
+      const VerificationMeta('retryCount');
+  @override
+  late final GeneratedColumn<int> retryCount = GeneratedColumn<int>(
+      'retry_count', aliasedName, false,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0));
   @override
   List<GeneratedColumn> get $columns => [
         id,
@@ -561,7 +569,8 @@ class $TransactionsTable extends Transactions
         note,
         syncStatus,
         createdAt,
-        conflictDetails
+        conflictDetails,
+        retryCount
       ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -636,6 +645,12 @@ class $TransactionsTable extends Transactions
           conflictDetails.isAcceptableOrUnknown(
               data['conflict_details']!, _conflictDetailsMeta));
     }
+    if (data.containsKey('retry_count')) {
+      context.handle(
+          _retryCountMeta,
+          retryCount.isAcceptableOrUnknown(
+              data['retry_count']!, _retryCountMeta));
+    }
     return context;
   }
 
@@ -669,6 +684,8 @@ class $TransactionsTable extends Transactions
           .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
       conflictDetails: attachedDatabase.typeMapping.read(
           DriftSqlType.string, data['${effectivePrefix}conflict_details']),
+      retryCount: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}retry_count'])!,
     );
   }
 
@@ -691,6 +708,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
   final String syncStatus;
   final DateTime createdAt;
   final String? conflictDetails;
+  final int retryCount;
   const Transaction(
       {required this.id,
       this.serverId,
@@ -703,7 +721,8 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       this.note,
       required this.syncStatus,
       required this.createdAt,
-      this.conflictDetails});
+      this.conflictDetails,
+      required this.retryCount});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -729,6 +748,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
     if (!nullToAbsent || conflictDetails != null) {
       map['conflict_details'] = Variable<String>(conflictDetails);
     }
+    map['retry_count'] = Variable<int>(retryCount);
     return map;
   }
 
@@ -754,6 +774,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       conflictDetails: conflictDetails == null && nullToAbsent
           ? const Value.absent()
           : Value(conflictDetails),
+      retryCount: Value(retryCount),
     );
   }
 
@@ -773,6 +794,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       syncStatus: serializer.fromJson<String>(json['syncStatus']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       conflictDetails: serializer.fromJson<String?>(json['conflictDetails']),
+      retryCount: serializer.fromJson<int>(json['retryCount']),
     );
   }
   @override
@@ -791,6 +813,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       'syncStatus': serializer.toJson<String>(syncStatus),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'conflictDetails': serializer.toJson<String?>(conflictDetails),
+      'retryCount': serializer.toJson<int>(retryCount),
     };
   }
 
@@ -806,7 +829,8 @@ class Transaction extends DataClass implements Insertable<Transaction> {
           Value<String?> note = const Value.absent(),
           String? syncStatus,
           DateTime? createdAt,
-          Value<String?> conflictDetails = const Value.absent()}) =>
+          Value<String?> conflictDetails = const Value.absent(),
+          int? retryCount}) =>
       Transaction(
         id: id ?? this.id,
         serverId: serverId.present ? serverId.value : this.serverId,
@@ -823,6 +847,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
         conflictDetails: conflictDetails.present
             ? conflictDetails.value
             : this.conflictDetails,
+        retryCount: retryCount ?? this.retryCount,
       );
   Transaction copyWithCompanion(TransactionsCompanion data) {
     return Transaction(
@@ -846,6 +871,8 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       conflictDetails: data.conflictDetails.present
           ? data.conflictDetails.value
           : this.conflictDetails,
+      retryCount:
+          data.retryCount.present ? data.retryCount.value : this.retryCount,
     );
   }
 
@@ -863,7 +890,8 @@ class Transaction extends DataClass implements Insertable<Transaction> {
           ..write('note: $note, ')
           ..write('syncStatus: $syncStatus, ')
           ..write('createdAt: $createdAt, ')
-          ..write('conflictDetails: $conflictDetails')
+          ..write('conflictDetails: $conflictDetails, ')
+          ..write('retryCount: $retryCount')
           ..write(')'))
         .toString();
   }
@@ -881,7 +909,8 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       note,
       syncStatus,
       createdAt,
-      conflictDetails);
+      conflictDetails,
+      retryCount);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -897,7 +926,8 @@ class Transaction extends DataClass implements Insertable<Transaction> {
           other.note == this.note &&
           other.syncStatus == this.syncStatus &&
           other.createdAt == this.createdAt &&
-          other.conflictDetails == this.conflictDetails);
+          other.conflictDetails == this.conflictDetails &&
+          other.retryCount == this.retryCount);
 }
 
 class TransactionsCompanion extends UpdateCompanion<Transaction> {
@@ -913,6 +943,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
   final Value<String> syncStatus;
   final Value<DateTime> createdAt;
   final Value<String?> conflictDetails;
+  final Value<int> retryCount;
   const TransactionsCompanion({
     this.id = const Value.absent(),
     this.serverId = const Value.absent(),
@@ -926,6 +957,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     this.syncStatus = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.conflictDetails = const Value.absent(),
+    this.retryCount = const Value.absent(),
   });
   TransactionsCompanion.insert({
     this.id = const Value.absent(),
@@ -940,6 +972,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     this.syncStatus = const Value.absent(),
     required DateTime createdAt,
     this.conflictDetails = const Value.absent(),
+    this.retryCount = const Value.absent(),
   })  : status = Value(status),
         total = Value(total),
         createdAt = Value(createdAt);
@@ -956,6 +989,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     Expression<String>? syncStatus,
     Expression<DateTime>? createdAt,
     Expression<String>? conflictDetails,
+    Expression<int>? retryCount,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -970,6 +1004,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
       if (syncStatus != null) 'sync_status': syncStatus,
       if (createdAt != null) 'created_at': createdAt,
       if (conflictDetails != null) 'conflict_details': conflictDetails,
+      if (retryCount != null) 'retry_count': retryCount,
     });
   }
 
@@ -985,7 +1020,8 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
       Value<String?>? note,
       Value<String>? syncStatus,
       Value<DateTime>? createdAt,
-      Value<String?>? conflictDetails}) {
+      Value<String?>? conflictDetails,
+      Value<int>? retryCount}) {
     return TransactionsCompanion(
       id: id ?? this.id,
       serverId: serverId ?? this.serverId,
@@ -999,6 +1035,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
       syncStatus: syncStatus ?? this.syncStatus,
       createdAt: createdAt ?? this.createdAt,
       conflictDetails: conflictDetails ?? this.conflictDetails,
+      retryCount: retryCount ?? this.retryCount,
     );
   }
 
@@ -1041,6 +1078,9 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     if (conflictDetails.present) {
       map['conflict_details'] = Variable<String>(conflictDetails.value);
     }
+    if (retryCount.present) {
+      map['retry_count'] = Variable<int>(retryCount.value);
+    }
     return map;
   }
 
@@ -1058,7 +1098,8 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
           ..write('note: $note, ')
           ..write('syncStatus: $syncStatus, ')
           ..write('createdAt: $createdAt, ')
-          ..write('conflictDetails: $conflictDetails')
+          ..write('conflictDetails: $conflictDetails, ')
+          ..write('retryCount: $retryCount')
           ..write(')'))
         .toString();
   }
@@ -1741,6 +1782,7 @@ typedef $$TransactionsTableCreateCompanionBuilder = TransactionsCompanion
   Value<String> syncStatus,
   required DateTime createdAt,
   Value<String?> conflictDetails,
+  Value<int> retryCount,
 });
 typedef $$TransactionsTableUpdateCompanionBuilder = TransactionsCompanion
     Function({
@@ -1756,6 +1798,7 @@ typedef $$TransactionsTableUpdateCompanionBuilder = TransactionsCompanion
   Value<String> syncStatus,
   Value<DateTime> createdAt,
   Value<String?> conflictDetails,
+  Value<int> retryCount,
 });
 
 final class $$TransactionsTableReferences
@@ -1827,6 +1870,9 @@ class $$TransactionsTableFilterComposer
       column: $table.conflictDetails,
       builder: (column) => ColumnFilters(column));
 
+  ColumnFilters<int> get retryCount => $composableBuilder(
+      column: $table.retryCount, builder: (column) => ColumnFilters(column));
+
   Expression<bool> transactionItemsRefs(
       Expression<bool> Function($$TransactionItemsTableFilterComposer f) f) {
     final $$TransactionItemsTableFilterComposer composer = $composerBuilder(
@@ -1896,6 +1942,9 @@ class $$TransactionsTableOrderingComposer
   ColumnOrderings<String> get conflictDetails => $composableBuilder(
       column: $table.conflictDetails,
       builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get retryCount => $composableBuilder(
+      column: $table.retryCount, builder: (column) => ColumnOrderings(column));
 }
 
 class $$TransactionsTableAnnotationComposer
@@ -1942,6 +1991,9 @@ class $$TransactionsTableAnnotationComposer
 
   GeneratedColumn<String> get conflictDetails => $composableBuilder(
       column: $table.conflictDetails, builder: (column) => column);
+
+  GeneratedColumn<int> get retryCount => $composableBuilder(
+      column: $table.retryCount, builder: (column) => column);
 
   Expression<T> transactionItemsRefs<T extends Object>(
       Expression<T> Function($$TransactionItemsTableAnnotationComposer a) f) {
@@ -2000,6 +2052,7 @@ class $$TransactionsTableTableManager extends RootTableManager<
             Value<String> syncStatus = const Value.absent(),
             Value<DateTime> createdAt = const Value.absent(),
             Value<String?> conflictDetails = const Value.absent(),
+            Value<int> retryCount = const Value.absent(),
           }) =>
               TransactionsCompanion(
             id: id,
@@ -2014,6 +2067,7 @@ class $$TransactionsTableTableManager extends RootTableManager<
             syncStatus: syncStatus,
             createdAt: createdAt,
             conflictDetails: conflictDetails,
+            retryCount: retryCount,
           ),
           createCompanionCallback: ({
             Value<int> id = const Value.absent(),
@@ -2028,6 +2082,7 @@ class $$TransactionsTableTableManager extends RootTableManager<
             Value<String> syncStatus = const Value.absent(),
             required DateTime createdAt,
             Value<String?> conflictDetails = const Value.absent(),
+            Value<int> retryCount = const Value.absent(),
           }) =>
               TransactionsCompanion.insert(
             id: id,
@@ -2042,6 +2097,7 @@ class $$TransactionsTableTableManager extends RootTableManager<
             syncStatus: syncStatus,
             createdAt: createdAt,
             conflictDetails: conflictDetails,
+            retryCount: retryCount,
           ),
           withReferenceMapper: (p0) => p0
               .map((e) => (

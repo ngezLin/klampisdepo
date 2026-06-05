@@ -1,0 +1,85 @@
+version: '3.8'
+
+services:
+  db:
+    image: mysql:8.0
+    container_name: kd-mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${DB_NAME}
+      MYSQL_USER: ${DB_USER}
+      MYSQL_PASSWORD: ${DB_PASS}
+    ports:
+      - "3306:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u$$DB_USER", "-p$$DB_PASS"]
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    networks:
+      - kd-network
+
+  backend:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    container_name: kd-backend
+    restart: unless-stopped
+    environment:
+      DB_USER: ${DB_USER}
+      DB_PASS: ${DB_PASS}
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_NAME: ${DB_NAME}
+      PORT: 8080
+      JWT_SECRET: ${JWT_SECRET}
+    volumes:
+      - uploads_data:/app/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - kd-network
+
+  frontend:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+    container_name: kd-frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - certbot_etc:/etc/letsencrypt
+      - certbot_var:/var/lib/letsencrypt
+      - webroot:/var/www/certbot
+    depends_on:
+      - backend
+    networks:
+      - kd-network
+
+  certbot:
+    image: certbot/certbot
+    container_name: kd-certbot
+    volumes:
+      - certbot_etc:/etc/letsencrypt
+      - certbot_var:/var/lib/letsencrypt
+      - webroot:/var/www/certbot
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
+    networks:
+      - kd-network
+
+volumes:
+  db_data:
+  uploads_data:
+  certbot_etc:
+  certbot_var:
+  webroot:
+
+networks:
+  kd-network:
+    driver: bridge

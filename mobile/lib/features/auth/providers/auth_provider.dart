@@ -41,22 +41,29 @@ class AuthState {
 
 class AuthNotifier extends StateNotifier<AuthState> {
   final Ref ref;
-  final _storage = const FlutterSecureStorage();
+  FlutterSecureStorage get _storage => ref.read(secureStorageProvider);
 
   AuthNotifier(this.ref) : super(AuthState()) {
     _init();
   }
 
   Future<void> _init() async {
-    final token = await _storage.read(key: 'token');
-    if (token != null && !JwtDecoder.isExpired(token)) {
-      final payload = JwtDecoder.decode(token);
-      state = AuthState(
-        token: token,
-        role: payload['role'],
-        username: payload['username'],
-        userId: payload['user_id'] as int?,
-      );
+    try {
+      final token = await _storage.read(key: 'token');
+      if (token != null && !JwtDecoder.isExpired(token)) {
+        final payload = JwtDecoder.decode(token);
+        state = AuthState(
+          token: token,
+          role: payload['role'],
+          username: payload['username'],
+          userId: payload['user_id'] as int?,
+        );
+      }
+    } catch (e) {
+      try {
+        await _storage.delete(key: 'token');
+      } catch (_) {}
+      state = AuthState();
     }
   }
 

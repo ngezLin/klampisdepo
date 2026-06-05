@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import { getInventoryHistory } from "../services/inventoryService";
 import { getItemsPaginated } from "../services/transactionService";
 import SearchableSelect from "../components/common/SearchableSelect";
+import Pagination from "../components/common/Pagination";
 
 export default function Logs() {
   const [logs, setLogs] = useState([]);
@@ -24,6 +25,7 @@ export default function Logs() {
   // Pagination for Logs
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
   const itemsPerPage = 10;
 
   const fetchItems = useCallback(async (search = "", page = 1) => {
@@ -84,6 +86,7 @@ export default function Logs() {
 
       setLogs(res.data || []);
       setTotalPages(res.total_pages || 1);
+      setTotalItems(res.total || 0);
       setCurrentPage(res.page || 1);
     } catch (err) {
       console.error("Failed to fetch inventory history:", err);
@@ -310,28 +313,16 @@ export default function Logs() {
 
         {/* Pagination */}
         {totalPages > 1 && (
-          <div className="flex items-center justify-between mt-8 bg-white/[0.01] p-4 rounded-2xl border border-white/5">
-            <p className="text-xs text-slate-500 font-medium uppercase tracking-widest pl-2">
-              Halaman <span className="text-slate-300 font-bold">{currentPage}</span> dari{" "}
-              <span className="text-slate-300 font-bold">{totalPages}</span>
-            </p>
-            <div className="flex gap-2">
-              <button
-                onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-                disabled={currentPage === 1}
-                className="px-4 py-2 bg-slate-950 border border-white/10 rounded-xl text-slate-400 hover:text-white disabled:opacity-30 transition-all font-bold text-sm"
-              >
-                Sebelumnya
-              </button>
-              <button
-                onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
-                disabled={currentPage === totalPages}
-                className="px-4 py-2 bg-slate-950 border border-white/10 rounded-xl text-slate-400 hover:text-white disabled:opacity-30 transition-all font-bold text-sm"
-              >
-                Berikutnya
-              </button>
-            </div>
-          </div>
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalItems={totalItems}
+            itemsPerPage={itemsPerPage}
+            currentItemsCount={logs.length}
+            onNext={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
+            onPrevious={() => setCurrentPage((p) => Math.max(p - 1, 1))}
+            onPageChange={setCurrentPage}
+          />
         )}
       </div>
     </div>

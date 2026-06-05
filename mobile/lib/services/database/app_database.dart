@@ -31,6 +31,7 @@ class Transactions extends Table {
   TextColumn get syncStatus => text().withDefault(const Constant('synced'))(); // synced, pending_sync, draft_local, conflict
   DateTimeColumn get createdAt => dateTime()();
   TextColumn get conflictDetails => text().nullable()(); // JSON string detailing conflicts
+  IntColumn get retryCount => integer().withDefault(const Constant(0))();
 }
 
 class TransactionItems extends Table {
@@ -49,7 +50,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -59,6 +60,9 @@ class AppDatabase extends _$AppDatabase {
         onUpgrade: (m, from, to) async {
           if (from < 2) {
             await m.addColumn(transactions, transactions.conflictDetails);
+          }
+          if (from < 3) {
+            await m.addColumn(transactions, transactions.retryCount);
           }
         },
       );

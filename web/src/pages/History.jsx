@@ -19,6 +19,7 @@ import {
 import StatCard from "../components/common/StatCard";
 import Card from "../components/common/Card";
 import Button from "../components/common/Button";
+import Pagination from "../components/common/Pagination";
 
 // StatusBadge is now imported from shared components
 
@@ -33,6 +34,7 @@ export default function History() {
 
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
   const itemsPerPage = 10;
   const [loading, setLoading] = useState(false);
   const [refundTarget, setRefundTarget] = useState(null);
@@ -66,6 +68,7 @@ export default function History() {
       );
       setTransactions(sortedData);
       setTotalPages(res.totalPages || res.total_pages || 1);
+      setTotalItems(res.total || 0);
       setCurrentPage(res.page || 1);
     } catch (err) {
       console.error("Failed to fetch history:", err);
@@ -103,21 +106,6 @@ export default function History() {
   const clearFilter = () => {
     setFilterDate("");
     setCurrentPage(1);
-  };
-
-  const getPageNumbers = () => {
-    const maxButtons = 5;
-    let startPage = Math.max(currentPage - Math.floor(maxButtons / 2), 1);
-    let endPage = startPage + maxButtons - 1;
-    if (endPage > totalPages) {
-      endPage = totalPages;
-      startPage = Math.max(endPage - maxButtons + 1, 1);
-    }
-    const pages = [];
-    for (let i = startPage; i <= endPage; i++) {
-      pages.push(i);
-    }
-    return pages;
   };
 
   return (
@@ -338,28 +326,17 @@ export default function History() {
           )}
 
           {totalPages > 1 && (
-            <div className="px-6 py-4 bg-white/5 border-t border-white/5 flex items-center justify-between">
-              <div className="flex-1 md:hidden flex justify-center">
-                <PaginationControls
-                  currentPage={currentPage}
-                  totalPages={totalPages}
-                  setCurrentPage={setCurrentPage}
-                  getPageNumbers={getPageNumbers}
-                  mobile={true}
-                />
-              </div>
-              <div className="hidden md:flex flex-1 items-center justify-between">
-                <span className="text-xs font-black text-gray-500 uppercase tracking-widest">
-                  Hal <span className="text-white">{currentPage}</span> dari{" "}
-                  {totalPages}
-                </span>
-                <PaginationControls
-                  currentPage={currentPage}
-                  totalPages={totalPages}
-                  setCurrentPage={setCurrentPage}
-                  getPageNumbers={getPageNumbers}
-                />
-              </div>
+            <div className="px-6 py-4 bg-white/5 border-t border-white/5">
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                totalItems={totalItems}
+                itemsPerPage={itemsPerPage}
+                currentItemsCount={transactions.length}
+                onNext={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
+                onPrevious={() => setCurrentPage((p) => Math.max(p - 1, 1))}
+                onPageChange={setCurrentPage}
+              />
             </div>
           )}
         </Card>
@@ -383,77 +360,3 @@ export default function History() {
     </div>
   );
 }
-
-const PaginationControls = ({
-  currentPage,
-  totalPages,
-  setCurrentPage,
-  getPageNumbers,
-  mobile,
-}) => (
-  <div className="flex items-center gap-1">
-    <button
-      onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-      disabled={currentPage === 1}
-      className={`p-2 bg-gray-900 border border-white/5 rounded-lg text-gray-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-all ${mobile ? "flex-1" : ""}`}
-    >
-      <svg
-        className="w-5 h-5 mx-auto"
-        fill="none"
-        stroke="currentColor"
-        viewBox="0 0 24 24"
-      >
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth="2"
-          d="15 19l-7-7 7-7"
-        />
-      </svg>
-    </button>
-
-    {!mobile && (
-      <div className="flex gap-1 mx-2">
-        {getPageNumbers().map((page) => (
-          <button
-            key={page}
-            onClick={() => setCurrentPage(page)}
-            className={`w-10 h-10 rounded-lg font-bold text-sm transition-all border ${
-              currentPage === page
-                ? "bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-500/20"
-                : "bg-gray-900 border-white/5 text-gray-500 hover:text-white hover:border-gray-700"
-            }`}
-          >
-            {page}
-          </button>
-        ))}
-      </div>
-    )}
-
-    {mobile && (
-      <span className="px-4 text-sm font-bold text-gray-400">
-        {currentPage} / {totalPages}
-      </span>
-    )}
-
-    <button
-      onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
-      disabled={currentPage === totalPages}
-      className={`p-2 bg-gray-900 border border-white/5 rounded-lg text-gray-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-all ${mobile ? "flex-1" : ""}`}
-    >
-      <svg
-        className="w-5 h-5 mx-auto"
-        fill="none"
-        stroke="currentColor"
-        viewBox="0 0 24 24"
-      >
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth="2"
-          d="9 5l7 7-7 7"
-        />
-      </svg>
-    </button>
-  </div>
-);

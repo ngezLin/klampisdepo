@@ -37,47 +37,41 @@ GoRouter router(RouterRef ref) {
         routes: [
           GoRoute(
             path: '/dashboard',
-            pageBuilder: (context, state) => _slideRoute(state: state, child: const DashboardScreen()),
+            pageBuilder: (context, state) => NoTransitionPage(
+              key: state.pageKey,
+              child: const DashboardScreen(),
+            ),
           ),
           GoRoute(
             path: '/',
-            pageBuilder: (context, state) => _slideRoute(state: state, child: const TransactionScreen()),
+            pageBuilder: (context, state) => NoTransitionPage(
+              key: state.pageKey,
+              child: const TransactionScreen(),
+            ),
           ),
           GoRoute(
             path: '/items',
-            pageBuilder: (context, state) => _slideRoute(state: state, child: const ItemListScreen()),
+            pageBuilder: (context, state) => NoTransitionPage(
+              key: state.pageKey,
+              child: const ItemListScreen(),
+            ),
           ),
           GoRoute(
             path: '/history',
-            pageBuilder: (context, state) => _slideRoute(state: state, child: const HistoryScreen()),
+            pageBuilder: (context, state) => NoTransitionPage(
+              key: state.pageKey,
+              child: const HistoryScreen(),
+            ),
           ),
           GoRoute(
             path: '/akun',
-            pageBuilder: (context, state) => _slideRoute(state: state, child: const AkunScreen()),
+            pageBuilder: (context, state) => NoTransitionPage(
+              key: state.pageKey,
+              child: const AkunScreen(),
+            ),
           ),
         ],
       ),
     ],
-  );
-}
-
-CustomTransitionPage<T> _slideRoute<T>({
-  required GoRouterState state,
-  required Widget child,
-}) {
-  return CustomTransitionPage<T>(
-    key: state.pageKey,
-    child: child,
-    transitionsBuilder: (context, animation, secondaryAnimation, child) {
-      return SlideTransition(
-        position: animation.drive(
-          Tween<Offset>(
-            begin: const Offset(1.0, 0.0),
-            end: Offset.zero,
-          ).chain(CurveTween(curve: Curves.easeOutCubic)),
-        ),
-        child: child,
-      );
-    },
   );
 }
