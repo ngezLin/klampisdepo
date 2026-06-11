@@ -30,7 +30,7 @@ func (s *authService) Login(input dtos.LoginInput) (*dtos.AuthResponse, error) {
 		return nil, errors.New("Incorrect password")
 	}
 
-	token, err := utils.GenerateToken(user.ID, user.Role)
+	token, err := utils.GenerateToken(user.ID, user.Username, user.Role)
 	if err != nil {
 		return nil, errors.New("Failed to generate token")
 	}

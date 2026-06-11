@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:go_router/go_router.dart';
 import '../providers/dashboard_provider.dart';
 
 class DashboardScreen extends ConsumerWidget {
@@ -9,6 +10,7 @@ class DashboardScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final statsAsync = ref.watch(dashboardStatsProvider);
+    final upcomingBillsAsync = ref.watch(upcomingPOBillsProvider);
     final currencyFormat = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
 
     return Scaffold(
@@ -106,6 +108,32 @@ class DashboardScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 12),
 
+              // ─── Upcoming PO Bills (Tagihan Jatuh Tempo H-3) ───
+              upcomingBillsAsync.when(
+                data: (bills) {
+                  if (bills.isEmpty) return const SizedBox.shrink();
+
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: _buildWarningTile(
+                      context: context,
+                      icon: Icons.receipt_long_rounded,
+                      title: 'Tagihan Jatuh Tempo (H-3)!',
+                      subtitle: '${bills.length} tagihan PO distributor mendekati jatuh tempo',
+                      onTap: () => context.go('/po-bills'),
+                      bgColor: const Color(0xFFFFFBEB),
+                      borderColor: const Color(0xFFFDE68A),
+                      iconBgColor: const Color(0xFFFEF3C7),
+                      iconColor: const Color(0xFFD97706),
+                      textColor: const Color(0xFFB45309),
+                      subtitleColor: const Color(0xFF92400E),
+                    ),
+                  );
+                },
+                loading: () => const SizedBox.shrink(),
+                error: (err, stack) => const SizedBox.shrink(),
+              ),
+
               // ─── Low Stock Indicator ───
               if (stats.lowStock > 0) ...[
                 _buildWarningTile(
@@ -113,9 +141,7 @@ class DashboardScreen extends ConsumerWidget {
                   icon: Icons.warning_amber_rounded,
                   title: 'Stok Menipis!',
                   subtitle: '${stats.lowStock} item memiliki stok di bawah 5 pcs',
-                  onTap: () {
-                    // Navigate to Item Screen (User can filter manually)
-                  },
+                  onTap: () => context.go('/items'),
                 ),
                 const SizedBox(height: 24),
               ],
@@ -388,12 +414,18 @@ class DashboardScreen extends ConsumerWidget {
     required String title,
     required String subtitle,
     required VoidCallback onTap,
+    Color bgColor = const Color(0xFFFEF2F2),
+    Color borderColor = const Color(0xFFFCA5A5),
+    Color iconBgColor = const Color(0xFFFEE2E2),
+    Color iconColor = const Color(0xFFDC2626),
+    Color textColor = const Color(0xFF991B1B),
+    Color subtitleColor = const Color(0xFF7F1D1D),
   }) {
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFFFEF2F2),
+        color: bgColor,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFFCA5A5)),
+        border: Border.all(color: borderColor),
       ),
       child: Material(
         color: Colors.transparent,
@@ -407,10 +439,10 @@ class DashboardScreen extends ConsumerWidget {
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFFEE2E2),
+                    color: iconBgColor,
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: Icon(icon, color: const Color(0xFFDC2626), size: 22),
+                  child: Icon(icon, color: iconColor, size: 22),
                 ),
                 const SizedBox(width: 14),
                 Expanded(
@@ -419,20 +451,20 @@ class DashboardScreen extends ConsumerWidget {
                     children: [
                       Text(
                         title,
-                        style: const TextStyle(color: Color(0xFF991B1B), fontSize: 13, fontWeight: FontWeight.bold),
+                        style: TextStyle(color: textColor, fontSize: 13, fontWeight: FontWeight.bold),
                       ),
                       const SizedBox(height: 2),
                       Text(
                         subtitle,
-                        style: const TextStyle(
-                          color: Color(0xFF7F1D1D),
+                        style: TextStyle(
+                          color: subtitleColor,
                           fontSize: 12,
                         ),
                       ),
                     ],
                   ),
                 ),
-                const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: Color(0xFFDC2626)),
+                Icon(Icons.arrow_forward_ios_rounded, size: 14, color: iconColor),
               ],
             ),
           ),

@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/network/dio_client.dart';
+import '../../po_bill/models/po_bill.dart';
 
 class TopSellingItem {
   final int itemId;
@@ -60,4 +61,22 @@ final dashboardStatsProvider = FutureProvider.autoDispose<DashboardStats>((ref) 
   final dio = ref.read(dioProvider);
   final response = await dio.get('/dashboard/');
   return DashboardStats.fromJson(response.data as Map<String, dynamic>);
+});
+
+final upcomingPOBillsProvider = FutureProvider.autoDispose<List<POBillModel>>((ref) async {
+  final dio = ref.read(dioProvider);
+  final response = await dio.get('/po-bills/', queryParameters: {
+    'status': 'pending',
+  });
+  final List data = response.data['data'] ?? [];
+  final List<POBillModel> fetchedBills = data.map((e) => POBillModel.fromJson(e as Map<String, dynamic>)).toList();
+  
+  final now = DateTime.now();
+  final today = DateTime(now.year, now.month, now.day);
+  
+  return fetchedBills.where((bill) {
+    final due = DateTime(bill.dueDate.year, bill.dueDate.month, bill.dueDate.day);
+    final diff = due.difference(today).inDays;
+    return diff <= 3; // due in 3 days or already overdue
+  }).toList();
 });
