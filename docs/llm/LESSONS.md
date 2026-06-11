@@ -17,3 +17,8 @@ This file captures patterns, common mistakes, and lessons learned to improve fut
   *   *Pattern:* Always separate numeric types into individual, explicit type cases to guarantee safe conversion.
 - **Lesson**: **Hashed Password Exposure**: Struct fields containing sensitive credentials (like bcrypt hashes) must be explicitly marked with the `json:"-"` tag. If left out, the hashes will be serialized into JSON and leaked in any endpoint where GORM preloads the user model as a relation (e.g., audit history, logs, or user references).
 - **Lesson**: **N+1 Aggregation Queries**: When querying a dataset (like top-selling items) that needs secondary fields (like the product name), join the referenced tables directly in GORM (`JOIN items`) instead of querying the DB inside a `for` loop. This avoids N+1 query issues and performs all logic in a single database round-trip.
+
+### 4. Mobile (Flutter + Riverpod) State & Dialog Rebuilds (June 2026)
+- **Lesson**: **Dialog State Rebuild Loss**: Wrapping inline `showDialog` builders with a `Consumer` or passing parent `WidgetRef` variables leads to scoping and shadowing bugs. State changes (like a FutureProvider transitioning from `loading` to `data`) fail to trigger rebuilds of the dialog route, leaving it stuck in a loading state.
+  *   *Pattern:* Extract dialog content into standalone private `ConsumerWidget` classes (e.g., `class _MyDialog extends ConsumerWidget`) to ensure clean, scoped reactive state updates.
+

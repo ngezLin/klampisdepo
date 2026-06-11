@@ -22,4 +22,9 @@
 - **Store Name**: UD. Klampis Depo (Surabaya)
 - **Business**: Building Materials (Toko Bangunan)
 - **Identity**: Clean, professional, friendly, and local.
-- **Tech Stack**: Go (Backend), React (Frontend), Tailwind CSS.
+- **Tech Stack**: Go (Backend), Flutter (Mobile POS), React (Frontend), Tailwind CSS.
+
+## Technical Execution Reference
+* Refer to [SKILLS.md](file:///C:/Projects/klampisdepo/docs/llm/SKILLS.md) for explicit compilation flags, SSH deployment command lines, query optimizations, Riverpod best practices, and standard UI components.
+* Refer to [LESSONS.md](file:///C:/Projects/klampisdepo/docs/llm/LESSONS.md) to review past pitfalls and avoid repeating errors.
+* Refer to [GUIDELINES.md](file:///C:/Projects/klampisdepo/docs/llm/GUIDELINES.md) for code styling and patterns.

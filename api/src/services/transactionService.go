@@ -139,37 +139,6 @@ func (s *transactionService) CreateTransaction(input dtos.CreateTransactionInput
 				defaultType := "cash"
 				transaction.PaymentType = &defaultType
 			}
-
-			for _, tItem := range transactionItems {
-				item, exists := loadedItems[tItem.ItemID]
-				if !exists {
-					if err := tx.First(&item, tItem.ItemID).Error; err != nil {
-						return err
-					}
-				}
-
-				if item.IsStockManaged == nil || !*item.IsStockManaged {
-					continue
-				}
-
-				if item.Stock < tItem.Quantity {
-					localWarnings = append(localWarnings,
-						fmt.Sprintf(
-							"Warning: Item '%s' stock insufficient (current: %d, required: %d)",
-							item.Name, item.Stock, tItem.Quantity,
-						),
-					)
-					item.Stock = 0
-				} else {
-					item.Stock -= tItem.Quantity
-				}
-
-				if err := tx.Save(&item).Error; err != nil {
-					return err
-				}
-				
-				loadedItems[item.ID] = item // Update map cache with modified stock
-			}
 		}
 
 		if isUpdate {
@@ -182,28 +151,12 @@ func (s *transactionService) CreateTransaction(input dtos.CreateTransactionInput
 			}
 		}
 
-		// Inventory Ledger: Log Sales
+		// Inventory Ledger: Log Sales & Deduct Stock
 		if input.Status == "completed" {
-			invService := NewInventoryService()
-			for _, tItem := range transactionItems {
-				item, exists := loadedItems[tItem.ItemID]
-				if !exists {
-					if err := tx.First(&item, tItem.ItemID).Error; err != nil {
-						return err
-					}
-				}
-
-				if item.IsStockManaged == nil || !*item.IsStockManaged {
-					continue
-				}
-
-				change := -tItem.Quantity
-				ref := fmt.Sprintf("TX-%d", transaction.ID)
-				note := "Sold in transaction"
-
-				if err := invService.LogStockChange(tx, tItem.ItemID, change, "sale", ref, userID, note); err != nil {
-					return err
-				}
+			var err error
+			localWarnings, err = deductStockForTransaction(tx, transaction.Items, transaction.ID, userID, "Sold in transaction")
+			if err != nil {
+				return err
 			}
 		}
 
@@ -241,7 +194,6 @@ func (s *transactionService) CreateTransaction(input dtos.CreateTransactionInput
 }
 
 func (s *transactionService) UpdateTransactionStatus(id string, input dtos.UpdateTransactionInput, userID *uint, clientIP string) (*models.Transaction, error) {
-	var warnings []string
 	var transaction models.Transaction
 
 	err := config.DB.Transaction(func(tx *gorm.DB) error {
@@ -287,40 +239,10 @@ func (s *transactionService) UpdateTransactionStatus(id string, input dtos.Updat
 		}
 
 		if oldStatus == "draft" && transaction.Status == "completed" {
-			for _, tItem := range transaction.Items {
-				var item models.Item
-				if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&item, tItem.ItemID).Error; err != nil {
-					return err
-				}
-
-				if item.IsStockManaged == nil || !*item.IsStockManaged {
-					continue
-				}
-
-				if item.Stock < tItem.Quantity {
-					warnings = append(warnings,
-						fmt.Sprintf(
-							"Warning: Item '%s' stock insufficient (current: %d, required: %d)",
-							item.Name, item.Stock, tItem.Quantity,
-						),
-					)
-					item.Stock = 0
-				} else {
-					item.Stock -= tItem.Quantity
-				}
-
-				if err := tx.Save(&item).Error; err != nil {
-					return err
-				}
-
-				invService := NewInventoryService()
-				change := -tItem.Quantity
-				ref := fmt.Sprintf("TX-%d", transaction.ID)
-				note := "Sold in transaction (Draft to Completed)"
-
-				if err := invService.LogStockChange(tx, tItem.ItemID, change, "sale", ref, userID, note); err != nil {
-					return err
-				}
+			var err error
+			_, err = deductStockForTransaction(tx, transaction.Items, transaction.ID, userID, "Sold in transaction (Draft to Completed)")
+			if err != nil {
+				return err
 			}
 		}
 
@@ -543,4 +465,45 @@ func (s *transactionService) RefundTransaction(id string, userID *uint, clientIP
 	}
 
 	return &transaction, nil
+}
+
+// Helper to deduct stock, log stock changes, and calculate stock warnings
+func deductStockForTransaction(tx *gorm.DB, items []models.TransactionItem, transactionID uint, userID *uint, note string) ([]string, error) {
+	var warnings []string
+	invService := NewInventoryService()
+
+	for _, tItem := range items {
+		var item models.Item
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&item, tItem.ItemID).Error; err != nil {
+			return nil, err
+		}
+
+		if item.IsStockManaged == nil || !*item.IsStockManaged {
+			continue
+		}
+
+		if item.Stock < tItem.Quantity {
+			warnings = append(warnings,
+				fmt.Sprintf(
+					"Warning: Item '%s' stock insufficient (current: %d, required: %d)",
+					item.Name, item.Stock, tItem.Quantity,
+				),
+			)
+			item.Stock = 0
+		} else {
+			item.Stock -= tItem.Quantity
+		}
+
+		if err := tx.Save(&item).Error; err != nil {
+			return nil, err
+		}
+
+		change := -tItem.Quantity
+		ref := fmt.Sprintf("TX-%d", transactionID)
+		if err := invService.LogStockChange(tx, tItem.ItemID, change, "sale", ref, userID, note); err != nil {
+			return nil, err
+		}
+	}
+
+	return warnings, nil
 }

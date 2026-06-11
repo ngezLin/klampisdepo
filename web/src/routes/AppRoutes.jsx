@@ -7,6 +7,7 @@ import ProtectedRoute from "./ProtectedRoute";
 // Pages
 import Dashboard from "../pages/Dashboard";
 import Items from "../pages/Items";
+import POBills from "../pages/POBills";
 import Transactions from "../pages/Transactions";
 import History from "../pages/History";
 import Attendance from "../pages/Attendance";
@@ -81,6 +82,18 @@ export default function AppRoutes() {
               <Layout>
                 <PageTransition>
                   <Items />
+                </PageTransition>
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/po-bills"
+          element={
+            <ProtectedRoute roles={["admin", "owner"]}>
+              <Layout>
+                <PageTransition>
+                  <POBills />
                 </PageTransition>
               </Layout>
             </ProtectedRoute>

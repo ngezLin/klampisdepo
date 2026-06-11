@@ -9,6 +9,7 @@ import '../../features/history/ui/history_screen.dart';
 import '../../features/akun/ui/akun_screen.dart';
 import '../../features/auth/providers/auth_provider.dart';
 import '../../features/dashboard/ui/dashboard_screen.dart';
+import '../../features/po_bill/ui/po_bills_screen.dart';
 
 part 'router.g.dart';
 
@@ -47,6 +48,13 @@ GoRouter router(RouterRef ref) {
             pageBuilder: (context, state) => NoTransitionPage(
               key: state.pageKey,
               child: const TransactionScreen(),
+            ),
+          ),
+          GoRoute(
+            path: '/po-bills',
+            pageBuilder: (context, state) => NoTransitionPage(
+              key: state.pageKey,
+              child: const POBillsScreen(),
             ),
           ),
           GoRoute(

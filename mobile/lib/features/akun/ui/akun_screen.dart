@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../../services/printer/printer_service.dart';
 import '../../../services/sync/offline_sync_service.dart';
@@ -193,6 +194,14 @@ class AkunScreen extends ConsumerWidget {
               subtitle: 'Nama, alamat, dan nomor telepon toko',
               onTap: () {
                 _showStoreInfoDialog(context, ref);
+              },
+            ),
+            _SettingsTile(
+              icon: Icons.receipt_long_outlined,
+              title: 'Tagihan Pembelian (PO)',
+              subtitle: 'Kelola tagihan PO, tempo, dan foto nota',
+              onTap: () {
+                context.push('/po-bills');
               },
             ),
             if (auth.role == 'owner')
@@ -564,78 +573,7 @@ class AkunScreen extends ConsumerWidget {
   void _showCashSessionHistoryDialog(BuildContext context, WidgetRef ref) {
     showDialog(
       context: context,
-      builder: (context) {
-        final historyAsync = ref.watch(cashSessionHistoryProvider);
-        final currencyFormat = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
-        final dateFormat = DateFormat('dd/MM HH:mm');
-
-        return AlertDialog(
-          title: const Text('Riwayat Laci Kas'),
-          content: SizedBox(
-            width: double.maxFinite,
-            height: 400,
-            child: historyAsync.when(
-              data: (sessions) {
-                if (sessions.isEmpty) {
-                  return const Center(child: Text('Belum ada riwayat shift.'));
-                }
-                return ListView.separated(
-                  itemCount: sessions.length,
-                  separatorBuilder: (_, __) => const Divider(),
-                  itemBuilder: (context, index) {
-                    final sess = sessions[index] as Map<String, dynamic>;
-                    final double opening = (sess['OpeningCash'] as num).toDouble();
-                    final double expected = (sess['ExpectedCash'] as num).toDouble();
-                    final double closing = sess['ClosingCash'] != null ? (sess['ClosingCash'] as num).toDouble() : 0;
-                    final double diff = sess['Difference'] != null ? (sess['Difference'] as num).toDouble() : 0;
-                    final String openedAtStr = sess['OpenedAt'] ?? '';
-                    final String closedAtStr = sess['ClosedAt'] ?? '';
-                    
-                    final openTime = openedAtStr.isNotEmpty ? dateFormat.format(_parseDateTime(openedAtStr)) : '-';
-                    final closeTime = closedAtStr.isNotEmpty ? dateFormat.format(_parseDateTime(closedAtStr)) : 'Aktif';
-
-                    return ListTile(
-                      title: Text(
-                        'Shift #${sess['ID']} (${sess['Status'].toUpperCase()})',
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                      ),
-                      subtitle: Text(
-                        'Buka: $openTime | Tutup: $closeTime\nModal: ${currencyFormat.format(opening)} | Fisik: ${currencyFormat.format(closing)}',
-                        style: const TextStyle(fontSize: 11),
-                      ),
-                      trailing: sess['Status'] == 'open'
-                          ? const Chip(label: Text('AKTIF', style: TextStyle(fontSize: 9, color: Colors.green)), backgroundColor: Color(0xFFE5F7EE))
-                          : Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: [
-                                const Text('Selisih', style: TextStyle(fontSize: 10, color: Colors.grey)),
-                                Text(
-                                  currencyFormat.format(diff),
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.bold,
-                                    color: diff == 0 ? Colors.green : (diff > 0 ? Colors.blue : Colors.red),
-                                  ),
-                                ),
-                              ],
-                            ),
-                    );
-                  },
-                );
-              },
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (err, _) => Center(child: Text('Error: $err')),
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Tutup'),
-            ),
-          ],
-        );
-      },
+      builder: (context) => const _CashSessionHistoryDialog(),
     );
   }
 
@@ -770,83 +708,7 @@ class AkunScreen extends ConsumerWidget {
   void _showAttendanceHistoryDialog(BuildContext context, WidgetRef ref) {
     showDialog(
       context: context,
-      builder: (context) {
-        final historyAsync = ref.watch(attendanceHistoryProvider);
-        final dateFormat = DateFormat('dd MMMM yyyy', 'id_ID');
-
-        return AlertDialog(
-          title: const Text('Riwayat Absensi Karyawan'),
-          content: SizedBox(
-            width: double.maxFinite,
-            height: 400,
-            child: historyAsync.when(
-              data: (logs) {
-                if (logs.isEmpty) {
-                  return const Center(child: Text('Belum ada riwayat absensi.'));
-                }
-                return ListView.separated(
-                  itemCount: logs.length,
-                  separatorBuilder: (_, __) => const Divider(),
-                  itemBuilder: (context, index) {
-                    final log = logs[index] as Map<String, dynamic>;
-                    final userObj = log['user'] ?? {};
-                    final String username = userObj['username'] ?? 'Staff';
-                    final String status = log['status'] ?? 'unknown';
-                    final String? note = log['note'];
-                    final String dateStr = log['date'] ?? '';
-                    final String formattedDate = dateStr.isNotEmpty 
-                        ? dateFormat.format(_parseDateTime(dateStr))
-                        : '-';
-
-                    Color statusColor = Colors.grey;
-                    if (status == 'present') statusColor = const Color(0xFF00AA5B);
-                    if (status == 'absent') statusColor = Colors.red;
-                    if (status == 'off') statusColor = Colors.orange;
-
-                    return ListTile(
-                      leading: CircleAvatar(
-                        backgroundColor: statusColor.withOpacity(0.15),
-                        child: Icon(
-                          status == 'present' ? Icons.check_rounded : Icons.close_rounded,
-                          color: statusColor,
-                        ),
-                      ),
-                      title: Text(username, style: const TextStyle(fontWeight: FontWeight.bold)),
-                      subtitle: Text(
-                        '$formattedDate\nCatatan: ${note ?? "-"}',
-                        style: const TextStyle(fontSize: 11),
-                      ),
-                      trailing: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: statusColor.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Text(
-                          status.toUpperCase(),
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                            color: statusColor,
-                          ),
-                        ),
-                      ),
-                    );
-                  },
-                );
-              },
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (err, _) => Center(child: Text('Error: $err')),
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Tutup'),
-            ),
-          ],
-        );
-      },
+      builder: (context) => const _AttendanceHistoryDialog(),
     );
   }
 }
@@ -936,7 +798,7 @@ class _UsersListDialog extends ConsumerWidget {
               itemCount: users.length,
               separatorBuilder: (_, __) => const Divider(height: 1),
               itemBuilder: (context, index) {
-                final user = users[index] as Map<String, dynamic>;
+                final user = Map<String, dynamic>.from(users[index] as Map);
                 final role = user['role'] as String? ?? 'unknown';
                 return ListTile(
                   leading: CircleAvatar(
@@ -959,6 +821,166 @@ class _UsersListDialog extends ConsumerWidget {
           },
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (e, _) => Center(child: Text('Error: $e')),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Tutup'),
+        ),
+      ],
+    );
+  }
+}
+
+class _CashSessionHistoryDialog extends ConsumerWidget {
+  const _CashSessionHistoryDialog();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final currencyFormat = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
+    final dateFormat = DateFormat('dd/MM HH:mm');
+    final historyAsync = ref.watch(cashSessionHistoryProvider);
+
+    return AlertDialog(
+      title: const Text('Riwayat Laci Kas'),
+      content: SizedBox(
+        width: double.maxFinite,
+        height: 400,
+        child: historyAsync.when(
+          data: (sessions) {
+            if (sessions.isEmpty) {
+              return const Center(child: Text('Belum ada riwayat shift.'));
+            }
+            return ListView.separated(
+              itemCount: sessions.length,
+              separatorBuilder: (_, __) => const Divider(),
+              itemBuilder: (context, index) {
+                final sess = Map<String, dynamic>.from(sessions[index] as Map);
+                final double opening = (sess['OpeningCash'] as num?)?.toDouble() ?? 0.0;
+                final double closing = sess['ClosingCash'] != null ? (sess['ClosingCash'] as num).toDouble() : 0.0;
+                final double diff = sess['Difference'] != null ? (sess['Difference'] as num).toDouble() : 0.0;
+                final String openedAtStr = sess['OpenedAt'] ?? '';
+                final String closedAtStr = sess['ClosedAt'] ?? '';
+                
+                final openTime = openedAtStr.isNotEmpty ? dateFormat.format(_parseDateTime(openedAtStr)) : '-';
+                final closeTime = closedAtStr.isNotEmpty ? dateFormat.format(_parseDateTime(closedAtStr)) : 'Aktif';
+
+                return ListTile(
+                  title: Text(
+                    'Shift #${sess['ID']} (${sess['Status'].toUpperCase()})',
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                  ),
+                  subtitle: Text(
+                    'Buka: $openTime | Tutup: $closeTime\nModal: ${currencyFormat.format(opening)} | Fisik: ${currencyFormat.format(closing)}',
+                    style: const TextStyle(fontSize: 11),
+                  ),
+                  trailing: sess['Status'] == 'open'
+                      ? const Chip(label: Text('AKTIF', style: TextStyle(fontSize: 9, color: Colors.green)), backgroundColor: Color(0xFFE5F7EE))
+                      : Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            const Text('Selisih', style: TextStyle(fontSize: 10, color: Colors.grey)),
+                            Text(
+                              currencyFormat.format(diff),
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: diff == 0 ? Colors.green : (diff > 0 ? Colors.blue : Colors.red),
+                              ),
+                            ),
+                          ],
+                        ),
+                );
+              },
+            );
+          },
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (err, _) => Center(child: Text('Error: $err')),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Tutup'),
+        ),
+      ],
+    );
+  }
+}
+
+class _AttendanceHistoryDialog extends ConsumerWidget {
+  const _AttendanceHistoryDialog();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final dateFormat = DateFormat('dd MMMM yyyy', 'id_ID');
+    final historyAsync = ref.watch(attendanceHistoryProvider);
+
+    return AlertDialog(
+      title: const Text('Riwayat Absensi Karyawan'),
+      content: SizedBox(
+        width: double.maxFinite,
+        height: 400,
+        child: historyAsync.when(
+          data: (logs) {
+            if (logs.isEmpty) {
+              return const Center(child: Text('Belum ada riwayat absensi.'));
+            }
+            return ListView.separated(
+              itemCount: logs.length,
+              separatorBuilder: (_, __) => const Divider(),
+              itemBuilder: (context, index) {
+                final log = Map<String, dynamic>.from(logs[index] as Map);
+                final userObj = log['user'] != null ? Map<String, dynamic>.from(log['user'] as Map) : {};
+                final String username = userObj['username'] as String? ?? 'Staff';
+                final String status = log['status'] ?? 'unknown';
+                final String? note = log['note'];
+                final String dateStr = log['date'] ?? '';
+                final String formattedDate = dateStr.isNotEmpty 
+                    ? dateFormat.format(_parseDateTime(dateStr))
+                    : '-';
+
+                Color statusColor = Colors.grey;
+                if (status == 'present') statusColor = const Color(0xFF00AA5B);
+                if (status == 'absent') statusColor = Colors.red;
+                if (status == 'off') statusColor = Colors.orange;
+
+                return ListTile(
+                  leading: CircleAvatar(
+                    backgroundColor: statusColor.withOpacity(0.15),
+                    child: Icon(
+                      status == 'present' ? Icons.check_rounded : Icons.close_rounded,
+                      color: statusColor,
+                    ),
+                  ),
+                  title: Text(username, style: const TextStyle(fontWeight: FontWeight.bold)),
+                  subtitle: Text(
+                    '$formattedDate\nCatatan: ${note ?? "-"}',
+                    style: const TextStyle(fontSize: 11),
+                  ),
+                  trailing: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: statusColor.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      status.toUpperCase(),
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        color: statusColor,
+                      ),
+                    ),
+                  ),
+                );
+              },
+            );
+          },
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (err, _) => Center(child: Text('Error: $err')),
         ),
       ),
       actions: [
@@ -1531,6 +1553,12 @@ class _GlobalInventoryViewState extends ConsumerState<_GlobalInventoryView> {
   final int _limit = 20;
   final _scrollController = ScrollController();
 
+  // Filter states
+  String _selectedType = ''; // '' means all
+  DateTimeRange? _selectedDateRange;
+
+  bool get _hasActiveFilters => _selectedType.isNotEmpty || _selectedDateRange != null;
+
   @override
   void initState() {
     super.initState();
@@ -1554,10 +1582,22 @@ class _GlobalInventoryViewState extends ConsumerState<_GlobalInventoryView> {
 
     try {
       final dio = ref.read(dioProvider);
-      final response = await dio.get('/inventory/history', queryParameters: {
+      final Map<String, dynamic> params = {
         'page': _page,
         'limit': _limit,
-      });
+      };
+
+      if (_selectedType.isNotEmpty) {
+        params['type'] = _selectedType;
+      }
+
+      if (_selectedDateRange != null) {
+        final df = DateFormat('yyyy-MM-dd');
+        params['start_date'] = df.format(_selectedDateRange!.start);
+        params['end_date'] = df.format(_selectedDateRange!.end);
+      }
+
+      final response = await dio.get('/inventory/history', queryParameters: params);
 
       final dataMap = response.data as Map<String, dynamic>;
       final List<dynamic> newLogs = dataMap['data'] ?? [];
@@ -1576,126 +1616,257 @@ class _GlobalInventoryViewState extends ConsumerState<_GlobalInventoryView> {
     }
   }
 
+  void _onFilterChanged() {
+    setState(() {
+      _logs.clear();
+      _page = 1;
+      _hasMore = true;
+    });
+    _loadMore();
+  }
+
+  void _resetFilters() {
+    setState(() {
+      _selectedType = '';
+      _selectedDateRange = null;
+      _logs.clear();
+      _page = 1;
+      _hasMore = true;
+    });
+    _loadMore();
+  }
+
   @override
   Widget build(BuildContext context) {
     final dateFormat = DateFormat('dd/MM/yyyy HH:mm');
 
-    return _logs.isEmpty && _isLoading
-        ? const Center(child: CircularProgressIndicator())
-        : _logs.isEmpty
-            ? const Center(child: Text('Tidak ada riwayat inventori.'))
-            : ListView.separated(
-                controller: _scrollController,
-                itemCount: _logs.length + (_hasMore ? 1 : 0),
-                separatorBuilder: (_, __) => const Divider(height: 1),
-                itemBuilder: (context, index) {
-                  if (index >= _logs.length) {
-                    return const Center(
-                      child: Padding(
-                        padding: EdgeInsets.symmetric(vertical: 12.0),
-                        child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)),
-                      ),
-                    );
-                  }
-
-                  final log = _logs[index] as Map<String, dynamic>;
-                  final itemObj = log['item'] ?? {};
-                  final userObj = log['user'] ?? {};
-                  
-                  final itemName = itemObj['name'] as String? ?? 'Item #${log['item_id']}';
-                  final change = (log['change'] as num?)?.toInt() ?? 0;
-                  final finalStock = (log['final_stock'] as num?)?.toInt() ?? 0;
-                  final String type = log['type'] ?? 'adjustment';
-                  final String refId = log['reference_id'] ?? '';
-                  final String note = log['note'] ?? '';
-                  final String username = userObj['username'] as String? ?? 'System';
-                  final String dateStr = log['created_at'] ?? '';
-                  final formattedDate = dateStr.isNotEmpty 
-                      ? dateFormat.format(_parseDateTime(dateStr)) 
-                      : '-';
-
-                  Color changeColor = Colors.grey;
-                  String changeSign = '';
-                  if (change > 0) {
-                    changeColor = const Color(0xFF00AA5B);
-                    changeSign = '+';
-                  } else if (change < 0) {
-                    changeColor = Colors.red;
-                  }
-
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 10.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Expanded(
-                              child: Text(
-                                itemName,
-                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
+    return Column(
+      children: [
+        // ─── Filter Bar ──────────────────────────
+        Padding(
+          padding: const EdgeInsets.only(bottom: 12.0),
+          child: Row(
+            children: [
+              Expanded(
+                flex: 5,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.grey[300]!),
+                    color: Colors.white,
+                  ),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      value: _selectedType,
+                      isExpanded: true,
+                      style: const TextStyle(fontSize: 12, color: Colors.black87),
+                      items: const [
+                        DropdownMenuItem(value: '', child: Text('Semua Tipe')),
+                        DropdownMenuItem(value: 'restock', child: Text('Restock')),
+                        DropdownMenuItem(value: 'sale', child: Text('Penjualan')),
+                        DropdownMenuItem(value: 'adjustment', child: Text('Adjustment')),
+                        DropdownMenuItem(value: 'refund', child: Text('Refund')),
+                      ],
+                      onChanged: (val) {
+                        if (val != null) {
+                          _selectedType = val;
+                          _onFilterChanged();
+                        }
+                      },
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                flex: 5,
+                child: InkWell(
+                  onTap: () async {
+                    final range = await showDateRangePicker(
+                      context: context,
+                      firstDate: DateTime(2020),
+                      lastDate: DateTime.now().add(const Duration(days: 1)),
+                      initialDateRange: _selectedDateRange,
+                      builder: (context, child) {
+                        return Theme(
+                          data: Theme.of(context).copyWith(
+                            colorScheme: const ColorScheme.light(
+                              primary: Color(0xFF00AA5B),
+                              onPrimary: Colors.white,
+                              onSurface: Colors.black87,
                             ),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: changeColor.withOpacity(0.12),
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: Text(
-                                '$changeSign$change',
-                                style: TextStyle(
-                                  color: changeColor,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 12,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 6),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              'Tipe: ${type.toUpperCase()}${refId.isNotEmpty ? " ($refId)" : ""}',
-                              style: TextStyle(fontSize: 11, color: Colors.grey[600]),
-                            ),
-                            Text(
-                              'Stok Akhir: $finalStock',
-                              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
-                            ),
-                          ],
-                        ),
-                        if (note.isNotEmpty) ...[
-                          const SizedBox(height: 4),
-                          Text(
-                            'Catatan: $note',
-                            style: const TextStyle(fontSize: 11, fontStyle: FontStyle.italic, color: Colors.black54),
                           ),
-                        ],
-                        const SizedBox(height: 4),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              'Oleh: $username',
-                              style: const TextStyle(fontSize: 10, color: Colors.grey),
-                            ),
-                            Text(
-                              formattedDate,
-                              style: const TextStyle(fontSize: 10, color: Colors.grey),
-                            ),
-                          ],
+                          child: child!,
+                        );
+                      },
+                    );
+                    if (range != null) {
+                      _selectedDateRange = range;
+                      _onFilterChanged();
+                    }
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.grey[300]!),
+                      color: Colors.white,
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            _selectedDateRange == null
+                                ? 'Pilih Tanggal'
+                                : '${DateFormat('dd/MM').format(_selectedDateRange!.start)} - ${DateFormat('dd/MM').format(_selectedDateRange!.end)}',
+                            style: const TextStyle(fontSize: 12, color: Colors.black87),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
+                        Icon(Icons.calendar_today, size: 14, color: Colors.grey[600]),
                       ],
                     ),
-                  );
-                },
-              );
+                  ),
+                ),
+              ),
+              if (_hasActiveFilters) ...[
+                const SizedBox(width: 4),
+                IconButton(
+                  icon: const Icon(Icons.clear, color: Colors.redAccent, size: 20),
+                  tooltip: 'Reset Filter',
+                  onPressed: _resetFilters,
+                  constraints: const BoxConstraints(),
+                  padding: const EdgeInsets.all(8),
+                ),
+              ],
+            ],
+          ),
+        ),
+
+        // ─── Logs List ───────────────────────────
+        Expanded(
+          child: _logs.isEmpty && _isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : _logs.isEmpty
+                  ? const Center(child: Text('Tidak ada riwayat inventori.'))
+                  : ListView.separated(
+                      controller: _scrollController,
+                      itemCount: _logs.length + (_hasMore ? 1 : 0),
+                      separatorBuilder: (_, __) => const Divider(height: 1),
+                      itemBuilder: (context, index) {
+                        if (index >= _logs.length) {
+                          return const Center(
+                            child: Padding(
+                              padding: EdgeInsets.symmetric(vertical: 12.0),
+                              child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)),
+                            ),
+                          );
+                        }
+
+                        final log = Map<String, dynamic>.from(_logs[index] as Map);
+                        final itemObj = log['item'] != null ? Map<String, dynamic>.from(log['item'] as Map) : {};
+                        final userObj = log['user'] != null ? Map<String, dynamic>.from(log['user'] as Map) : {};
+
+                        final itemName = itemObj['name'] as String? ?? 'Item #${log['item_id']}';
+                        final change = (log['change'] as num?)?.toInt() ?? 0;
+                        final finalStock = (log['final_stock'] as num?)?.toInt() ?? 0;
+                        final String type = log['type'] ?? 'adjustment';
+                        final String refId = log['reference_id'] ?? '';
+                        final String note = log['note'] ?? '';
+                        final String username = userObj['username'] as String? ?? 'System';
+                        final String dateStr = log['created_at'] ?? '';
+                        final formattedDate = dateStr.isNotEmpty 
+                            ? dateFormat.format(_parseDateTime(dateStr)) 
+                            : '-';
+
+                        Color changeColor = Colors.grey;
+                        String changeSign = '';
+                        if (change > 0) {
+                          changeColor = const Color(0xFF00AA5B);
+                          changeSign = '+';
+                        } else if (change < 0) {
+                          changeColor = Colors.red;
+                        }
+
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 10.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      itemName,
+                                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: changeColor.withOpacity(0.12),
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: Text(
+                                      '$changeSign$change',
+                                      style: TextStyle(
+                                        color: changeColor,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 6),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    'Tipe: ${type.toUpperCase()}${refId.isNotEmpty ? " ($refId)" : ""}',
+                                    style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+                                  ),
+                                  Text(
+                                    'Stok Akhir: $finalStock',
+                                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+                                  ),
+                                ],
+                              ),
+                              if (note.isNotEmpty) ...[
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Catatan: $note',
+                                  style: const TextStyle(fontSize: 11, fontStyle: FontStyle.italic, color: Colors.black54),
+                                ),
+                              ],
+                              const SizedBox(height: 4),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    'Oleh: $username',
+                                    style: const TextStyle(fontSize: 10, color: Colors.grey),
+                                  ),
+                                  Text(
+                                    formattedDate,
+                                    style: const TextStyle(fontSize: 10, color: Colors.grey),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+        ),
+      ],
+    );
   }
 }
 

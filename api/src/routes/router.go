@@ -14,7 +14,7 @@ func RegisterRoutes(r *gin.Engine) {
 
 	// Public items buat landing page
 	r.GET("/public/items", controllers.GetItems)
-	r.GET("/public/items/search", controllers.GetItemsByName)
+	r.GET("/public/items/search", controllers.GetItems)
 	r.GET("/public/items/:id", controllers.GetItemByID)
 
 	// Inventory
@@ -29,7 +29,7 @@ func RegisterRoutes(r *gin.Engine) {
 	items.Use(middlewares.AuthMiddleware())
 	{
 		items.GET("/", controllers.GetItems)
-		items.GET("/search", controllers.GetItemsByName)
+		items.GET("/search", controllers.GetItems)
 		items.GET("/:id", controllers.GetItemByID)     
 		items.POST("/", middlewares.RoleMiddleware("owner", "admin"), controllers.CreateItem)
 		items.PUT("/:id", middlewares.RoleMiddleware("owner", "admin"), controllers.UpdateItem)
@@ -60,7 +60,7 @@ func RegisterRoutes(r *gin.Engine) {
 		transactions.GET("/history", controllers.GetTransactionHistory)
 		transactions.GET("/:id", controllers.GetTransactionByID)
 		transactions.PATCH("/:id", controllers.UpdateTransactionStatus)
-		transactions.GET("/history/by-date", controllers.GetTransactionHistoryByDate)
+		transactions.GET("/history/by-date", controllers.GetTransactionHistory)
 
 		transactions.POST("/:id/refund", controllers.RefundTransaction)
 		transactions.GET("/drafts", controllers.GetDraftTransactions)
@@ -91,7 +91,17 @@ func RegisterRoutes(r *gin.Engine) {
 		users.GET("/", controllers.GetUsers)
 	}
 
-
+	// PO Bills (owner & admin only)
+	poBills := r.Group("/po-bills")
+	poBills.Use(middlewares.AuthMiddleware(), middlewares.RoleMiddleware("owner", "admin"))
+	{
+		poBills.POST("/", controllers.CreatePOBill)
+		poBills.GET("/", controllers.GetPOBills)
+		poBills.GET("/:id", controllers.GetPOBillByID)
+		poBills.PUT("/:id", controllers.UpdatePOBill)
+		poBills.PUT("/:id/pay", controllers.MarkAsPaid)
+		poBills.DELETE("/:id", controllers.DeletePOBill)
+	}
 
 	cash := r.Group("/cash-sessions")
 	cash.Use(middlewares.AuthMiddleware(), middlewares.RoleMiddleware("owner", "admin", "cashier"))

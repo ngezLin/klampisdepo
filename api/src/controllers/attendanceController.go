@@ -3,6 +3,7 @@ package controllers
 import (
 	"kd-api/src/dtos"
 	"kd-api/src/services"
+	"kd-api/src/utils/common"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -10,15 +11,29 @@ import (
 
 // Add manual attendance
 func CreateAttendance(c *gin.Context) {
-    var input dtos.CreateAttendanceInput
+	var input dtos.CreateAttendanceInput
 
-    if err := c.ShouldBindJSON(&input); err != nil {
-        c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-        return
-    }
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
 
-    service := services.NewAttendanceService()
-    attendance, err := service.CreateAttendance(input)
+	userIDPtr := common.GetUserID(c)
+	role := common.GetUserRole(c)
+
+	if userIDPtr == nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Akses tidak sah"})
+		return
+	}
+
+	// Only owner/admin can create attendance for others
+	if input.UserID != *userIDPtr && role != "owner" && role != "admin" {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Tidak diizinkan membuat absensi untuk karyawan lain"})
+		return
+	}
+
+	service := services.NewAttendanceService()
+	attendance, err := service.CreateAttendance(input)
 
     if err != nil {
         if err.Error() == "cashier has already clocked in today" {

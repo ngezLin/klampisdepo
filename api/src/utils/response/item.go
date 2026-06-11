@@ -14,7 +14,7 @@ type ItemResponseCashier struct {
 
 // Mapping slice item berdasarkan role user
 func FilterItemsForRole(items []models.Item, role string) interface{} {
-	if role != "cashier" {
+	if role == "owner" || role == "admin" {
 		return items
 	}
 
@@ -27,7 +27,7 @@ func FilterItemsForRole(items []models.Item, role string) interface{} {
 
 // Mapping single item berdasarkan role user
 func FilterItemForRole(item models.Item, role string) interface{} {
-	if role != "cashier" {
+	if role == "owner" || role == "admin" {
 		return item
 	}
 

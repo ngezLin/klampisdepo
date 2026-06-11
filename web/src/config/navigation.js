@@ -6,6 +6,7 @@ import {
   History,
   CalendarCheck,
   FileText,
+  CalendarClock,
 } from "lucide-react";
 
 export const navigationItems = [
@@ -25,6 +26,12 @@ export const navigationItems = [
     label: "Stok Barang",
     path: "/items",
     icon: <Box />,
+    roles: ["admin", "owner"],
+  },
+  {
+    label: "Tagihan PO",
+    path: "/po-bills",
+    icon: <CalendarClock />,
     roles: ["admin", "owner"],
   },
   {
