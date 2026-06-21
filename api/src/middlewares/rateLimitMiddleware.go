@@ -35,3 +35,29 @@ func LoginRateLimiter() gin.HandlerFunc {
 
 	return middleware
 }
+
+// GeneralRateLimiter creates a rate limiter middleware for general API endpoints.
+// Allows 100 requests per minute per IP address to prevent scraping and simple DoS.
+func GeneralRateLimiter() gin.HandlerFunc {
+	rate, err := limiter.NewRateFromFormatted("100-M")
+	if err != nil {
+		panic(err)
+	}
+
+	store := memory.NewStoreWithOptions(limiter.StoreOptions{
+		CleanUpInterval: 10 * time.Minute,
+	})
+
+	instance := limiter.New(store, rate)
+
+	middleware := mgin.NewMiddleware(instance,
+		mgin.WithLimitReachedHandler(func(c *gin.Context) {
+			c.JSON(http.StatusTooManyRequests, gin.H{
+				"error": "Too many requests. Please slow down.",
+			})
+			c.Abort()
+		}),
+	)
+
+	return middleware
+}

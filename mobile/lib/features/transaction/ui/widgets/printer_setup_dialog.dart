@@ -117,7 +117,8 @@ class _PrinterSetupDialogState extends ConsumerState<PrinterSetupDialog> {
                           type: PrinterConnectionType.network,
                         );
                         final success = await printer.connectToPrinter(device);
-                        if (mounted && success) {
+                        if (!context.mounted) return;
+                        if (success) {
                           showTopSnackBar(
                             context,
                             'Printer terhubung!',
@@ -161,7 +162,8 @@ class _PrinterSetupDialogState extends ConsumerState<PrinterSetupDialog> {
                 subtitle: Text(device.address),
                 onTap: () async {
                   final success = await printer.connectToPrinter(device);
-                  if (mounted && success) {
+                  if (!context.mounted) return;
+                  if (success) {
                     showTopSnackBar(
                       context,
                       'Printer terhubung!',
@@ -190,13 +192,12 @@ class _PrinterSetupDialogState extends ConsumerState<PrinterSetupDialog> {
                     'payment': 10000,
                     'change': 0,
                   });
-                  if (mounted) {
-                    showTopSnackBar(
-                      context,
-                      success ? 'Test print berhasil!' : 'Gagal print: ${printer.lastError}',
-                      backgroundColor: success ? null : Colors.red[700],
-                    );
-                  }
+                  if (!context.mounted) return;
+                  showTopSnackBar(
+                    context,
+                    success ? 'Test print berhasil!' : 'Gagal print: ${printer.lastError}',
+                    backgroundColor: success ? null : Colors.red[700],
+                  );
                 },
               ),
             ],

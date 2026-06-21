@@ -40,7 +40,6 @@ func GetItems(c *gin.Context) {
 	})
 }
 
-
 func GetItemByID(c *gin.Context) {
 	service := services.NewItemService()
 	item, err := service.GetItemByID(c.Param("id"), common.GetUserRole(c))
@@ -134,20 +133,18 @@ func BulkCreateItems(c *gin.Context) {
 }
 
 func ExportItems(c *gin.Context) {
-	service := services.NewItemService()
-	export, err := service.ExportItems(common.GetUserRole(c))
+	c.Header("Content-Description", "File Transfer")
+	c.Header("Content-Disposition", "attachment; filename=\"items.csv\"")
+	c.Header("Content-Type", "text/csv")
+	c.Header("Transfer-Encoding", "chunked")
 
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+	service := services.NewItemService()
+	if err := service.ExportItems(c.Writer, common.GetUserRole(c)); err != nil {
+		c.AbortWithError(http.StatusInternalServerError, err)
 		return
 	}
-
-	c.Header("Content-Description", "File Transfer")
-	c.Header("Content-Disposition", "attachment; filename=\"" + export.FileName + "\"")
-	c.Data(http.StatusOK, "text/csv", export.Content)
 }
-// GetManualStockChanges returns only manual/adjustment stock logs for the specified item.
-// This helps identify inventory changes that weren't part of a sale or refund.
+
 func GetManualStockChanges(c *gin.Context) {
     idParam := c.Param("id")
     

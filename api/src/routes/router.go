@@ -10,35 +10,38 @@ import (
 func RegisterRoutes(r *gin.Engine) {
 
 	r.POST("/login", middlewares.LoginRateLimiter(), controllers.Login)
-	r.GET("/health", controllers.GetHealthStatus)
 
-	// Public items buat landing page
-	r.GET("/public/items", controllers.GetItems)
-	r.GET("/public/items/search", controllers.GetItems)
-	r.GET("/public/items/:id", controllers.GetItemByID)
+	// Serve Images from DB
+	r.GET("/images/:filename", controllers.ServeImage)
 
+	// Health (dev only)
+	health := r.Group("/health")
+	health.Use(middlewares.AuthMiddleware(), middlewares.GeneralRateLimiter(), middlewares.RoleMiddleware("dev"))
+	{
+		health.GET("/", controllers.GetHealthStatus)
+	}
 	// Inventory
 	inventory := r.Group("/inventory")
-	inventory.Use(middlewares.AuthMiddleware(), middlewares.RoleMiddleware("owner"))
+	inventory.Use(middlewares.AuthMiddleware(), middlewares.GeneralRateLimiter(), middlewares.RoleMiddleware("owner", "admin"))
 	{
-		inventory.GET("/history", controllers.GetInventoryHistory)
-	}
+	inventory.GET("/history", controllers.GetInventoryHistory)
+	}	
 
 	// Items 
 	items := r.Group("/items")
-	items.Use(middlewares.AuthMiddleware())
+	items.Use(middlewares.AuthMiddleware(), middlewares.GeneralRateLimiter())
 	{
 		items.GET("/", controllers.GetItems)
 		items.GET("/search", controllers.GetItems)
 		items.GET("/:id", controllers.GetItemByID)     
-		items.POST("/", middlewares.RoleMiddleware("owner", "admin"), controllers.CreateItem)
-		items.PUT("/:id", middlewares.RoleMiddleware("owner", "admin"), controllers.UpdateItem)
-		items.DELETE("/:id", middlewares.RoleMiddleware("owner", "admin"), controllers.DeleteItem)
-		items.POST("/bulk", middlewares.RoleMiddleware("owner", "admin"), controllers.BulkCreateItems)
-		items.GET("/export/csv", middlewares.RoleMiddleware("owner", "admin"), controllers.ExportItems)
+		items.POST("/", middlewares.RoleMiddleware("owner", "admin", "cashier"), controllers.CreateItem)
+		items.PUT("/:id", middlewares.RoleMiddleware("owner", "admin", "cashier"), controllers.UpdateItem)
+		items.DELETE("/:id", middlewares.RoleMiddleware("owner", "admin", "cashier"), controllers.DeleteItem)
+		items.POST("/bulk", middlewares.RoleMiddleware("owner", "admin", "cashier"), controllers.BulkCreateItems)
+		items.GET("/export/csv", middlewares.RoleMiddleware("owner", "admin", "cashier"), controllers.ExportItems)
 
 		// manual stock adjustments for a given item
-		items.GET("/:id/manual-changes", middlewares.RoleMiddleware("owner", "admin"), controllers.GetManualStockChanges)
+		items.GET("/:id/manual-changes", middlewares.RoleMiddleware("owner", "admin", "cashier"), controllers.GetManualStockChanges)
 	}
 
 	// Static route to serve uploaded image files
@@ -46,14 +49,14 @@ func RegisterRoutes(r *gin.Engine) {
 
 	// Uploads
 	uploadRoute := r.Group("/upload")
-	uploadRoute.Use(middlewares.AuthMiddleware()) // require login
+	uploadRoute.Use(middlewares.AuthMiddleware(), middlewares.GeneralRateLimiter()) // require login
 	{
 		uploadRoute.POST("/image", middlewares.RoleMiddleware("owner", "admin"), controllers.UploadImage)
 	}
 
 	// Transactions
 	transactions := r.Group("/transactions")
-	transactions.Use(middlewares.AuthMiddleware(), middlewares.RoleMiddleware("owner", "admin", "cashier"))
+	transactions.Use(middlewares.AuthMiddleware(), middlewares.GeneralRateLimiter(), middlewares.RoleMiddleware("owner", "admin", "cashier"))
 	{
 		transactions.POST("/", controllers.CreateTransaction)
 		transactions.GET("/", controllers.GetTransactions)
@@ -69,14 +72,14 @@ func RegisterRoutes(r *gin.Engine) {
 
 	// Dashboard
 	dashboard := r.Group("/dashboard")
-	dashboard.Use(middlewares.AuthMiddleware(), middlewares.RoleMiddleware("owner"))
+	dashboard.Use(middlewares.AuthMiddleware(), middlewares.GeneralRateLimiter(), middlewares.RoleMiddleware("owner"))
 	{
 		dashboard.GET("/", controllers.GetDashboard)
 	}
 
 	// Attendance
 	attendance := r.Group("/attendance")
-	attendance.Use(middlewares.AuthMiddleware())
+	attendance.Use(middlewares.AuthMiddleware(), middlewares.GeneralRateLimiter())
 	{
 		attendance.GET("/", middlewares.RoleMiddleware("owner"), controllers.GetAttendances)
 		attendance.POST("/", middlewares.RoleMiddleware("owner", "admin", "cashier"), controllers.CreateAttendance)
@@ -84,16 +87,19 @@ func RegisterRoutes(r *gin.Engine) {
 		attendance.GET("/history", middlewares.RoleMiddleware("owner", "admin"), controllers.GetAttendanceHistory)
 	}
 
-	// Users (owner only)
+	// Users (owner & dev)
 	users := r.Group("/users")
-	users.Use(middlewares.AuthMiddleware(), middlewares.RoleMiddleware("owner"))
+	users.Use(middlewares.AuthMiddleware(), middlewares.GeneralRateLimiter(), middlewares.RoleMiddleware("owner", "dev"))
 	{
 		users.GET("/", controllers.GetUsers)
+		users.POST("/", controllers.CreateUser)
+		users.PUT("/:id", controllers.UpdateUser)
+		users.DELETE("/:id", controllers.DeleteUser)
 	}
 
 	// PO Bills (owner & admin only)
 	poBills := r.Group("/po-bills")
-	poBills.Use(middlewares.AuthMiddleware(), middlewares.RoleMiddleware("owner", "admin"))
+	poBills.Use(middlewares.AuthMiddleware(), middlewares.GeneralRateLimiter(), middlewares.RoleMiddleware("owner", "admin"))
 	{
 		poBills.POST("/", controllers.CreatePOBill)
 		poBills.GET("/", controllers.GetPOBills)
@@ -103,8 +109,9 @@ func RegisterRoutes(r *gin.Engine) {
 		poBills.DELETE("/:id", controllers.DeletePOBill)
 	}
 
+	// Cash Sessions (owner, admin, cashier)
 	cash := r.Group("/cash-sessions")
-	cash.Use(middlewares.AuthMiddleware(), middlewares.RoleMiddleware("owner", "admin", "cashier"))
+	cash.Use(middlewares.AuthMiddleware(), middlewares.GeneralRateLimiter(), middlewares.RoleMiddleware("owner", "admin", "cashier"))
 	{
 		cash.GET("/current", controllers.GetCurrentCashSession)
 		cash.GET("/history", controllers.GetCashSessionHistory)

@@ -691,7 +691,7 @@ class PrinterService extends ChangeNotifier {
       config: formatConfig,
     );
 
-    await Share.share(receipt, subject: 'Struk Belanja #${transaction['id']}');
+    await SharePlus.instance.share(ShareParams(text: receipt, subject: 'Struk Belanja #${transaction['id']}'));
   }
 
   /// Print a receipt directly from current checkout state

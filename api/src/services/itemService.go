@@ -1,10 +1,10 @@
 package services
 
 import (
-	"bytes"
 	"encoding/csv"
 	"errors"
 	"fmt"
+	"io"
 	"kd-api/src/config"
 	"kd-api/src/dtos"
 	"kd-api/src/models"
@@ -24,7 +24,7 @@ type ItemService interface {
 	UpdateItem(id string, input dtos.UpdateItemInput, userID *uint, clientIP string, role string) (interface{}, error)
 	DeleteItem(id string, userID *uint, clientIP string) error
 	BulkCreateItems(inputs dtos.BulkCreateItemInput, userID *uint, clientIP string, role string) (interface{}, error)
-	ExportItems(role string) (*dtos.CSVExport, error)
+	ExportItems(writer io.Writer, role string) error
 }
 
 type itemService struct{}
@@ -284,25 +284,22 @@ func (s *itemService) BulkCreateItems(inputs dtos.BulkCreateItemInput, userID *u
 	return response.FilterItemsForRole(items, role), nil
 }
 
-func (s *itemService) ExportItems(role string) (*dtos.CSVExport, error) {
+func (s *itemService) ExportItems(writer io.Writer, role string) error {
+	csvWriter := csv.NewWriter(writer)
+	defer csvWriter.Flush()
+
+	csvWriter.Write(getCSVHeaders(role))
+
 	var items []models.Item
-	if err := config.DB.Find(&items).Error; err != nil {
-		return nil, err
-	}
+	result := config.DB.FindInBatches(&items, 100, func(tx *gorm.DB, batch int) error {
+		for _, item := range items {
+			csvWriter.Write(formatItemCSVRow(item, role))
+		}
+		csvWriter.Flush()
+		return nil
+	})
 
-	var buffer bytes.Buffer
-	writer := csv.NewWriter(&buffer)
-
-	writer.Write(getCSVHeaders(role))
-	for _, item := range items {
-		writer.Write(formatItemCSVRow(item, role))
-	}
-	writer.Flush()
-
-	return &dtos.CSVExport{
-		FileName: "items.csv",
-		Content:  buffer.Bytes(),
-	}, nil
+	return result.Error
 }
 
 

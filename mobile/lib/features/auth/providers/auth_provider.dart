@@ -43,7 +43,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
   final Ref ref;
   FlutterSecureStorage get _storage => ref.read(secureStorageProvider);
 
-  AuthNotifier(this.ref) : super(AuthState()) {
+  AuthNotifier(this.ref) : super(AuthState(isLoading: true)) {
     _init();
   }
 
@@ -57,13 +57,16 @@ class AuthNotifier extends StateNotifier<AuthState> {
           role: payload['role'],
           username: payload['username'],
           userId: payload['user_id'] as int?,
+          isLoading: false,
         );
+      } else {
+        state = AuthState(isLoading: false);
       }
     } catch (e) {
       try {
         await _storage.delete(key: 'token');
       } catch (_) {}
-      state = AuthState();
+      state = AuthState(isLoading: false);
     }
   }
 

@@ -48,7 +48,7 @@ class ItemCard extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
                           color: isOutOfStock 
-                              ? Colors.red.withOpacity(0.9)
+                              ? Colors.red.withValues(alpha: 0.9)
                               : (item.stock < 5 ? Colors.amber[700] : const Color(0xFF00AA5B)),
                           borderRadius: BorderRadius.circular(6),
                         ),

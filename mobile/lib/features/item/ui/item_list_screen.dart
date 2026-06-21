@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:dio/dio.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:image_picker/image_picker.dart';
 import '../providers/item_provider.dart';
 import '../../transaction/models/transaction_models.dart';
@@ -234,10 +233,7 @@ class _ItemListScreenState extends ConsumerState<ItemListScreen> {
       await file.writeAsString(csvData);
 
       // Trigger standard share dialog to let the user save or send the CSV file
-      await Share.shareXFiles(
-        [XFile(filePath)],
-        subject: 'Ekspor Inventoris KlampisDepo',
-      );
+      await SharePlus.instance.share(ShareParams(files: [XFile(filePath)], subject: 'Ekspor Inventoris KlampisDepo'));
 
       if (context.mounted) {
         _showTopSnackBar('✅ Inventoris berhasil diekspor!');
@@ -567,7 +563,7 @@ class _ItemFormSheetState extends ConsumerState<_ItemFormSheet> {
                         const Text('Kelola Stok?', style: TextStyle(fontWeight: FontWeight.w500)),
                         Switch(
                           value: _isStockManaged,
-                          activeColor: const Color(0xFF00AA5B),
+                          activeThumbColor: const Color(0xFF00AA5B),
                           onChanged: (val) => setState(() => _isStockManaged = val),
                         ),
                       ],

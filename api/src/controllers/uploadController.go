@@ -3,11 +3,13 @@ package controllers
 import (
 	"encoding/base64"
 	"fmt"
+	"io"
 	"net/http"
-	"os"
-	"path/filepath"
 	"strings"
 	"time"
+
+	"kd-api/src/config"
+	"kd-api/src/models"
 
 	"github.com/gin-gonic/gin"
 )
@@ -16,16 +18,13 @@ type Base64UploadRequest struct {
 	Image string `json:"image"`
 }
 
-// UploadImage handles image uploads (multipart/form-data or base64 JSON)
+// UploadImage handles image uploads (multipart/form-data or base64 JSON) and saves to DB
 func UploadImage(c *gin.Context) {
-	// Make sure the uploads directory exists
-	uploadPath := "uploads"
-	if err := os.MkdirAll(uploadPath, os.ModePerm); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create upload directory"})
-		return
-	}
-
 	contentTypeHeader := c.GetHeader("Content-Type")
+
+	var finalBase64 string
+	var finalMimeType string
+	var extension string
 
 	// --- PATH 1: JSON containing Base64 String ---
 	if strings.Contains(contentTypeHeader, "application/json") {
@@ -35,7 +34,6 @@ func UploadImage(c *gin.Context) {
 			return
 		}
 
-		// Remove the 'data:image/...;base64,' prefix if it exists
 		base64Data := req.Image
 		if idx := strings.Index(base64Data, ","); idx != -1 {
 			base64Data = base64Data[idx+1:]
@@ -52,95 +50,70 @@ func UploadImage(c *gin.Context) {
 			return
 		}
 
-		contentType := http.DetectContentType(decodedBytes)
-		extension := ".jpg"
-		if contentType == "image/png" {
-			extension = ".png"
-		} else if contentType == "image/webp" {
-			extension = ".webp"
-		} else if contentType == "image/gif" {
-			extension = ".gif"
-		} else if contentType != "image/jpeg" {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid base64 file type. Only JPEG, PNG, WEBP, and GIF are allowed"})
+		finalMimeType = http.DetectContentType(decodedBytes)
+		finalBase64 = base64Data
+	} else {
+		// --- PATH 2: Standard multipart/form-data File Upload ---
+		file, err := c.FormFile("image")
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "No image uploaded. Make sure to send file as 'image'"})
 			return
 		}
 
-		newFileName := fmt.Sprintf("img_%d%s", time.Now().UnixNano(), extension)
-		newFilePath := filepath.Join(uploadPath, newFileName)
-
-		if err := os.WriteFile(newFilePath, decodedBytes, 0644); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save file"})
+		if file.Size > 5<<20 {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "File too large (max 5MB)"})
 			return
 		}
 
-		fileURL := fmt.Sprintf("/uploads/%s", newFileName)
-		c.JSON(http.StatusOK, gin.H{
-			"message": "Base64 file uploaded successfully",
-			"url":     fileURL,
-		})
-		return
+		openedFile, err := file.Open()
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to open uploaded file"})
+			return
+		}
+		defer openedFile.Close()
+
+		fileBytes, err := io.ReadAll(openedFile)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to read file content"})
+			return
+		}
+
+		finalMimeType = http.DetectContentType(fileBytes)
+		finalBase64 = base64.StdEncoding.EncodeToString(fileBytes)
 	}
 
-	// --- PATH 2: Standard multipart/form-data File Upload ---
-	file, err := c.FormFile("image")
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "No image uploaded. Make sure to send file as 'image'"})
-		return
-	}
-
-	// Validate file size (Max 5MB)
-	if file.Size > 5<<20 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "File too large (max 5MB)"})
-		return
-	}
-
-	// Validate MIME type (magic bytes checking)
-	openedFile, err := file.Open()
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to open uploaded file"})
-		return
-	}
-	defer openedFile.Close()
-
-	// Read first 512 bytes for content type detection
-	buffer := make([]byte, 512)
-	if _, err := openedFile.Read(buffer); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to read file content"})
-		return
-	}
-	
-	contentType := http.DetectContentType(buffer)
-	if contentType != "image/jpeg" && contentType != "image/png" && contentType != "image/webp" && contentType != "image/gif" {
+	// Validate MIME type and set extension
+	if finalMimeType == "image/png" {
+		extension = ".png"
+	} else if finalMimeType == "image/webp" {
+		extension = ".webp"
+	} else if finalMimeType == "image/gif" {
+		extension = ".gif"
+	} else if finalMimeType == "image/jpeg" {
+		extension = ".jpg"
+	} else {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid file type. Only JPEG, PNG, WEBP, and GIF are allowed"})
 		return
 	}
 
-
-	// Generate safe extension from validated content type (never trust client filename)
-	extension := ".jpg"
-	switch contentType {
-	case "image/png":
-		extension = ".png"
-	case "image/webp":
-		extension = ".webp"
-	case "image/gif":
-		extension = ".gif"
-	}
-	
 	newFileName := fmt.Sprintf("img_%d%s", time.Now().UnixNano(), extension)
-	newFilePath := filepath.Join(uploadPath, newFileName)
 
-	// Save the original multipart file to disk
-	if err := c.SaveUploadedFile(file, newFilePath); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save file"})
+	// Save to Database
+	imageRecord := models.Image{
+		FileName: newFileName,
+		Data:     finalBase64,
+		MimeType: finalMimeType,
+	}
+
+	if err := config.DB.Create(&imageRecord).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save image to database"})
 		return
 	}
 
-	// Construct public URL
-	fileURL := fmt.Sprintf("/uploads/%s", newFileName)
-
+	// Return new /images/ URL
+	fileURL := fmt.Sprintf("/images/%s", newFileName)
 	c.JSON(http.StatusOK, gin.H{
-		"message": "File uploaded successfully",
+		"message": "File uploaded successfully to database",
 		"url":     fileURL,
 	})
 }

@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import '../../../core/network/dio_client.dart';
 import '../models/po_bill.dart';
 
@@ -89,22 +90,34 @@ class POBillsNotifier extends StateNotifier<POBillsState> {
     }).toList();
   }
 
+  String _formatDateYmd(DateTime dt) {
+    return '${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')}';
+  }
+
   Future<bool> createBill(POBillModel bill) async {
     try {
-      await _dio.post('/po-bills/', data: bill.toJson());
+      final data = bill.toJson();
+      data['received_date'] = _formatDateYmd(bill.receivedDate);
+      data['due_date'] = _formatDateYmd(bill.dueDate);
+      await _dio.post('/po-bills/', data: data);
       await loadBills();
       return true;
     } catch (e) {
+      debugPrint('Error creating PO Bill: $e');
       return false;
     }
   }
 
   Future<bool> updateBill(int id, POBillModel bill) async {
     try {
-      await _dio.put('/po-bills/$id', data: bill.toJson());
+      final data = bill.toJson();
+      data['received_date'] = _formatDateYmd(bill.receivedDate);
+      data['due_date'] = _formatDateYmd(bill.dueDate);
+      await _dio.put('/po-bills/$id', data: data);
       await loadBills();
       return true;
     } catch (e) {
+      debugPrint('Error updating PO Bill: $e');
       return false;
     }
   }

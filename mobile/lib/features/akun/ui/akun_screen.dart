@@ -210,7 +210,7 @@ class AkunScreen extends ConsumerWidget {
                 title: 'Manajemen Pengguna',
                 subtitle: 'Lihat daftar pengguna & role',
                 onTap: () {
-                  _showUsersDialog(context, ref);
+                  context.push('/users');
                 },
               ),
             if (auth.role == 'owner')
@@ -222,6 +222,29 @@ class AkunScreen extends ConsumerWidget {
                   _showStoreLogsDialog(context, ref);
                 },
               ),
+            const SizedBox(height: 24),
+          ],
+
+          // ─── Developer Tools Section ────────────
+          if (auth.role == 'dev') ...[
+            _SectionHeader(title: 'Developer Tools'),
+            const SizedBox(height: 8),
+            _SettingsTile(
+              icon: Icons.people_outline,
+              title: 'Manajemen Pengguna',
+              subtitle: 'Buat, ubah, atau hapus pengguna',
+              onTap: () {
+                context.push('/users');
+              },
+            ),
+            _SettingsTile(
+              icon: Icons.monitor_heart_outlined,
+              title: 'Sistem & Health Check',
+              subtitle: 'Status server dan database backend',
+              onTap: () {
+                context.push('/health');
+              },
+            ),
             const SizedBox(height: 24),
           ],
 
@@ -321,6 +344,8 @@ class AkunScreen extends ConsumerWidget {
         return 'OWNER';
       case 'admin':
         return 'ADMIN';
+      case 'dev':
+        return 'DEVELOPER';
       case 'cashier':
         return 'KASIR';
       default:
@@ -409,13 +434,6 @@ class AkunScreen extends ConsumerWidget {
           ),
         ],
       ),
-    );
-  }
-
-  void _showUsersDialog(BuildContext context, WidgetRef ref) {
-    showDialog(
-      context: context,
-      builder: (context) => const _UsersListDialog(),
     );
   }
 
@@ -775,64 +793,6 @@ class _SettingsTile extends StatelessWidget {
   }
 }
 
-// ─── Users List Dialog ─────────────────────────
-
-class _UsersListDialog extends ConsumerWidget {
-  const _UsersListDialog();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final usersAsync = ref.watch(_usersProvider);
-
-    return AlertDialog(
-      title: const Text('Daftar Pengguna'),
-      content: SizedBox(
-        width: double.maxFinite,
-        height: 300,
-        child: usersAsync.when(
-          data: (users) {
-            if (users.isEmpty) {
-              return const Center(child: Text('Tidak ada data pengguna.'));
-            }
-            return ListView.separated(
-              itemCount: users.length,
-              separatorBuilder: (_, __) => const Divider(height: 1),
-              itemBuilder: (context, index) {
-                final user = Map<String, dynamic>.from(users[index] as Map);
-                final role = user['role'] as String? ?? 'unknown';
-                return ListTile(
-                  leading: CircleAvatar(
-                    backgroundColor: AkunScreen._roleColor(role).withOpacity(0.15),
-                    child: Text(
-                      (user['username'] as String? ?? 'U')[0].toUpperCase(),
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: AkunScreen._roleColor(role),
-                      ),
-                    ),
-                  ),
-                  title: Text(user['username'] as String? ?? '-',
-                      style: const TextStyle(fontWeight: FontWeight.bold)),
-                  subtitle: Text(role.toUpperCase(),
-                      style: TextStyle(fontSize: 11, color: AkunScreen._roleColor(role), fontWeight: FontWeight.bold)),
-                );
-              },
-            );
-          },
-          loading: () => const Center(child: CircularProgressIndicator()),
-          error: (e, _) => Center(child: Text('Error: $e')),
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('Tutup'),
-        ),
-      ],
-    );
-  }
-}
-
 class _CashSessionHistoryDialog extends ConsumerWidget {
   const _CashSessionHistoryDialog();
 
@@ -1019,12 +979,6 @@ DateTime _parseDateTime(dynamic raw) {
     }
   }
 }
-
-final _usersProvider = FutureProvider.autoDispose<List<dynamic>>((ref) async {
-  final dio = ref.read(dioProvider);
-  final response = await dio.get('/users/');
-  return response.data as List<dynamic>;
-});
 
 class _PrinterSettingsSheet extends ConsumerStatefulWidget {
   final ScrollController scrollController;
@@ -1413,31 +1367,31 @@ class _ReceiptFormatSettingsSheetState extends ConsumerState<_ReceiptFormatSetti
                 SwitchListTile(
                   title: const Text('Tampilkan Logo Toko', style: TextStyle(fontSize: 14)),
                   value: _showLogo,
-                  activeColor: const Color(0xFF00AA5B),
+                  activeThumbColor: const Color(0xFF00AA5B),
                   onChanged: (val) => setState(() => _showLogo = val),
                 ),
                 SwitchListTile(
                   title: const Text('Tampilkan Alamat Toko', style: TextStyle(fontSize: 14)),
                   value: _showAddress,
-                  activeColor: const Color(0xFF00AA5B),
+                  activeThumbColor: const Color(0xFF00AA5B),
                   onChanged: (val) => setState(() => _showAddress = val),
                 ),
                 SwitchListTile(
                   title: const Text('Tampilkan Telepon Toko', style: TextStyle(fontSize: 14)),
                   value: _showPhone,
-                  activeColor: const Color(0xFF00AA5B),
+                  activeThumbColor: const Color(0xFF00AA5B),
                   onChanged: (val) => setState(() => _showPhone = val),
                 ),
                 SwitchListTile(
                   title: const Text('Tampilkan Catatan Transaksi', style: TextStyle(fontSize: 14)),
                   value: _showNotes,
-                  activeColor: const Color(0xFF00AA5B),
+                  activeThumbColor: const Color(0xFF00AA5B),
                   onChanged: (val) => setState(() => _showNotes = val),
                 ),
                 SwitchListTile(
                   title: const Text('Tampilkan Pesan Footer', style: TextStyle(fontSize: 14)),
                   value: _showFooter,
-                  activeColor: const Color(0xFF00AA5B),
+                  activeThumbColor: const Color(0xFF00AA5B),
                   onChanged: (val) => setState(() => _showFooter = val),
                 ),
                 const SizedBox(height: 20),
@@ -1489,7 +1443,7 @@ class _ReceiptFormatSettingsSheetState extends ConsumerState<_ReceiptFormatSetti
                       paperWidth: _paperWidth,
                     );
                     await printer.updateFormatConfig(newConfig);
-                    if (mounted) {
+                    if (context.mounted) {
                       Navigator.pop(context);
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(content: Text('Format struk berhasil disimpan!')),
@@ -1810,7 +1764,7 @@ class _GlobalInventoryViewState extends ConsumerState<_GlobalInventoryView> {
                                   Container(
                                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                                     decoration: BoxDecoration(
-                                      color: changeColor.withOpacity(0.12),
+                                      color: changeColor.withValues(alpha: 0.12),
                                       borderRadius: BorderRadius.circular(4),
                                     ),
                                     child: Text(

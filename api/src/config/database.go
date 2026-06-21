@@ -58,10 +58,14 @@ func ConnectDatabase() {
 		&models.CashSession{},
 		&models.InventoryLog{},
 		&models.POBill{},
+		&models.Image{},
 	)
 	if err != nil {
 		log.Fatal("Failed to migrate database: ", err)
 	}
+
+	// Forcibly update users role ENUM to include 'dev' because GORM AutoMigrate doesn't modify existing ENUMs
+	db.Exec("ALTER TABLE users MODIFY COLUMN role ENUM('admin','cashier','owner','dev') DEFAULT 'cashier';")
 
 	DB = db
 	fmt.Println("✅ Database connected & migrated successfully")

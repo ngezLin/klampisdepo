@@ -238,7 +238,7 @@ class OfflineSyncService {
           };
 
           // Generate an idempotency key for the sync attempt
-          final idempotencyKey = 'sync-${tx.id}-${tx.retryCount}';
+          final idempotencyKey = 'sync-${tx.id}';
 
           // Post to backend with Idempotency Key header
           final response = await dio.post(

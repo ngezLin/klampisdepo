@@ -440,7 +440,7 @@ class _ReceiptDetailDialog extends ConsumerWidget {
                             final file = await File('${tempDir.path}/struk_$id.png').create();
                             await file.writeAsBytes(pngBytes);
 
-                            await Share.shareXFiles([XFile(file.path)], subject: 'Struk Belanja #$id');
+                            await SharePlus.instance.share(ShareParams(files: [XFile(file.path)], subject: 'Struk Belanja #$id'));
                           } catch (e) {
                             debugPrint('Error sharing receipt image: $e');
                             if (context.mounted) {

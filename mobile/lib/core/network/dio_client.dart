@@ -11,7 +11,9 @@ const String apiBaseUrl = String.fromEnvironment(
 );
 
 final secureStorageProvider = Provider<FlutterSecureStorage>((ref) {
-  return const FlutterSecureStorage();
+  return const FlutterSecureStorage(
+    aOptions: AndroidOptions(encryptedSharedPreferences: true),
+  );
 });
 
 class RetryInterceptor extends Interceptor {
@@ -90,7 +92,7 @@ final dioProvider = Provider<Dio>((ref) {
         return handler.next(options);
       },
       onError: (e, handler) {
-        if (e.response?.statusCode == 401 || e.response?.statusCode == 403) {
+        if (e.response?.statusCode == 401) {
           ref.read(authProvider.notifier).logout();
         }
         return handler.next(e);

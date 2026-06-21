@@ -13,9 +13,9 @@ class MainLayout extends ConsumerWidget {
     final authState = ref.watch(authProvider);
     final role = authState.role;
 
-    final showDashboardTab = role == 'owner';
-    final showItemTab = role == 'admin' || role == 'owner';
-    final showHistoryTab = role == 'admin' || role == 'owner' || role == 'cashier';
+    final showDashboardTab = role == 'owner' || role == 'dev';
+    final showItemTab = role == 'admin' || role == 'owner' || role == 'dev';
+    final showHistoryTab = role == 'admin' || role == 'owner' || role == 'cashier' || role == 'dev';
 
     final List<NavigationDestination> destinations = [];
     final List<String> paths = [];

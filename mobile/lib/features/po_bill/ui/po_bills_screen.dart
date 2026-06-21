@@ -368,7 +368,7 @@ class _POBillsScreenState extends ConsumerState<POBillsScreen> with SingleTicker
                               border: Border.all(color: const Color(0xFFE5E7EB)),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.black.withOpacity(0.01),
+                                  color: Colors.black.withValues(alpha: 0.01),
                                   blurRadius: 8,
                                   offset: const Offset(0, 2),
                                 )
@@ -1065,12 +1065,26 @@ class _POBillFormSheetState extends ConsumerState<_POBillFormSheet> {
                             ),
                           ),
                           onChanged: (val) {
-                            final days = int.tryParse(val.trim());
-                            if (days != null && days > 0) {
-                              setState(() {
-                                _selectedTermDays = days;
-                                _dueDate = _receivedDate.add(Duration(days: days));
-                              });
+                            final trimmed = val.trim();
+                            if (trimmed.isEmpty) {
+                              if (_selectedTermDays != 30 &&
+                                  _selectedTermDays != 45 &&
+                                  _selectedTermDays != 60) {
+                                setState(() {
+                                  _selectedTermDays = 0;
+                                  _dueDate = _receivedDate;
+                                });
+                              }
+                              return;
+                            }
+                            final days = int.tryParse(trimmed);
+                            if (days != null && days >= 0) {
+                              if (days != _selectedTermDays) {
+                                setState(() {
+                                  _selectedTermDays = days;
+                                  _dueDate = _receivedDate.add(Duration(days: days));
+                                });
+                              }
                             }
                           },
                         ),

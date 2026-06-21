@@ -10,16 +10,26 @@ import '../../features/akun/ui/akun_screen.dart';
 import '../../features/auth/providers/auth_provider.dart';
 import '../../features/dashboard/ui/dashboard_screen.dart';
 import '../../features/po_bill/ui/po_bills_screen.dart';
+import '../../features/akun/ui/users_screen.dart';
+import '../../features/akun/ui/health_screen.dart';
 
 part 'router.g.dart';
 
 @riverpod
 GoRouter router(RouterRef ref) {
-  final authState = ref.watch(authProvider);
+  final authNotifier = ValueNotifier<AuthState>(ref.read(authProvider));
+  
+  ref.listen<AuthState>(authProvider, (_, next) {
+    authNotifier.value = next;
+  });
 
   return GoRouter(
     initialLocation: '/login',
+    refreshListenable: authNotifier,
     redirect: (context, state) {
+      final authState = authNotifier.value;
+      if (authState.isLoading) return null;
+
       final isLoggedIn = authState.token != null;
       final isLoggingIn = state.matchedLocation == '/login';
 
@@ -76,6 +86,20 @@ GoRouter router(RouterRef ref) {
             pageBuilder: (context, state) => NoTransitionPage(
               key: state.pageKey,
               child: const AkunScreen(),
+            ),
+          ),
+          GoRoute(
+            path: '/users',
+            pageBuilder: (context, state) => NoTransitionPage(
+              key: state.pageKey,
+              child: const UsersScreen(),
+            ),
+          ),
+          GoRoute(
+            path: '/health',
+            pageBuilder: (context, state) => NoTransitionPage(
+              key: state.pageKey,
+              child: const HealthScreen(),
             ),
           ),
         ],
