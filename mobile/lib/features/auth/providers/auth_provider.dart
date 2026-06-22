@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:jwt_decoder/jwt_decoder.dart';
+import 'package:dio/dio.dart';
 import '../../../core/network/dio_client.dart';
 
 class AuthState {
@@ -94,9 +95,23 @@ class AuthNotifier extends StateNotifier<AuthState> {
       );
       return true;
     } catch (e) {
+      String errorMessage = 'Login gagal. Periksa username dan password.';
+      if (e is DioException) {
+        if (e.response != null && e.response?.data is Map) {
+          final serverError = e.response?.data['error'] ?? e.response?.data['message'];
+          if (serverError != null) {
+            errorMessage = serverError.toString();
+          }
+        } else if (e.type == DioExceptionType.connectionTimeout ||
+                   e.type == DioExceptionType.sendTimeout ||
+                   e.type == DioExceptionType.receiveTimeout ||
+                   e.type == DioExceptionType.connectionError) {
+          errorMessage = 'Koneksi gagal. Periksa jaringan internet Anda.';
+        }
+      }
       state = state.copyWith(
         isLoading: false,
-        error: 'Login gagal. Periksa username dan password.',
+        error: errorMessage,
       );
       return false;
     }

@@ -34,7 +34,27 @@ GoRouter router(RouterRef ref) {
       final isLoggingIn = state.matchedLocation == '/login';
 
       if (!isLoggedIn && !isLoggingIn) return '/login';
-      if (isLoggedIn && isLoggingIn) return '/';
+
+      if (isLoggedIn) {
+        final isDev = authState.role == 'dev';
+        if (isDev) {
+          final devRoutes = ['/health', '/users', '/akun'];
+          if (!devRoutes.contains(state.matchedLocation)) {
+            return '/akun';
+          }
+        } else {
+          // Non-dev users shouldn't access developer-only routes
+          if (state.matchedLocation == '/health') {
+            return '/';
+          }
+          if (state.matchedLocation == '/users' && authState.role != 'owner') {
+            return '/';
+          }
+          if (isLoggingIn) {
+            return '/';
+          }
+        }
+      }
 
       return null;
     },

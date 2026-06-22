@@ -13,9 +13,10 @@ class MainLayout extends ConsumerWidget {
     final authState = ref.watch(authProvider);
     final role = authState.role;
 
-    final showDashboardTab = role == 'owner' || role == 'dev';
-    final showItemTab = role == 'admin' || role == 'owner' || role == 'dev';
-    final showHistoryTab = role == 'admin' || role == 'owner' || role == 'cashier' || role == 'dev';
+    final showDashboardTab = role == 'owner';
+    final showItemTab = role == 'admin' || role == 'owner';
+    final showHistoryTab = role == 'admin' || role == 'owner' || role == 'cashier';
+    final showTransaksiTab = role == 'admin' || role == 'owner' || role == 'cashier';
 
     final List<NavigationDestination> destinations = [];
     final List<String> paths = [];
@@ -29,12 +30,14 @@ class MainLayout extends ConsumerWidget {
       paths.add('/dashboard');
     }
 
-    destinations.add(const NavigationDestination(
-      icon: Icon(Icons.shopping_cart_outlined),
-      selectedIcon: Icon(Icons.shopping_cart),
-      label: 'Transaksi',
-    ));
-    paths.add('/');
+    if (showTransaksiTab) {
+      destinations.add(const NavigationDestination(
+        icon: Icon(Icons.shopping_cart_outlined),
+        selectedIcon: Icon(Icons.shopping_cart),
+        label: 'Transaksi',
+      ));
+      paths.add('/');
+    }
 
     if (showItemTab) {
       destinations.add(const NavigationDestination(
@@ -69,15 +72,17 @@ class MainLayout extends ConsumerWidget {
 
     return Scaffold(
       body: child,
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: currentIndex,
-        onDestinationSelected: (index) {
-          if (index >= 0 && index < paths.length) {
-            context.go(paths[index]);
-          }
-        },
-        destinations: destinations,
-      ),
+      bottomNavigationBar: destinations.length > 1
+          ? NavigationBar(
+              selectedIndex: currentIndex,
+              onDestinationSelected: (index) {
+                if (index >= 0 && index < paths.length) {
+                  context.go(paths[index]);
+                }
+              },
+              destinations: destinations,
+            )
+          : null,
     );
   }
 }
