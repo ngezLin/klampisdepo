@@ -2,6 +2,8 @@ package controllers
 
 import (
 	"net/http"
+	"os"
+	"os/exec"
 	"runtime"
 	"time"
 
@@ -57,4 +59,26 @@ func GetHealthStatus(c *gin.Context) {
 			"num_goroutines":       runtime.NumGoroutine(),
 		},
 	})
+}
+
+func RestartAPI(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Restarting KD-API service in 1 second...",
+	})
+
+	go func() {
+		time.Sleep(1 * time.Second)
+		os.Exit(0)
+	}()
+}
+
+func RebootServer(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Rebooting VPS server in 1 second...",
+	})
+
+	go func() {
+		time.Sleep(1 * time.Second)
+		exec.Command("reboot").Run()
+	}()
 }

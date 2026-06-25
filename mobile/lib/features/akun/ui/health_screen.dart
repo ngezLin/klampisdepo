@@ -30,7 +30,7 @@ class HealthScreen extends ConsumerWidget {
       ),
       backgroundColor: const Color(0xFFF9FAFB),
       body: healthAsync.when(
-        data: (data) => _buildDashboard(data),
+        data: (data) => _buildDashboard(context, ref, data),
         loading: () => const Center(child: CircularProgressIndicator(color: Color(0xFF00AA5B))),
         error: (e, _) => Center(
           child: Padding(
@@ -59,7 +59,83 @@ class HealthScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildDashboard(Map<String, dynamic> data) {
+  Future<void> _restartAPI(BuildContext context, WidgetRef ref) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Restart API?'),
+        content: const Text('Ini akan menghentikan sementara API server dan menyalakannya kembali dalam 1 detik. Transaksi offline yang belum sinkron akan aman di perangkat.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Batal', style: TextStyle(color: Colors.grey)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Restart', style: TextStyle(color: Colors.orange, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+    
+    if (confirm == true) {
+      try {
+        final dio = ref.read(dioProvider);
+        await dio.post('/health/restart');
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Sinyal restart dikirim. Menghubungkan ulang...')),
+          );
+        }
+      } catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Sinyal restart terkirim: $e')),
+          );
+        }
+      }
+    }
+  }
+
+  Future<void> _rebootServer(BuildContext context, WidgetRef ref) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Reboot VPS Server?'),
+        content: const Text('Ini akan me-reboot seluruh Virtual Private Server. Server akan mati selama sekitar 1 menit. Semua koneksi ke aplikasi akan terputus sementara.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Batal', style: TextStyle(color: Colors.grey)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Reboot', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+    
+    if (confirm == true) {
+      try {
+        final dio = ref.read(dioProvider);
+        await dio.post('/health/reboot');
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Sinyal reboot dikirim. Server sedang me-reboot...')),
+          );
+        }
+      } catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Sinyal reboot terkirim: $e')),
+          );
+        }
+      }
+    }
+  }
+
+  Widget _buildDashboard(BuildContext context, WidgetRef ref, Map<String, dynamic> data) {
     final status = data['status'] as String? ?? 'unknown';
     
     final dbData = data['database'] as Map<String, dynamic>?;
@@ -138,6 +214,43 @@ class HealthScreen extends ConsumerWidget {
           title: 'Penggunaan Memori',
           value: memStr,
           valueColor: Colors.blue,
+        ),
+
+        const SizedBox(height: 24),
+        const Text(
+          'Alat Pemeliharaan (Dev Only)',
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF374151)),
+        ),
+        const SizedBox(height: 12),
+        
+        Row(
+          children: [
+            Expanded(
+              child: ElevatedButton.icon(
+                icon: const Icon(Icons.refresh_rounded, color: Colors.white),
+                label: const Text('Restart API', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.orange[800],
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+                onPressed: () => _restartAPI(context, ref),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: ElevatedButton.icon(
+                icon: const Icon(Icons.power_settings_new_rounded, color: Colors.white),
+                label: const Text('Reboot Server', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red[800],
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+                onPressed: () => _rebootServer(context, ref),
+              ),
+            ),
+          ],
         ),
       ],
     );

@@ -19,6 +19,8 @@ func RegisterRoutes(r *gin.Engine) {
 	health.Use(middlewares.AuthMiddleware(), middlewares.GeneralRateLimiter(), middlewares.RoleMiddleware("dev"))
 	{
 		health.GET("/", controllers.GetHealthStatus)
+		health.POST("/restart", controllers.RestartAPI)
+		health.POST("/reboot", controllers.RebootServer)
 	}
 	// Inventory
 	inventory := r.Group("/inventory")
