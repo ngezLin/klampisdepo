@@ -86,6 +86,12 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
       await _storage.write(key: 'token', value: token);
       
+      // Cache credentials for offline login fallback
+      await _storage.write(key: 'offline_password_$username', value: password);
+      await _storage.write(key: 'offline_role_$username', value: role);
+      await _storage.write(key: 'offline_id_$username', value: (payload['user_id'] as int?).toString());
+      await _storage.write(key: 'offline_token_$username', value: token);
+      
       state = AuthState(
         token: token,
         role: role,
@@ -95,6 +101,45 @@ class AuthNotifier extends StateNotifier<AuthState> {
       );
       return true;
     } catch (e) {
+      // Check if it is a connectivity issue to attempt offline login
+      if (e is DioException &&
+          (e.type == DioExceptionType.connectionTimeout ||
+           e.type == DioExceptionType.sendTimeout ||
+           e.type == DioExceptionType.receiveTimeout ||
+           e.type == DioExceptionType.connectionError)) {
+        
+        final cachedPassword = await _storage.read(key: 'offline_password_$username');
+        if (cachedPassword != null) {
+          if (cachedPassword == password) {
+            final cachedRole = await _storage.read(key: 'offline_role_$username');
+            final cachedIdStr = await _storage.read(key: 'offline_id_$username');
+            final cachedToken = await _storage.read(key: 'offline_token_$username');
+            final cachedId = cachedIdStr != null ? int.tryParse(cachedIdStr) : null;
+
+            state = AuthState(
+              token: cachedToken,
+              role: cachedRole,
+              username: username,
+              userId: cachedId,
+              isLoading: false,
+            );
+            return true;
+          } else {
+            state = state.copyWith(
+              isLoading: false,
+              error: 'Password salah (Offline).',
+            );
+            return false;
+          }
+        } else {
+          state = state.copyWith(
+            isLoading: false,
+            error: 'Koneksi gagal. Pengguna belum pernah login di perangkat ini.',
+          );
+          return false;
+        }
+      }
+
       String errorMessage = 'Login gagal. Periksa username dan password.';
       if (e is DioException) {
         if (e.response != null && e.response?.data is Map) {
@@ -102,11 +147,6 @@ class AuthNotifier extends StateNotifier<AuthState> {
           if (serverError != null) {
             errorMessage = serverError.toString();
           }
-        } else if (e.type == DioExceptionType.connectionTimeout ||
-                   e.type == DioExceptionType.sendTimeout ||
-                   e.type == DioExceptionType.receiveTimeout ||
-                   e.type == DioExceptionType.connectionError) {
-          errorMessage = 'Koneksi gagal. Periksa jaringan internet Anda.';
         }
       }
       state = state.copyWith(

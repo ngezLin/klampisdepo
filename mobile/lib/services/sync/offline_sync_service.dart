@@ -318,6 +318,9 @@ class OfflineSyncService {
     if (e.response != null) {
       final statusCode = e.response!.statusCode;
       if (statusCode != null) {
+        if (statusCode == 401 || statusCode == 429) {
+          return false;
+        }
         if (statusCode >= 400 && statusCode < 500) {
           return true;
         }
