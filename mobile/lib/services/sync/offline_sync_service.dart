@@ -139,48 +139,54 @@ class OfflineSyncService {
     try {
       final dio = ref.read(dioProvider);
 
-      // 1. Fetch latest items from server first to refresh the local cache and detect price changes (PAGINATED)
-      try {
-        int page = 1;
-        int totalPages = 1;
-        final List<Item> dbItems = [];
-
-        do {
-          final itemsResponse = await dio.get('/items/', queryParameters: {
-            'page': page,
-            'page_size': 100,
-          });
-          final List data = itemsResponse.data['data'] ?? [];
-          dbItems.addAll(data.map((e) => Item(
-            id: e['id'] as int,
-            name: e['name'] as String,
-            description: e['description'] as String?,
-            stock: e['stock'] as int? ?? 0,
-            isStockManaged: e['is_stock_managed'] as bool? ?? true,
-            buyPrice: (e['buy_price'] as num?)?.toDouble(),
-            price: (e['price'] as num).toDouble(),
-            imageUrl: e['image_url'] as String?,
-            updatedAt: DateTime.now(),
-          )));
-
-          final meta = itemsResponse.data['meta'];
-          if (meta != null) {
-            totalPages = (meta['total_pages'] ?? meta['totalPages'] ?? 1) as int;
-          }
-          page++;
-        } while (page <= totalPages);
-
-        if (dbItems.isNotEmpty) {
-          await _db.upsertItems(dbItems);
-        }
-      } catch (e) {
-        debugPrint('Failed to refresh items cache during sync: $e');
-      }
-
       // Get all pending transactions where retryCount < 3
       final query = _db.select(_db.transactions)
         ..where((t) => t.syncStatus.equals('pending_sync') & t.retryCount.isSmallerThanValue(3));
       final pendingTxs = await query.get();
+
+      if (pendingTxs.isEmpty) {
+        ref.read(isSyncingProvider.notifier).state = false;
+        return SyncResult(synced: 0, failed: 0);
+      }
+
+      // 1. Fetch latest details only for the items that are actually pending to be synced to detect price changes
+      try {
+        final List<int> pendingItemIds = [];
+        for (final tx in pendingTxs) {
+          final itemsQuery = _db.select(_db.transactionItems)
+            ..where((ti) => ti.transactionId.equals(tx.id));
+          final txItems = await itemsQuery.get();
+          for (final item in txItems) {
+            if (!pendingItemIds.contains(item.itemId)) {
+              pendingItemIds.add(item.itemId);
+            }
+          }
+        }
+
+        // Fetch latest prices from server for these specific items
+        for (final itemId in pendingItemIds) {
+          try {
+            final itemResponse = await dio.get('/items/$itemId');
+            final e = itemResponse.data;
+            final dbItem = Item(
+              id: e['id'] as int,
+              name: e['name'] as String,
+              description: e['description'] as String?,
+              stock: e['stock'] as int? ?? 0,
+              isStockManaged: e['is_stock_managed'] as bool? ?? true,
+              buyPrice: (e['buy_price'] as num?)?.toDouble(),
+              price: (e['price'] as num).toDouble(),
+              imageUrl: e['image_url'] as String?,
+              updatedAt: DateTime.now(),
+            );
+            await _db.upsertItems([dbItem]);
+          } catch (err) {
+            debugPrint('Failed to refresh item $itemId cache during sync: $err');
+          }
+        }
+      } catch (e) {
+        debugPrint('Failed to refresh items cache during sync: $e');
+      }
 
       for (final tx in pendingTxs) {
         try {
