@@ -21,6 +21,7 @@ func RegisterRoutes(r *gin.Engine) {
 		health.GET("/", controllers.GetHealthStatus)
 		health.POST("/restart", controllers.RestartAPI)
 		health.POST("/reboot", controllers.RebootServer)
+		health.POST("/restart-mysql", controllers.RestartMySQL)
 	}
 	// Inventory
 	inventory := r.Group("/inventory")

@@ -82,3 +82,15 @@ func RebootServer(c *gin.Context) {
 		exec.Command("reboot").Run()
 	}()
 }
+
+func RestartMySQL(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Restarting MySQL service in 1 second...",
+	})
+
+	go func() {
+		time.Sleep(1 * time.Second)
+		exec.Command("systemctl", "restart", "mysql").Run()
+	}()
+}
+

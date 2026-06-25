@@ -97,6 +97,44 @@ class HealthScreen extends ConsumerWidget {
     }
   }
 
+  Future<void> _restartMySQL(BuildContext context, WidgetRef ref) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Restart MySQL?'),
+        content: const Text('Ini akan menghentikan sementara database MySQL dan menyalakannya kembali dalam 1 detik. Semua koneksi database aktif akan terputus sesaat.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Batal', style: TextStyle(color: Colors.grey)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Restart', style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+    
+    if (confirm == true) {
+      try {
+        final dio = ref.read(dioProvider);
+        await dio.post('/health/restart-mysql');
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Sinyal restart MySQL dikirim. Menghubungkan ulang...')),
+          );
+        }
+      } catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Sinyal restart MySQL terkirim: $e')),
+          );
+        }
+      }
+    }
+  }
+
   Future<void> _rebootServer(BuildContext context, WidgetRef ref) async {
     final confirm = await showDialog<bool>(
       context: context,
@@ -223,34 +261,37 @@ class HealthScreen extends ConsumerWidget {
         ),
         const SizedBox(height: 12),
         
-        Row(
-          children: [
-            Expanded(
-              child: ElevatedButton.icon(
-                icon: const Icon(Icons.refresh_rounded, color: Colors.white),
-                label: const Text('Restart API', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.orange[800],
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                ),
-                onPressed: () => _restartAPI(context, ref),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: ElevatedButton.icon(
-                icon: const Icon(Icons.power_settings_new_rounded, color: Colors.white),
-                label: const Text('Reboot Server', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red[800],
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                ),
-                onPressed: () => _rebootServer(context, ref),
-              ),
-            ),
-          ],
+        ElevatedButton.icon(
+          icon: const Icon(Icons.refresh_rounded, color: Colors.white),
+          label: const Text('Restart API Service', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.orange[800],
+            minimumSize: const Size.fromHeight(48),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+          onPressed: () => _restartAPI(context, ref),
+        ),
+        const SizedBox(height: 12),
+        ElevatedButton.icon(
+          icon: const Icon(Icons.storage_rounded, color: Colors.white),
+          label: const Text('Restart Database MySQL', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.blue[800],
+            minimumSize: const Size.fromHeight(48),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+          onPressed: () => _restartMySQL(context, ref),
+        ),
+        const SizedBox(height: 12),
+        ElevatedButton.icon(
+          icon: const Icon(Icons.power_settings_new_rounded, color: Colors.white),
+          label: const Text('Reboot Server VPS', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.red[800],
+            minimumSize: const Size.fromHeight(48),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+          onPressed: () => _rebootServer(context, ref),
         ),
       ],
     );
