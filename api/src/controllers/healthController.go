@@ -94,3 +94,27 @@ func RestartMySQL(c *gin.Context) {
 	}()
 }
 
+func GetSystemLogs(c *gin.Context) {
+	logType := c.DefaultQuery("type", "api")
+	var out []byte
+	var err error
+
+	if logType == "mysql" {
+		out, err = exec.Command("tail", "-n", "200", "/var/log/mysql/error.log").CombinedOutput()
+	} else {
+		out, err = exec.Command("journalctl", "-u", "kd-api", "-n", "200", "--no-pager").CombinedOutput()
+	}
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":  "Failed to fetch logs: " + err.Error(),
+			"output": string(out),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"logs": string(out),
+	})
+}
+

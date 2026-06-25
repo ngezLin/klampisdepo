@@ -442,6 +442,15 @@ class AkunScreen extends ConsumerWidget {
           const SizedBox(height: 16),
           _buildDevActionCard(
             context: context,
+            icon: Icons.receipt_long_rounded,
+            color: const Color(0xFF8B5CF6), // Purple
+            title: 'Lihat Log Server',
+            subtitle: 'Pantau log API & database terupdate',
+            onTap: () => context.push('/logs'),
+          ),
+          const SizedBox(height: 16),
+          _buildDevActionCard(
+            context: context,
             icon: Icons.storage_rounded,
             color: const Color(0xFFF59E0B), // Amber/Orange
             title: 'Restart Database MySQL',

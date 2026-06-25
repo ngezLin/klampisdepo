@@ -12,6 +12,7 @@ import '../../features/dashboard/ui/dashboard_screen.dart';
 import '../../features/po_bill/ui/po_bills_screen.dart';
 import '../../features/akun/ui/users_screen.dart';
 import '../../features/akun/ui/health_screen.dart';
+import '../../features/akun/ui/logs_screen.dart';
 
 part 'router.g.dart';
 
@@ -38,7 +39,7 @@ GoRouter router(RouterRef ref) {
       if (isLoggedIn) {
         final isDev = authState.role == 'dev';
         if (isDev) {
-          final devRoutes = ['/health', '/users', '/akun'];
+          final devRoutes = ['/health', '/users', '/akun', '/logs'];
           if (!devRoutes.contains(state.matchedLocation)) {
             return '/akun';
           }
@@ -120,6 +121,13 @@ GoRouter router(RouterRef ref) {
             pageBuilder: (context, state) => NoTransitionPage(
               key: state.pageKey,
               child: const HealthScreen(),
+            ),
+          ),
+          GoRoute(
+            path: '/logs',
+            pageBuilder: (context, state) => NoTransitionPage(
+              key: state.pageKey,
+              child: const LogsScreen(),
             ),
           ),
         ],
