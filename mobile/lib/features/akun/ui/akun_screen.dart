@@ -17,6 +17,11 @@ class AkunScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final auth = ref.watch(authProvider);
+    
+    if (auth.role == 'dev') {
+      return _buildDevLayout(context, ref, auth);
+    }
+    
     final pendingSync = ref.watch(pendingSyncCountProvider);
     final printer = ref.watch(printerServiceProvider);
 
@@ -323,6 +328,284 @@ class AkunScreen extends ConsumerWidget {
         ],
       ),
     );
+  }
+
+  Widget _buildDevLayout(BuildContext context, WidgetRef ref, AuthState auth) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Developer Console'),
+        backgroundColor: Colors.white,
+        foregroundColor: Colors.black,
+        elevation: 0,
+      ),
+      backgroundColor: const Color(0xFFF9FAFB),
+      body: ListView(
+        padding: const EdgeInsets.all(24),
+        children: [
+          // ─── Profile Card ───────────────────────
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFF1E293B), Color(0xFF0F172A)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.1),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                CircleAvatar(
+                  radius: 30,
+                  backgroundColor: Colors.blue[900]?.withValues(alpha: 0.3),
+                  child: const Icon(
+                    Icons.terminal_rounded,
+                    size: 32,
+                    color: Colors.blueAccent,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        auth.username ?? 'Developer',
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.blueAccent.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(color: Colors.blueAccent.withValues(alpha: 0.4)),
+                        ),
+                        child: const Text(
+                          'DEVELOPER MODE',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.blueAccent,
+                            letterSpacing: 1.2,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 32),
+          const Text(
+            'MENU PEMELIHARAAN',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF6B7280),
+              letterSpacing: 1.5,
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // ─── Dev Tools Card List ────────────────
+          _buildDevActionCard(
+            context: context,
+            icon: Icons.people_outline_rounded,
+            color: const Color(0xFF3B82F6), // Blue
+            title: 'Manajemen Pengguna',
+            subtitle: 'Buat, ubah, atau hapus user (CRUD)',
+            onTap: () => context.push('/users'),
+          ),
+          const SizedBox(height: 16),
+          _buildDevActionCard(
+            context: context,
+            icon: Icons.monitor_heart_outlined,
+            color: const Color(0xFF10B981), // Green
+            title: 'Cek Status Sistem',
+            subtitle: 'Pantau health check server dan DB',
+            onTap: () => context.push('/health'),
+          ),
+          const SizedBox(height: 16),
+          _buildDevActionCard(
+            context: context,
+            icon: Icons.storage_rounded,
+            color: const Color(0xFFF59E0B), // Amber/Orange
+            title: 'Restart Database MySQL',
+            subtitle: 'Mulai ulang database service secara instan',
+            onTap: () => _restartMySQL(context, ref),
+          ),
+
+          const SizedBox(height: 48),
+
+          // ─── Logout Button ──────────────────────
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.red,
+                side: const BorderSide(color: Colors.red),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              icon: const Icon(Icons.logout),
+              label: const Text('Keluar Akun Dev', style: TextStyle(fontWeight: FontWeight.bold)),
+              onPressed: () async {
+                final confirm = await showDialog<bool>(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    title: const Text('Keluar Dev Mode?'),
+                    content: const Text('Apakah Anda yakin ingin keluar dari sesi developer?'),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context, false),
+                        child: const Text('Batal'),
+                      ),
+                      TextButton(
+                        onPressed: () => Navigator.pop(context, true),
+                        style: TextButton.styleFrom(foregroundColor: Colors.red),
+                        child: const Text('Keluar'),
+                      ),
+                    ],
+                  ),
+                );
+                if (confirm == true) {
+                  await ref.read(authProvider.notifier).logout();
+                }
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDevActionCard({
+    required BuildContext context,
+    required IconData icon,
+    required Color color,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(14),
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(icon, color: color, size: 28),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF1F2937),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        subtitle,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: Color(0xFF6B7280),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const Icon(
+                  Icons.arrow_forward_ios_rounded,
+                  color: Color(0xFF9CA3AF),
+                  size: 16,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _restartMySQL(BuildContext context, WidgetRef ref) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Restart MySQL?'),
+        content: const Text('Ini akan menghentikan sementara database MySQL dan menyalakannya kembali dalam 1 detik. Semua koneksi database aktif akan terputus sesaat.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Batal', style: TextStyle(color: Colors.grey)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Restart', style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+    
+    if (confirm == true) {
+      try {
+        final dio = ref.read(dioProvider);
+        await dio.post('/health/restart-mysql');
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Sinyal restart MySQL dikirim. Menghubungkan ulang...')),
+          );
+        }
+      } catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Sinyal restart MySQL terkirim: $e')),
+          );
+        }
+      }
+    }
   }
 
   static Color _roleColor(String? role) {
