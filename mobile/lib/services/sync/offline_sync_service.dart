@@ -270,6 +270,17 @@ class OfflineSyncService {
 
           synced++;
         } on DioException catch (e) {
+          if (e.type == DioExceptionType.connectionError ||
+              e.type == DioExceptionType.connectionTimeout ||
+              e.type == DioExceptionType.sendTimeout ||
+              e.type == DioExceptionType.receiveTimeout ||
+              e.response == null ||
+              (e.response?.statusCode != null && e.response!.statusCode! >= 500 && e.response!.statusCode! <= 599)) {
+            // Server is unreachable, stop syncing this batch and preserve retry count
+            failed += (pendingTxs.length - synced - failed);
+            break;
+          }
+
           final isPermanent = _isPermanentError(e);
           final newRetryCount = tx.retryCount + 1;
 

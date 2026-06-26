@@ -101,12 +101,13 @@ class AuthNotifier extends StateNotifier<AuthState> {
       );
       return true;
     } catch (e) {
-      // Check if it is a connectivity issue to attempt offline login
       if (e is DioException &&
           (e.type == DioExceptionType.connectionTimeout ||
            e.type == DioExceptionType.sendTimeout ||
            e.type == DioExceptionType.receiveTimeout ||
-           e.type == DioExceptionType.connectionError)) {
+           e.type == DioExceptionType.connectionError ||
+           e.response == null ||
+           (e.response?.statusCode != null && e.response!.statusCode! >= 500 && e.response!.statusCode! <= 599))) {
         
         final cachedPassword = await _storage.read(key: 'offline_password_$username');
         if (cachedPassword != null) {

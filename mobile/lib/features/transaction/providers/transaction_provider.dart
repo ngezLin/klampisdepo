@@ -196,10 +196,20 @@ class TransactionNotifier extends StateNotifier<TransactionState> {
 
   /// Check if Dio error is a connectivity issue
   bool _isConnectionError(DioException e) {
-    return e.type == DioExceptionType.connectionError ||
-           e.type == DioExceptionType.connectionTimeout ||
-           e.type == DioExceptionType.sendTimeout ||
-           e.type == DioExceptionType.receiveTimeout;
+    if (e.type == DioExceptionType.connectionError ||
+        e.type == DioExceptionType.connectionTimeout ||
+        e.type == DioExceptionType.sendTimeout ||
+        e.type == DioExceptionType.receiveTimeout ||
+        e.response == null) {
+      return true;
+    }
+    
+    final statusCode = e.response?.statusCode;
+    if (statusCode != null && statusCode >= 500 && statusCode <= 599) {
+      return true;
+    }
+    
+    return false;
   }
 
   /// Save the current cart as an offline pending transaction
