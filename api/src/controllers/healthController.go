@@ -5,6 +5,8 @@ import (
 	"os"
 	"os/exec"
 	"runtime"
+	"strconv"
+	"strings"
 	"time"
 
 	"kd-api/src/config"
@@ -41,6 +43,16 @@ func GetHealthStatus(c *gin.Context) {
 	var memStats runtime.MemStats
 	runtime.ReadMemStats(&memStats)
 
+	// 5. MySQL Memory statistics
+	var mysqlMemoryMB float64
+	out, err := exec.Command("ps", "-C", "mysqld", "-o", "rss=").Output()
+	if err == nil {
+		rssStr := strings.TrimSpace(string(out))
+		if rssKB, err := strconv.ParseFloat(rssStr, 64); err == nil {
+			mysqlMemoryMB = rssKB / 1024.0
+		}
+	}
+
 	// Build monitoring payload
 	c.JSON(http.StatusOK, gin.H{
 		"status":    "UP",
@@ -51,6 +63,7 @@ func GetHealthStatus(c *gin.Context) {
 			"active_connections": activeConns,
 			"idle_connections":   idleConns,
 			"open_connections":   openConns,
+			"mysql_memory_mb":    mysqlMemoryMB,
 		},
 		"system": gin.H{
 			"alloc_memory_mb":      float64(memStats.Alloc) / 1024 / 1024,

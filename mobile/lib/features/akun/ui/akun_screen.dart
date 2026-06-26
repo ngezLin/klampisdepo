@@ -448,15 +448,6 @@ class AkunScreen extends ConsumerWidget {
             subtitle: 'Pantau log API & database terupdate',
             onTap: () => context.push('/logs'),
           ),
-          const SizedBox(height: 16),
-          _buildDevActionCard(
-            context: context,
-            icon: Icons.storage_rounded,
-            color: const Color(0xFFF59E0B), // Amber/Orange
-            title: 'Restart Database MySQL',
-            subtitle: 'Mulai ulang database service secara instan',
-            onTap: () => _restartMySQL(context, ref),
-          ),
 
           const SizedBox(height: 48),
 
@@ -577,44 +568,6 @@ class AkunScreen extends ConsumerWidget {
         ),
       ),
     );
-  }
-
-  Future<void> _restartMySQL(BuildContext context, WidgetRef ref) async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Restart MySQL?'),
-        content: const Text('Ini akan menghentikan sementara database MySQL dan menyalakannya kembali dalam 1 detik. Semua koneksi database aktif akan terputus sesaat.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Batal', style: TextStyle(color: Colors.grey)),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Restart', style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold)),
-          ),
-        ],
-      ),
-    );
-    
-    if (confirm == true) {
-      try {
-        final dio = ref.read(dioProvider);
-        await dio.post('/health/restart-mysql');
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Sinyal restart MySQL dikirim. Menghubungkan ulang...')),
-          );
-        }
-      } catch (e) {
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Sinyal restart MySQL terkirim: $e')),
-          );
-        }
-      }
-    }
   }
 
   static Color _roleColor(String? role) {
