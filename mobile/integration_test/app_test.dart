@@ -24,7 +24,20 @@ Future<void> _login(WidgetTester tester) async {
   await tester.enterText(usernameFinder, kTestUsername);
   await tester.enterText(passwordFinder, kTestPassword);
   await tester.tap(find.widgetWithText(ElevatedButton, 'Login'));
-  await tester.pumpAndSettle(const Duration(seconds: 6));
+  await tester.pump();
+
+  // Wait up to 10 seconds for the home screen (Dashboard tab) to appear due to network latency
+  final dashboardFinder = find.text('Dashboard');
+  bool loggedIn = false;
+  for (int i = 0; i < 20; i++) {
+    await tester.pump(const Duration(milliseconds: 500));
+    if (dashboardFinder.evaluate().isNotEmpty) {
+      loggedIn = true;
+      break;
+    }
+  }
+
+  expect(loggedIn, isTrue, reason: 'Failed to log in: Dashboard nav tab did not load within 10s');
 }
 
 void main() {
@@ -59,15 +72,19 @@ void main() {
     final itemTab = find.text('Item');
     expect(itemTab, findsOneWidget, reason: 'Owner should see the Item nav tab');
     await tester.tap(itemTab);
-    await tester.pumpAndSettle(const Duration(seconds: 5));
+    await tester.pump();
 
-    // The items screen should be visible (not an error / loading indefinitely)
-    // We check the AppBar or a visible widget unique to item screen
-    expect(
-      find.byType(Scaffold),
-      findsWidgets,
-      reason: 'A Scaffold should be visible on the Items screen',
-    );
+    // Wait up to 10 seconds for Item screen title to render
+    final itemScreenTitle = find.text('Manajemen Item');
+    bool screenLoaded = false;
+    for (int i = 0; i < 20; i++) {
+      await tester.pump(const Duration(milliseconds: 500));
+      if (itemScreenTitle.evaluate().isNotEmpty) {
+        screenLoaded = true;
+        break;
+      }
+    }
+    expect(screenLoaded, isTrue, reason: 'Manajemen Item screen title did not load');
     print('✅ TEST 2 PASSED: Items screen loaded');
   });
 
@@ -83,13 +100,19 @@ void main() {
     final historyTab = find.text('Riwayat');
     expect(historyTab, findsOneWidget, reason: 'Owner should see the Riwayat nav tab');
     await tester.tap(historyTab);
-    await tester.pumpAndSettle(const Duration(seconds: 5));
+    await tester.pump();
 
-    expect(
-      find.byType(Scaffold),
-      findsWidgets,
-      reason: 'A Scaffold should be visible on the History screen',
-    );
+    // Wait up to 10 seconds for History screen title to render
+    final historyScreenTitle = find.text('Riwayat Transaksi');
+    bool screenLoaded = false;
+    for (int i = 0; i < 20; i++) {
+      await tester.pump(const Duration(milliseconds: 500));
+      if (historyScreenTitle.evaluate().isNotEmpty) {
+        screenLoaded = true;
+        break;
+      }
+    }
+    expect(screenLoaded, isTrue, reason: 'Riwayat Transaksi screen title did not load');
     print('✅ TEST 3 PASSED: History screen loaded');
   });
 
@@ -105,13 +128,19 @@ void main() {
     final transaksiTab = find.text('Transaksi');
     expect(transaksiTab, findsOneWidget, reason: 'Owner should see the Transaksi nav tab');
     await tester.tap(transaksiTab);
-    await tester.pumpAndSettle(const Duration(seconds: 5));
+    await tester.pump();
 
-    expect(
-      find.byType(Scaffold),
-      findsWidgets,
-      reason: 'A Scaffold should be visible on the Transaction screen',
-    );
+    // Wait up to 10 seconds for Transaksi screen title to render
+    final transactionScreenTitle = find.text('Transaksi').first;
+    bool screenLoaded = false;
+    for (int i = 0; i < 20; i++) {
+      await tester.pump(const Duration(milliseconds: 500));
+      if (transactionScreenTitle.evaluate().isNotEmpty) {
+        screenLoaded = true;
+        break;
+      }
+    }
+    expect(screenLoaded, isTrue, reason: 'Transaksi screen title did not load');
     print('✅ TEST 4 PASSED: Transaksi screen loaded');
   });
 }
