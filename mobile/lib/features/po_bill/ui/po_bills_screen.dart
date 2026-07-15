@@ -696,9 +696,9 @@ class _POBillFormSheetState extends ConsumerState<_POBillFormSheet> {
     try {
       final XFile? file = await picker.pickImage(
         source: source,
-        maxWidth: 1000,
-        maxHeight: 1000,
-        imageQuality: 75,
+        maxWidth: 800,
+        maxHeight: 800,
+        imageQuality: 50,
       );
       if (file == null) return;
 

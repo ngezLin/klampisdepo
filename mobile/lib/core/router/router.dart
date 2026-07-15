@@ -16,7 +16,7 @@ import '../../features/akun/ui/logs_screen.dart';
 
 part 'router.g.dart';
 
-@riverpod
+@Riverpod(keepAlive: true)
 GoRouter router(RouterRef ref) {
   final authNotifier = ValueNotifier<AuthState>(ref.read(authProvider));
   
@@ -46,6 +46,9 @@ GoRouter router(RouterRef ref) {
         } else {
           // Non-dev users shouldn't access developer-only routes
           if (state.matchedLocation == '/health') {
+            return '/';
+          }
+          if (state.matchedLocation == '/logs' && authState.role != 'owner') {
             return '/';
           }
           if (state.matchedLocation == '/users' && authState.role != 'owner') {

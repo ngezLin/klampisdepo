@@ -142,7 +142,7 @@ class ReceiptFormatter {
     // ─── ITEMS ───────────────────────────
     for (final item in items) {
       final name = item['item_name'] as String? ?? item['name'] as String? ?? '-';
-      final qty = item['quantity'] as int? ?? 1;
+      final qty = (item['quantity'] as num?)?.toInt() ?? 1;
       final price = (item['price'] as num).toDouble();
       final itemSubtotal = (item['subtotal'] as num?)?.toDouble() ?? (qty * price);
 
@@ -234,6 +234,12 @@ class PrinterService extends ChangeNotifier {
         await connectToPrinter(_receiptPrinter!);
       }
     });
+  }
+
+  @override
+  void dispose() {
+    _reconnectTimer?.cancel();
+    super.dispose();
   }
 
   Future<void> loadFormatConfig() async {
@@ -546,7 +552,7 @@ class PrinterService extends ChangeNotifier {
 
       final receipt = ReceiptFormatter.formatReceipt(
         storeName: storeName,
-        transactionId: transaction['id'] as int? ?? 0,
+        transactionId: (transaction['id'] as num?)?.toInt() ?? 0,
         date: date,
         items: items,
         subtotal: _toDouble(transaction['subtotal'] ?? transaction['total']),
@@ -579,7 +585,7 @@ class PrinterService extends ChangeNotifier {
 
         // 2. WhatsApp QR code feedback URL (Receipt printer only)
         final List<int> qrBytes = role == 'receipt'
-            ? _getQrCodeBytes(transaction['id'] as int? ?? 0)
+            ? _getQrCodeBytes((transaction['id'] as num?)?.toInt() ?? 0)
             : [];
 
         await _manager!.printBytes([...openDrawer, ...bytes, ...qrBytes, ...cutCommand]);
@@ -589,7 +595,7 @@ class PrinterService extends ChangeNotifier {
       notifyListeners();
       
       // Successfully printed, remove from queue if it exists there
-      _removeFromQueue(transaction['id'] as int? ?? 0, role);
+      _removeFromQueue((transaction['id'] as num?)?.toInt() ?? 0, role);
       return true;
     } catch (e) {
       _lastError = e.toString();
@@ -601,9 +607,13 @@ class PrinterService extends ChangeNotifier {
   }
 
   void _addToQueue(Map<String, dynamic> transaction, String role) {
-    final txId = transaction['id'] as int? ?? 0;
-    final exists = _printQueue.any((q) => q['transaction']['id'] == txId && q['role'] == role);
+    final txId = (transaction['id'] as num?)?.toInt() ?? 0;
+    final exists = _printQueue.any((q) => ((q['transaction']['id'] as num?)?.toInt() ?? 0) == txId && q['role'] == role);
     if (!exists) {
+      if (_printQueue.length >= 50) {
+        debugPrint('Print queue is full (max 50). Discarding oldest print job.');
+        _printQueue.removeAt(0);
+      }
       _printQueue.add({
         'transaction': transaction,
         'role': role,
@@ -675,7 +685,7 @@ class PrinterService extends ChangeNotifier {
 
     final receipt = ReceiptFormatter.formatReceipt(
       storeName: storeName,
-      transactionId: transaction['id'] as int? ?? 0,
+      transactionId: (transaction['id'] as num?)?.toInt() ?? 0,
       date: date,
       items: items,
       subtotal: _toDouble(transaction['subtotal'] ?? transaction['total']),
@@ -726,7 +736,7 @@ class PrinterService extends ChangeNotifier {
     final items = (transaction['items'] as List?)?.cast<Map<String, dynamic>>() ?? [];
     return ReceiptFormatter.formatReceipt(
       storeName: storeName,
-      transactionId: transaction['id'] as int? ?? 0,
+      transactionId: (transaction['id'] as num?)?.toInt() ?? 0,
       date: _parseDateTime(transaction['created_at']),
       items: items,
       subtotal: _toDouble(transaction['subtotal'] ?? transaction['total']),
@@ -756,8 +766,7 @@ class PrinterService extends ChangeNotifier {
 
 final printerServiceProvider = ChangeNotifierProvider<PrinterService>((ref) {
   final service = PrinterService();
-  service.fetchStoreInfo(ref);
-  service.loadFormatConfig();
+  service.fetchStoreInfo(ref).then((_) => service.loadFormatConfig());
   return service;
 });
 
@@ -765,12 +774,19 @@ DateTime _parseDateTime(dynamic raw) {
   if (raw == null) return DateTime.now();
   if (raw is DateTime) return raw;
   if (raw is num) {
-    return DateTime.fromMillisecondsSinceEpoch(raw.toInt() * 1000).toLocal();
+    final value = raw.toInt();
+    if (value > 9999999999) {
+      return DateTime.fromMillisecondsSinceEpoch(value).toLocal();
+    }
+    return DateTime.fromMillisecondsSinceEpoch(value * 1000).toLocal();
   }
   final str = raw.toString().trim();
   if (str.isEmpty) return DateTime.now();
   final parsedInt = int.tryParse(str);
   if (parsedInt != null) {
+    if (parsedInt > 9999999999) {
+      return DateTime.fromMillisecondsSinceEpoch(parsedInt).toLocal();
+    }
     return DateTime.fromMillisecondsSinceEpoch(parsedInt * 1000).toLocal();
   }
   try {

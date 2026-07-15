@@ -167,7 +167,7 @@ class TransactionNotifier extends StateNotifier<TransactionState> {
         ),
       );
       final serverTx = response.data['transaction'] as Map<String, dynamic>;
-      final int serverId = serverTx['id'] as int;
+      final int serverId = (serverTx['id'] as num).toInt();
       final result = CheckoutResult(success: true, transactionId: serverId, wasOffline: false, transactionData: serverTx);
       reset();
       return result;
@@ -307,12 +307,12 @@ class TransactionNotifier extends StateNotifier<TransactionState> {
     for (final itemData in itemsList) {
       final itemObj = itemData['item'] as Map<String, dynamic>;
       final itemModel = ItemModel(
-        id: itemObj['id'] as int,
+        id: (itemObj['id'] as num).toInt(),
         name: itemObj['name'] as String,
         description: itemObj['description'] as String?,
-        stock: itemObj['stock'] as int? ?? 0,
+        stock: (itemObj['stock'] as num?)?.toInt() ?? 0,
         isStockManaged: itemObj['is_stock_managed'] as bool? ?? true,
-        buyPrice: (itemObj['buy_price'] as num).toDouble(),
+        buyPrice: (itemObj['buy_price'] as num?)?.toDouble(),
         price: (itemObj['price'] as num).toDouble(),
         imageUrl: itemObj['image_url'] as String?,
       );
@@ -323,13 +323,13 @@ class TransactionNotifier extends StateNotifier<TransactionState> {
 
       loadedCart.add(CartItem(
         item: itemModel,
-        quantity: itemData['quantity'] as int? ?? 1,
+        quantity: (itemData['quantity'] as num?)?.toInt() ?? 1,
         customPrice: customPrice,
       ));
     }
 
     state = state.copyWith(
-      currentDraftId: draft['id'] as int?,
+      currentDraftId: (draft['id'] as num?)?.toInt(),
       cart: loadedCart,
       discount: (draft['discount'] as num?)?.toDouble() ?? 0.0,
       note: draft['note'] as String?,

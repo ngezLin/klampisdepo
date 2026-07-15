@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../transaction/models/transaction_models.dart';
 import '../../../core/network/dio_client.dart';
@@ -14,7 +15,7 @@ final itemsProvider = FutureProvider.family<List<ItemModel>, String>((ref, searc
   try {
     final response = search.isEmpty
         ? await dio.get('/items/', queryParameters: {'page_size': 100}) // safe fallback size for simple lists
-        : await dio.get('/items/search', queryParameters: {'name': search, 'page_size': 100});
+        : await dio.get('/items/search', queryParameters: {'name': search, 'page_size': 100, 'skip_count': 'true'});
     
     final List data = response.data['data'] ?? [];
     final List<ItemModel> remoteItems = data.map((e) => ItemModel.fromJson(e)).toList();
@@ -33,7 +34,7 @@ final itemsProvider = FutureProvider.family<List<ItemModel>, String>((ref, searc
     )).toList();
     
     appDb.upsertItems(dbItems).catchError((err) {
-      // Silently catch database write errors to ensure UI safety
+      debugPrint('[ItemsProvider] DB cache write failed: $err');
     });
     
     return remoteItems;
@@ -103,7 +104,7 @@ class PaginatedItemsNotifier extends StateNotifier<PaginatedItemsState> {
     try {
       final response = search.isEmpty
           ? await dio.get('/items/', queryParameters: {'page': state.page, 'page_size': 20})
-          : await dio.get('/items/search', queryParameters: {'name': search, 'page': state.page, 'page_size': 20});
+          : await dio.get('/items/search', queryParameters: {'name': search, 'page': state.page, 'page_size': 20, 'skip_count': 'true'});
 
       final List data = response.data['data'] ?? [];
       final List<ItemModel> newItems = data.map((e) => ItemModel.fromJson(e)).toList();
@@ -168,7 +169,7 @@ class PaginatedItemsNotifier extends StateNotifier<PaginatedItemsState> {
   }
 }
 
-final paginatedItemsProvider = StateNotifierProvider.family<PaginatedItemsNotifier, PaginatedItemsState, String>((ref, search) {
+final paginatedItemsProvider = StateNotifierProvider.autoDispose.family<PaginatedItemsNotifier, PaginatedItemsState, String>((ref, search) {
   return PaginatedItemsNotifier(ref, search);
 });
 

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'dart:async';
 import '../providers/transaction_provider.dart';
 import '../../item/providers/item_provider.dart';
 import '../../../services/sync/offline_sync_service.dart';
@@ -23,6 +24,7 @@ class _TransactionScreenState extends ConsumerState<TransactionScreen> {
   final _searchFocusNode = FocusNode();
   final _currencyFormat = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
   final _scrollController = ScrollController();
+  Timer? _debounce;
 
   @override
   void initState() {
@@ -40,6 +42,7 @@ class _TransactionScreenState extends ConsumerState<TransactionScreen> {
   }
 
   void _searchScrollFocusNodeDispose() {
+    _debounce?.cancel();
     _scrollController.dispose();
     _searchController.dispose();
     _searchFocusNode.dispose();
@@ -186,7 +189,12 @@ class _TransactionScreenState extends ConsumerState<TransactionScreen> {
                     hintText: 'Cari item...',
                     leading: const Icon(Icons.search),
                     onChanged: (val) {
-                      ref.read(transactionSearchQueryProvider.notifier).state = val;
+                      if (_debounce?.isActive ?? false) _debounce!.cancel();
+                      _debounce = Timer(const Duration(milliseconds: 500), () {
+                        if (mounted) {
+                          ref.read(transactionSearchQueryProvider.notifier).state = val;
+                        }
+                      });
                     },
                     onSubmitted: (val) {
                       _handleBarcodeScan(val);

@@ -276,12 +276,13 @@ class AkunScreen extends ConsumerWidget {
               );
             },
           ),
-          _SettingsTile(
-            icon: Icons.link_outlined,
-            title: 'Server API',
-            subtitle: apiBaseUrl,
-            onTap: null,
-          ),
+          if (auth.role == 'owner' || auth.role == 'dev')
+            _SettingsTile(
+              icon: Icons.link_outlined,
+              title: 'Server API',
+              subtitle: apiBaseUrl,
+              onTap: null,
+            ),
 
           const SizedBox(height: 32),
 

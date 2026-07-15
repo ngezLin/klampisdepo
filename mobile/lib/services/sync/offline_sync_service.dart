@@ -72,8 +72,8 @@ class OfflineSyncService {
 
       // Insert each item in the transaction and update stock
       for (final item in items) {
-        final itemId = item['item_id'] as int;
-        final quantity = item['quantity'] as int;
+        final itemId = (item['item_id'] as num).toInt();
+        final quantity = (item['quantity'] as num).toInt();
 
         await _db.into(_db.transactionItems).insert(
           TransactionItemsCompanion.insert(
@@ -81,9 +81,9 @@ class OfflineSyncService {
             itemId: itemId,
             itemName: item['item_name'] as String,
             quantity: quantity,
-            price: item['price'] as double,
-            customPrice: Value(item['custom_price'] as double?),
-            subtotal: item['subtotal'] as double,
+            price: (item['price'] as num).toDouble(),
+            customPrice: Value((item['custom_price'] as num?)?.toDouble()),
+            subtotal: (item['subtotal'] as num).toDouble(),
           ),
         );
 
@@ -104,10 +104,12 @@ class OfflineSyncService {
   /// Get count of pending transactions
   Future<int> getPendingCount() async {
     if (kIsWeb) return 0;
-    final query = _db.select(_db.transactions)
-      ..where((t) => t.syncStatus.equals('pending_sync'));
-    final results = await query.get();
-    return results.length;
+    final countExpr = _db.transactions.id.count();
+    final query = _db.selectOnly(_db.transactions)
+      ..addColumns([countExpr])
+      ..where(_db.transactions.syncStatus.equals('pending_sync'));
+    final result = await query.getSingle();
+    return result.read(countExpr) ?? 0;
   }
 
   /// Watch pending transaction count as a stream
@@ -169,10 +171,10 @@ class OfflineSyncService {
             final itemResponse = await dio.get('/items/$itemId');
             final e = itemResponse.data;
             final dbItem = Item(
-              id: e['id'] as int,
+              id: (e['id'] as num).toInt(),
               name: e['name'] as String,
               description: e['description'] as String?,
-              stock: e['stock'] as int? ?? 0,
+              stock: (e['stock'] as num?)?.toInt() ?? 0,
               isStockManaged: e['is_stock_managed'] as bool? ?? true,
               buyPrice: (e['buy_price'] as num?)?.toDouble(),
               price: (e['price'] as num).toDouble(),
@@ -259,7 +261,7 @@ class OfflineSyncService {
 
           // Mark as synced and store server ID
           final serverData = response.data['transaction'] ?? response.data['data'] ?? response.data;
-          final serverId = serverData is Map ? serverData['id'] as int? : null;
+          final serverId = serverData is Map ? (serverData['id'] as num?)?.toInt() : null;
 
           await (_db.update(_db.transactions)
             ..where((t) => t.id.equals(tx.id)))
@@ -277,7 +279,6 @@ class OfflineSyncService {
               e.response == null ||
               (e.response?.statusCode != null && e.response!.statusCode! >= 500 && e.response!.statusCode! <= 599)) {
             // Server is unreachable, stop syncing this batch and preserve retry count
-            failed += (pendingTxs.length - synced - failed);
             break;
           }
 
@@ -359,7 +360,7 @@ class OfflineSyncService {
       conflictDetails: Value(null),
     ));
 
-    syncPendingTransactions();
+    await syncPendingTransactions();
   }
 
   /// Resolve conflict by updating to the new server price and recalculating
@@ -408,7 +409,7 @@ class OfflineSyncService {
       conflictDetails: const Value(null),
     ));
 
-    syncPendingTransactions();
+    await syncPendingTransactions();
   }
 }
 

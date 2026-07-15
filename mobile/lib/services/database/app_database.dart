@@ -78,12 +78,17 @@ class AppDatabase extends _$AppDatabase {
     });
   }
 
-  // Retrieve cached items offline matching search query
-  Future<List<Item>> getItemsOffline(String search) {
-    if (search.isEmpty) {
-      return select(items).get();
+  // Retrieve cached items offline matching search query with optional pagination
+  Future<List<Item>> getItemsOffline(String search, {int? limit, int? offset}) {
+    final query = select(items);
+    if (search.isNotEmpty) {
+      final escaped = search.replaceAll('%', '\\%').replaceAll('_', '\\_');
+      query.where((t) => t.name.like('%$escaped%'));
     }
-    return (select(items)..where((t) => t.name.like('%$search%'))).get();
+    if (limit != null) {
+      query.limit(limit, offset: offset ?? 0);
+    }
+    return query.get();
   }
 }
 

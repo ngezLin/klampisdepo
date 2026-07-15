@@ -237,7 +237,7 @@ class PaginatedHistoryNotifier extends StateNotifier<PaginatedHistoryState> {
   }
 }
 
-final paginatedHistoryProvider = StateNotifierProvider.family<PaginatedHistoryNotifier, PaginatedHistoryState, String>((ref, date) {
+final paginatedHistoryProvider = StateNotifierProvider.autoDispose.family<PaginatedHistoryNotifier, PaginatedHistoryState, String>((ref, date) {
   return PaginatedHistoryNotifier(ref, date);
 });
 
@@ -430,7 +430,14 @@ class _ReceiptDetailDialog extends ConsumerWidget {
                         label: const Text('BAGIKAN STRUK (DIGITAL)'),
                         onPressed: () async {
                           try {
-                            RenderRepaintBoundary boundary = receiptKey.currentContext!.findRenderObject() as RenderRepaintBoundary;
+                            final ctx = receiptKey.currentContext;
+                            if (ctx == null) {
+                              if (context.mounted) {
+                                await ref.read(printerServiceProvider).shareReceipt(tx);
+                              }
+                              return;
+                            }
+                            RenderRepaintBoundary boundary = ctx.findRenderObject() as RenderRepaintBoundary;
                             ui.Image image = await boundary.toImage(pixelRatio: 3.0);
                             ByteData? byteData = await image.toByteData(format: ui.ImageByteFormat.png);
                             ui.PlatformDispatcher.instance.views.first; // Warm up ui metrics if needed

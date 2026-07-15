@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../network/dio_client.dart';
@@ -10,6 +11,9 @@ class ItemImage extends StatelessWidget {
   final double? height;
   final Widget? placeholder;
   final Widget? errorWidget;
+
+  // In-memory cache for base64 decoded image bytes to avoid decoding on every rebuild/scroll.
+  static final Map<String, Uint8List> _base64Cache = {};
 
   const ItemImage({
     super.key,
@@ -32,8 +36,12 @@ class ItemImage extends StatelessWidget {
     // 1. Base64 Image
     if (url.startsWith('data:image') && url.contains('base64,')) {
       try {
-        final String base64Str = url.split('base64,').last;
-        final bytes = base64Decode(base64Str);
+        Uint8List? bytes = _base64Cache[url];
+        if (bytes == null) {
+          final String base64Str = url.split('base64,').last;
+          bytes = base64Decode(base64Str);
+          _base64Cache[url] = bytes;
+        }
         return Image.memory(
           bytes,
           fit: fit,

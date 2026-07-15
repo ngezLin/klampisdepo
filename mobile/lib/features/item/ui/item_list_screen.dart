@@ -8,6 +8,7 @@ import '../../transaction/models/transaction_models.dart';
 import '../../../core/network/dio_client.dart';
 import '../../../core/theme/notification_helper.dart';
 import 'dart:io';
+import 'dart:async';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../auth/providers/auth_provider.dart';
@@ -24,6 +25,7 @@ class _ItemListScreenState extends ConsumerState<ItemListScreen> {
   final _searchController = TextEditingController();
   final _currencyFormat = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
   final _scrollController = ScrollController();
+  Timer? _debounce;
 
   @override
   void initState() {
@@ -33,6 +35,7 @@ class _ItemListScreenState extends ConsumerState<ItemListScreen> {
 
   @override
   void dispose() {
+    _debounce?.cancel();
     _scrollController.dispose();
     _searchController.dispose();
     super.dispose();
@@ -46,22 +49,10 @@ class _ItemListScreenState extends ConsumerState<ItemListScreen> {
   }
 
   void _showTopSnackBar(String message, {bool isError = false}) {
-    final double topPadding = MediaQuery.of(context).padding.top;
-    double bottomMargin = MediaQuery.of(context).size.height - topPadding - 120;
-    if (bottomMargin < 0) bottomMargin = 16;
-
-    ScaffoldMessenger.of(context).hideCurrentSnackBar();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        behavior: SnackBarBehavior.floating,
-        margin: EdgeInsets.only(
-          bottom: bottomMargin,
-          left: 16,
-          right: 16,
-        ),
-        backgroundColor: isError ? Colors.red[700] : const Color(0xFF00AA5B),
-      ),
+    showTopSnackBar(
+      context,
+      message,
+      backgroundColor: isError ? Colors.red[700] : const Color(0xFF00AA5B),
     );
   }
 
@@ -95,7 +86,12 @@ class _ItemListScreenState extends ConsumerState<ItemListScreen> {
                 prefixIcon: Icon(Icons.search),
               ),
               onChanged: (val) {
-                ref.read(itemManagementSearchQueryProvider.notifier).state = val;
+                if (_debounce?.isActive ?? false) _debounce!.cancel();
+                _debounce = Timer(const Duration(milliseconds: 500), () {
+                  if (mounted) {
+                    ref.read(itemManagementSearchQueryProvider.notifier).state = val;
+                  }
+                });
               },
             ),
           ),
@@ -326,9 +322,9 @@ class _ItemFormSheetState extends ConsumerState<_ItemFormSheet> {
     try {
       final XFile? file = await picker.pickImage(
         source: source,
-        maxWidth: 800,
-        maxHeight: 800,
-        imageQuality: 70,
+        maxWidth: 500,
+        maxHeight: 500,
+        imageQuality: 50,
       );
       if (file == null) return;
 
@@ -600,7 +596,7 @@ class _ItemFormSheetState extends ConsumerState<_ItemFormSheet> {
                                   itemBuilder: (context, index) {
                                     final log = _stockChanges[index] as Map<String, dynamic>;
                                     final String source = log['source'] ?? 'manual';
-                                    final int difference = log['difference'] as int? ?? 0;
+                                    final int difference = (log['difference'] as num?)?.toInt() ?? 0;
                                     final String? note = log['note'];
                                     final String createdAtStr = log['created_at'] ?? '';
                                     final String formattedDate = createdAtStr.isNotEmpty
@@ -719,13 +715,36 @@ class _ItemFormSheetState extends ConsumerState<_ItemFormSheet> {
         actions: [
           TextButton(onPressed: () => Navigator.pop(context), child: const Text('Batal')),
           ElevatedButton(
-            onPressed: () => Navigator.pop(context, urlController.text.trim()),
+            onPressed: () {
+              final val = urlController.text.trim();
+              if (val.isEmpty) {
+                Navigator.pop(context, '');
+                return;
+              }
+              if (val.length > 255) {
+                showTopSnackBar(
+                  context,
+                  '⚠️ URL gambar terlalu panjang (maksimal 255 karakter). Silakan gunakan gambar yang diunggah dari kamera/galeri.',
+                  backgroundColor: Colors.amber[800],
+                );
+                return;
+              }
+              if (val.startsWith('data:image/') || val.contains(';base64,')) {
+                showTopSnackBar(
+                  context,
+                  '⚠️ Input tidak boleh berupa kode Base64. Harap masukkan URL link gambar yang valid.',
+                  backgroundColor: Colors.amber[800],
+                );
+                return;
+              }
+              Navigator.pop(context, val);
+            },
             child: const Text('Simpan'),
           ),
         ],
       ),
     );
-    if (url != null && url.isNotEmpty) {
+    if (url != null) {
       setState(() => _imageUrlController.text = url);
     }
   }
@@ -756,40 +775,12 @@ class _ItemFormSheetState extends ConsumerState<_ItemFormSheet> {
 
       if (mounted) {
         Navigator.pop(context);
-        final double topPadding = MediaQuery.of(context).padding.top;
-        double bottomMargin = MediaQuery.of(context).size.height - topPadding - 120;
-        if (bottomMargin < 0) bottomMargin = 16;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(isEditing ? 'Item berhasil diubah!' : 'Item berhasil ditambahkan!'),
-            behavior: SnackBarBehavior.floating,
-            margin: EdgeInsets.only(
-              bottom: bottomMargin,
-              left: 16,
-              right: 16,
-            ),
-            backgroundColor: const Color(0xFF00AA5B),
-          ),
-        );
+        showTopSnackBar(context, isEditing ? 'Item berhasil diubah!' : 'Item berhasil ditambahkan!');
         ref.invalidate(paginatedItemsProvider);
       }
     } catch (e) {
       if (mounted) {
-        final double topPadding = MediaQuery.of(context).padding.top;
-        double bottomMargin = MediaQuery.of(context).size.height - topPadding - 120;
-        if (bottomMargin < 0) bottomMargin = 16;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Gagal menyimpan: $e'),
-            behavior: SnackBarBehavior.floating,
-            margin: EdgeInsets.only(
-              bottom: bottomMargin,
-              left: 16,
-              right: 16,
-            ),
-            backgroundColor: Colors.red[700],
-          ),
-        );
+        showTopSnackBar(context, 'Gagal menyimpan: $e', backgroundColor: Colors.red[700]);
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);

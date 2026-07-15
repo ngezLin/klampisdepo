@@ -15,7 +15,7 @@ class TopSellingItem {
 
   factory TopSellingItem.fromJson(Map<String, dynamic> json) {
     return TopSellingItem(
-      itemId: json['item_id'] as int? ?? 0,
+      itemId: (json['item_id'] as num?)?.toInt() ?? 0,
       quantity: (json['quantity'] as num?)?.toInt() ?? 0,
       name: json['name'] as String? ?? 'Item #${json['item_id']}',
     );

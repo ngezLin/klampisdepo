@@ -29,7 +29,7 @@ class DraftsDialog extends ConsumerWidget {
               separatorBuilder: (_, __) => const Divider(),
               itemBuilder: (context, index) {
                 final draft = drafts[index] as Map<String, dynamic>;
-                final int id = draft['id'] as int;
+                final int id = (draft['id'] as num).toInt();
                 final double total = (draft['total'] as num).toDouble();
                 final String dateStr = draft['created_at'] as String;
                 final String formattedDate = dateFormat.format(_parseDateTime(dateStr));

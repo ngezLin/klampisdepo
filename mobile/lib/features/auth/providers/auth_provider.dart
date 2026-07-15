@@ -57,7 +57,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
           token: token,
           role: payload['role'],
           username: payload['username'],
-          userId: payload['user_id'] as int?,
+          userId: (payload['user_id'] as num?)?.toInt(),
           isLoading: false,
         );
       } else {
@@ -89,14 +89,14 @@ class AuthNotifier extends StateNotifier<AuthState> {
       // Cache credentials for offline login fallback
       await _storage.write(key: 'offline_password_$username', value: password);
       await _storage.write(key: 'offline_role_$username', value: role);
-      await _storage.write(key: 'offline_id_$username', value: (payload['user_id'] as int?).toString());
+      await _storage.write(key: 'offline_id_$username', value: ((payload['user_id'] as num?)?.toInt())?.toString() ?? '');
       await _storage.write(key: 'offline_token_$username', value: token);
       
       state = AuthState(
         token: token,
         role: role,
         username: username,
-        userId: payload['user_id'] as int?,
+        userId: (payload['user_id'] as num?)?.toInt(),
         isLoading: false,
       );
       return true;

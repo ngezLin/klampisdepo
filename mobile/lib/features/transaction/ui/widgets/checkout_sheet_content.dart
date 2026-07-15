@@ -2,9 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../providers/transaction_provider.dart';
+import '../../models/transaction_models.dart';
 import '../../../../core/theme/notification_helper.dart';
 import '../../../cash_session/providers/cash_session_provider.dart';
 import '../../../history/ui/history_screen.dart';
+import '../../../../services/printer/printer_service.dart';
+
 
 class CheckoutSheetContent extends ConsumerStatefulWidget {
   const CheckoutSheetContent({super.key});
@@ -228,19 +231,9 @@ class _CheckoutSheetContentState extends ConsumerState<CheckoutSheetContent> {
                       final notifier = ref.read(transactionProvider.notifier);
                       final result = await notifier.checkout();
                       if (result.success && context.mounted) {
-                        // Invalidate history provider so it displays this new transaction automatically
                         ref.invalidate(historyProvider);
-                        // Check if checkout was saved offline
-                        final wasOffline = ref.read(transactionProvider).lastCheckoutWasOffline;
-                        Navigator.pop(context);
-                        showTopSnackBar(
-                          context,
-                          wasOffline
-                              ? '📴 Transaksi disimpan offline. Akan otomatis sync saat koneksi kembali.'
-                              : '✅ Transaksi Berhasil Disimpan!',
-                          backgroundColor: wasOffline ? Colors.orange[700] : null,
-                          duration: const Duration(seconds: 4),
-                        );
+                        Navigator.pop(context); // Close checkout sheet
+                        _showSuccessDialog(context, result);
                       } else if (context.mounted) {
                         showTopSnackBar(
                           context,
@@ -338,19 +331,12 @@ class _CheckoutSheetContentState extends ConsumerState<CheckoutSheetContent> {
                             showTopSnackBar(sheetContext, 'Shift Kasir Berhasil Dibuka!');
                             
                             // Re-trigger checkout since they successfully opened the session!
-                            final result = await ref.read(transactionProvider.notifier).checkout();
-                            if (result.success && sheetContext.mounted) {
-                              ref.invalidate(historyProvider);
-                              final wasOffline = ref.read(transactionProvider).lastCheckoutWasOffline;
-                              Navigator.pop(sheetContext); // Close checkout sheet
-                              showTopSnackBar(
-                                sheetContext,
-                                wasOffline
-                                    ? '📴 Transaksi disimpan offline. Akan otomatis sync saat koneksi kembali.'
-                                    : '✅ Transaksi Berhasil Disimpan!',
-                                backgroundColor: wasOffline ? Colors.orange[700] : null,
-                              );
-                            } else if (sheetContext.mounted) {
+                             final result = await ref.read(transactionProvider.notifier).checkout();
+                             if (result.success && sheetContext.mounted) {
+                               ref.invalidate(historyProvider);
+                               Navigator.pop(sheetContext); // Close checkout sheet
+                               _showSuccessDialog(sheetContext, result);
+                             } else if (sheetContext.mounted) {
                               showTopSnackBar(
                                 sheetContext,
                                 result.errorMessage ?? 'Gagal checkout transaksi.',
@@ -369,6 +355,138 @@ class _CheckoutSheetContentState extends ConsumerState<CheckoutSheetContent> {
               ],
             );
           },
+        );
+      },
+    );
+  }
+
+  void _showSuccessDialog(BuildContext context, CheckoutResult result) {
+    final txData = result.transactionData;
+    if (txData == null) return;
+    
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        final currencyFormat = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
+        final paymentType = txData['payment_type'] ?? 'cash';
+        final total = (txData['total'] as num?)?.toDouble() ?? 0.0;
+        final payment = (txData['payment'] as num?)?.toDouble() ?? 0.0;
+        final change = (txData['change'] as num?)?.toDouble() ?? 0.0;
+
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Row(
+            children: [
+              Icon(Icons.check_circle_outline, color: Colors.green, size: 28),
+              SizedBox(width: 8),
+              Text('Transaksi Berhasil', style: TextStyle(fontWeight: FontWeight.bold)),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(result.wasOffline 
+                ? 'Transaksi disimpan offline dan akan otomatis disinkronisasi saat koneksi kembali.' 
+                : 'Transaksi berhasil disimpan.'),
+              const SizedBox(height: 16),
+              const Divider(),
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('Total Belanja:'),
+                  Text(currencyFormat.format(total), style: const TextStyle(fontWeight: FontWeight.bold)),
+                ],
+              ),
+              if (paymentType == 'cash') ...[
+                const SizedBox(height: 6),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('Uang Diterima:'),
+                    Text(currencyFormat.format(payment)),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('Kembalian:'),
+                    Text(currencyFormat.format(change), style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
+                  ],
+                ),
+              ],
+              const SizedBox(height: 8),
+              const Divider(),
+            ],
+          ),
+          actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          actions: [
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    ),
+                    icon: const Icon(Icons.share, size: 18),
+                    label: const Text('Bagikan'),
+                    onPressed: () async {
+                      await ref.read(printerServiceProvider).shareReceipt(txData);
+                    },
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      backgroundColor: Theme.of(context).primaryColor,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    ),
+                    icon: const Icon(Icons.print, size: 18),
+                    label: const Text('Cetak'),
+                    onPressed: () async {
+                      final printer = ref.read(printerServiceProvider);
+                      if (printer.isConnected) {
+                        final success = await printer.printReceipt(txData);
+                        if (dialogContext.mounted) {
+                          showTopSnackBar(
+                            dialogContext,
+                            success ? 'Struk berhasil dicetak!' : 'Gagal mencetak: ${printer.lastError}',
+                            backgroundColor: success ? null : Colors.red[700],
+                          );
+                        }
+                      } else {
+                        showTopSnackBar(
+                          dialogContext,
+                          '⚠️ Printer belum terhubung! Silakan hubungkan printer di menu Transaksi.',
+                          backgroundColor: Colors.amber[800],
+                        );
+                      }
+                    },
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            SizedBox(
+              width: double.infinity,
+              child: TextButton(
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                ),
+                onPressed: () {
+                  Navigator.pop(dialogContext); // Close dialog
+                },
+                child: const Text('Tutup / Transaksi Baru', style: TextStyle(fontWeight: FontWeight.bold)),
+              ),
+            ),
+          ],
         );
       },
     );

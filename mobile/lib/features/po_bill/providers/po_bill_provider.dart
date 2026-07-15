@@ -143,6 +143,6 @@ class POBillsNotifier extends StateNotifier<POBillsState> {
   }
 }
 
-final poBillsProvider = StateNotifierProvider<POBillsNotifier, POBillsState>((ref) {
+final poBillsProvider = StateNotifierProvider.autoDispose<POBillsNotifier, POBillsState>((ref) {
   return POBillsNotifier(ref);
 });
