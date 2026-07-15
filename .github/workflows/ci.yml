@@ -1,0 +1,51 @@
+name: CI - Build Check
+
+on:
+  push:
+    branches: ['**'] # every branch, every push
+
+jobs:
+  # ─────────────────────────────────────────────
+  # Job 1: Go API — compile check
+  # ─────────────────────────────────────────────
+  go-build:
+    name: Go Build Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+          cache-dependency-path: api/go.sum
+
+      - name: Build Go API
+        run: go build ./...
+        working-directory: api
+
+  # ─────────────────────────────────────────────
+  # Job 2: Flutter — static analysis
+  # ─────────────────────────────────────────────
+  flutter-analyze:
+    name: Flutter Analyze
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.x'
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+        working-directory: mobile
+
+      - name: Run Flutter Analyze
+        run: flutter analyze --no-fatal-infos
+        working-directory: mobile
