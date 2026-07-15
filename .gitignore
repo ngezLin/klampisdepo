@@ -44,3 +44,21 @@ uploads/
 .idea/
 .DS_Store
 .aider*
+
+# Go binaries
+api/tmp/
+api/*.exe
+
+# Flutter build outputs
+mobile/web/
+mobile/build/
+mobile/.metadata
+
+# Uploads (stored on server, not in git)
+api/uploads/
+
+# AI / Agent config (local only)
+.agents/
+
+# LLM docs (local only)
+docs/llm/
