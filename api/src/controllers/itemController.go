@@ -16,7 +16,6 @@ import (
 func GetItems(c *gin.Context) {
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "10"))
-	name := c.Query("name")
 	
 	if pageSize > 100 {
 		pageSize = 100 // Hard cap to prevent memory exhaustion
@@ -26,7 +25,35 @@ func GetItems(c *gin.Context) {
 	response, err := service.GetItems(dtos.ItemFilter{
 		Page:     page,
 		PageSize: pageSize,
-		Name:     name,
+	}, common.GetUserRole(c))
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"data": response.Data,
+		"meta": response.Meta,
+	})
+}
+
+func SearchItems(c *gin.Context) {
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "10"))
+	name := c.Query("name")
+	skipCount, _ := strconv.ParseBool(c.DefaultQuery("skip_count", "false"))
+
+	if pageSize > 100 {
+		pageSize = 100 // Hard cap to prevent memory exhaustion
+	}
+
+	service := services.NewItemService()
+	response, err := service.SearchItems(dtos.ItemFilter{
+		Page:      page,
+		PageSize:  pageSize,
+		Name:      name,
+		SkipCount: skipCount,
 	}, common.GetUserRole(c))
 
 	if err != nil {

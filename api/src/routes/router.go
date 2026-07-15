@@ -1,6 +1,8 @@
 package routes
 
 import (
+	"time"
+
 	"kd-api/src/controllers"
 	"kd-api/src/middlewares"
 
@@ -8,6 +10,7 @@ import (
 )
 
 func RegisterRoutes(r *gin.Engine) {
+	r.Use(middlewares.DebounceMiddleware(1 * time.Second))
 
 	r.POST("/login", middlewares.LoginRateLimiter(), controllers.Login)
 
@@ -36,7 +39,7 @@ func RegisterRoutes(r *gin.Engine) {
 	items.Use(middlewares.AuthMiddleware(), middlewares.GeneralRateLimiter())
 	{
 		items.GET("/", controllers.GetItems)
-		items.GET("/search", controllers.GetItems)
+		items.GET("/search", controllers.SearchItems)
 		items.GET("/:id", controllers.GetItemByID)     
 		items.POST("/", middlewares.RoleMiddleware("owner", "admin", "cashier"), controllers.CreateItem)
 		items.PUT("/:id", middlewares.RoleMiddleware("owner", "admin", "cashier"), controllers.UpdateItem)

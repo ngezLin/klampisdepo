@@ -11,9 +11,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-/* =========================
-   OPEN CASH SESSION
-   ========================= */
+//Open Cash Session
 func OpenCashSession(c *gin.Context) {
 	userIDPtr := common.GetUserID(c)
 	if userIDPtr == nil {
@@ -42,9 +40,7 @@ func OpenCashSession(c *gin.Context) {
 	c.JSON(http.StatusCreated, session)
 }
 
-/* =========================
-   GET CURRENT SESSION
-   ========================= */
+// Get Current Cash Session
 func GetCurrentCashSession(c *gin.Context) {
 	userIDPtr := common.GetUserID(c)
 	if userIDPtr == nil {
@@ -67,9 +63,7 @@ func GetCurrentCashSession(c *gin.Context) {
 	c.JSON(http.StatusOK, session)
 }
 
-/* =========================
-   CLOSE CASH SESSION
-   ========================= */
+// Close Cash Session
 func CloseCashSession(c *gin.Context) {
 	userIDPtr := common.GetUserID(c)
 	if userIDPtr == nil {
@@ -98,9 +92,7 @@ func CloseCashSession(c *gin.Context) {
 	c.JSON(http.StatusOK, session)
 }
 
-/* =========================
-   GET CASH SESSION HISTORY
-   ========================= */
+// Get Cash Session History
 func GetCashSessionHistory(c *gin.Context) {
 	userIDPtr := common.GetUserID(c)
 	if userIDPtr == nil {

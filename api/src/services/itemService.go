@@ -19,6 +19,7 @@ import (
 
 type ItemService interface {
 	GetItems(filter dtos.ItemFilter, role string) (*dtos.ItemListResponse, error)
+	SearchItems(filter dtos.ItemFilter, role string) (*dtos.ItemListResponse, error)
 	GetItemByID(id string, role string) (interface{}, error)
 	CreateItem(input dtos.CreateItemInput, userID *uint, clientIP string, role string) (interface{}, error)
 	UpdateItem(id string, input dtos.UpdateItemInput, userID *uint, clientIP string, role string) (interface{}, error)
@@ -48,12 +49,6 @@ func (s *itemService) GetItems(filter dtos.ItemFilter, role string) (*dtos.ItemL
 
 	query := config.DB.Model(&models.Item{})
 
-	if filter.Name != "" {
-		for _, term := range strings.Fields(strings.ToLower(strings.TrimSpace(filter.Name))) {
-			query = query.Where("LOWER(name) LIKE ?", "%"+term+"%")
-		}
-	}
-
 	if err := query.Count(&total).Error; err != nil {
 		return nil, err
 	}
@@ -70,6 +65,63 @@ func (s *itemService) GetItems(filter dtos.ItemFilter, role string) (*dtos.ItemL
 		Limit:      p.PageSize,
 		Total:      total,
 		TotalPages: int((total + int64(p.PageSize) - 1) / int64(p.PageSize)),
+	}
+
+	return &dtos.ItemListResponse{
+		Data: response.FilterItemsForRole(items, role),
+		Meta: meta,
+	}, nil
+}
+
+func (s *itemService) SearchItems(filter dtos.ItemFilter, role string) (*dtos.ItemListResponse, error) {
+	if filter.Page < 1 {
+		filter.Page = 1
+	}
+	if filter.PageSize < 1 {
+		filter.PageSize = 10
+	}
+
+	p := pagination.New(filter.Page, filter.PageSize)
+
+	var items []models.Item
+	var total int64 = 0
+
+	query := config.DB.Model(&models.Item{})
+
+	if filter.Name != "" {
+		for _, term := range strings.Fields(strings.ToLower(strings.TrimSpace(filter.Name))) {
+			query = query.Where("LOWER(name) LIKE ?", "%"+term+"%")
+		}
+	}
+
+	if !filter.SkipCount {
+		if err := query.Count(&total).Error; err != nil {
+			return nil, err
+		}
+	}
+
+	if err := query.
+		Offset(p.Offset).
+		Limit(p.PageSize).
+		Find(&items).Error; err != nil {
+		return nil, err
+	}
+
+	var meta dtos.PaginationMeta
+	if !filter.SkipCount {
+		meta = dtos.PaginationMeta{
+			Page:       p.Page,
+			Limit:      p.PageSize,
+			Total:      total,
+			TotalPages: int((total + int64(p.PageSize) - 1) / int64(p.PageSize)),
+		}
+	} else {
+		meta = dtos.PaginationMeta{
+			Page:       p.Page,
+			Limit:      p.PageSize,
+			Total:      0,
+			TotalPages: p.Page,
+		}
 	}
 
 	return &dtos.ItemListResponse{

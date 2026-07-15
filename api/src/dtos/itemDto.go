@@ -32,9 +32,10 @@ type UpdateItemInput struct {
 }
 
 type ItemFilter struct {
-	Page     int
-	PageSize int
-	Name     string
+	Page      int
+	PageSize  int
+	Name      string
+	SkipCount bool
 }
 
 type CSVExport struct {
