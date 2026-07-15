@@ -18,12 +18,19 @@ export default function Login() {
     setLoading(true);
     try {
       const { user } = await login(username, password);
+
+      // Block non-authorized logins (cashier, etc.)
+      if (user.role !== "admin" && user.role !== "owner" && user.role !== "dev") {
+        localStorage.clear();
+        toast.error("Akses ditolak. Hanya Admin dan Owner yang dapat login ke dashboard web.");
+        setLoading(false);
+        return;
+      }
+
       toast.success(`Welcome back, ${user.username || "User"}!`);
 
       if (user.role === "admin") {
         navigate("/cash-sessions");
-      } else if (user.role === "cashier") {
-        navigate("/transactions");
       } else {
         navigate("/dashboard");
       }

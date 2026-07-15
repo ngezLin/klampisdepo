@@ -2,7 +2,6 @@ import {
   LayoutDashboard,
   Wallet,
   Box,
-  Receipt,
   History,
   CalendarCheck,
   FileText,
@@ -35,16 +34,10 @@ export const navigationItems = [
     roles: ["admin", "owner"],
   },
   {
-    label: "Transaksi",
-    path: "/transactions",
-    icon: <Receipt />,
-    roles: ["cashier", "admin", "owner"],
-  },
-  {
     label: "Riwayat",
     path: "/history",
     icon: <History />,
-    roles: ["cashier", "admin", "owner"],
+    roles: ["admin", "owner"],
   },
   {
     label: "Mutasi Stok",

@@ -8,7 +8,6 @@ import ProtectedRoute from "./ProtectedRoute";
 import Dashboard from "../pages/Dashboard";
 import Items from "../pages/Items";
 import POBills from "../pages/POBills";
-import Transactions from "../pages/Transactions";
 import History from "../pages/History";
 import Attendance from "../pages/Attendance";
 import Logs from "../pages/Logs";
@@ -100,21 +99,9 @@ export default function AppRoutes() {
           }
         />
         <Route
-          path="/transactions"
-          element={
-            <ProtectedRoute roles={["cashier", "admin", "owner"]}>
-              <Layout>
-                <PageTransition>
-                  <Transactions />
-                </PageTransition>
-              </Layout>
-            </ProtectedRoute>
-          }
-        />
-        <Route
           path="/history"
           element={
-            <ProtectedRoute roles={["cashier", "admin", "owner"]}>
+            <ProtectedRoute roles={["admin", "owner"]}>
               <Layout>
                 <PageTransition>
                   <History />
