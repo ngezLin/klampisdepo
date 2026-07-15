@@ -53,7 +53,7 @@ jobs:
       - name: Rebuild and restart backend on VPS
         run: |
           ssh -i ~/.ssh/id_ed25519 ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} \
-            "cd /var/www/klampisdepo && docker compose up -d --build kd-backend"
+            "cd /var/www/klampisdepo && docker compose up -d --build backend"
 
       # ─────────────────────────────────────────────────────────────
       # STEP 6: Wait for backend health check
@@ -125,7 +125,7 @@ jobs:
             cd /var/www/klampisdepo
             # Restore from git stash (we stashed before deploying)
             git stash pop 2>/dev/null || echo "No stash found, using git reset"
-            docker compose up -d --build kd-backend
+            docker compose up -d --build backend
             echo "✅ Rollback complete"
           EOF
 
