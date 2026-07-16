@@ -232,6 +232,7 @@ class _CheckoutSheetContentState extends ConsumerState<CheckoutSheetContent> {
                       final result = await notifier.checkout();
                       if (result.success && context.mounted) {
                         ref.invalidate(historyProvider);
+                        ref.invalidate(paginatedHistoryProvider);
                         Navigator.pop(context); // Close checkout sheet
                         _showSuccessDialog(context, result);
                       } else if (context.mounted) {
@@ -334,6 +335,7 @@ class _CheckoutSheetContentState extends ConsumerState<CheckoutSheetContent> {
                              final result = await ref.read(transactionProvider.notifier).checkout();
                              if (result.success && sheetContext.mounted) {
                                ref.invalidate(historyProvider);
+                               ref.invalidate(paginatedHistoryProvider);
                                Navigator.pop(sheetContext); // Close checkout sheet
                                _showSuccessDialog(sheetContext, result);
                              } else if (sheetContext.mounted) {

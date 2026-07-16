@@ -284,8 +284,9 @@ func (s *transactionService) GetTransactions(filter dtos.TransactionFilter) (*dt
 
 	if filter.Date != "" {
 		start, _ := time.ParseInLocation("2006-01-02", filter.Date, time.Local)
-		end := start.Add(24 * time.Hour)
-		db = db.Where("created_at >= ? AND created_at < ?", start, end)
+		startWindow := start.Add(-24 * time.Hour)
+		endWindow := start.Add(48 * time.Hour)
+		db = db.Where("created_at >= ? AND created_at < ?", startWindow, endWindow)
 	}
 
 	if filter.Status != "" {
@@ -337,8 +338,9 @@ func (s *transactionService) GetTransactionHistory(filter dtos.TransactionFilter
 	// Support for history by date specifically if Date is set but StartDate isn't
 	if filter.Date != "" && filter.StartDate == "" {
 		start, _ := time.ParseInLocation("2006-01-02", filter.Date, time.Local)
-		end := start.Add(24 * time.Hour)
-		db = db.Where("created_at >= ? AND created_at < ?", start, end)
+		startWindow := start.Add(-24 * time.Hour)
+		endWindow := start.Add(48 * time.Hour)
+		db = db.Where("created_at >= ? AND created_at < ?", startWindow, endWindow)
 	}
 
 	if err := db.Count(&total).Error; err != nil {
