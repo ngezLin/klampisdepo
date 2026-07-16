@@ -283,7 +283,7 @@ func (s *transactionService) GetTransactions(filter dtos.TransactionFilter) (*dt
 	db := config.DB.Model(&models.Transaction{})
 
 	if filter.Date != "" {
-		start, _ := time.Parse("2006-01-02", filter.Date)
+		start, _ := time.ParseInLocation("2006-01-02", filter.Date, time.Local)
 		end := start.Add(24 * time.Hour)
 		db = db.Where("created_at >= ? AND created_at < ?", start, end)
 	}
@@ -329,14 +329,14 @@ func (s *transactionService) GetTransactionHistory(filter dtos.TransactionFilter
 		Where("status IN ?", []string{"completed", "refunded"})
 
 	if filter.StartDate != "" {
-		start, _ := time.Parse("2006-01-02", filter.StartDate)
+		start, _ := time.ParseInLocation("2006-01-02", filter.StartDate, time.Local)
 		end := start.Add(24 * time.Hour)
 		db = db.Where("created_at >= ? AND created_at < ?", start, end)
 	}
 
 	// Support for history by date specifically if Date is set but StartDate isn't
 	if filter.Date != "" && filter.StartDate == "" {
-		start, _ := time.Parse("2006-01-02", filter.Date)
+		start, _ := time.ParseInLocation("2006-01-02", filter.Date, time.Local)
 		end := start.Add(24 * time.Hour)
 		db = db.Where("created_at >= ? AND created_at < ?", start, end)
 	}

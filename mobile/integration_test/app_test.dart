@@ -249,7 +249,15 @@ void main() {
 
     // Wait for transaction cards to load
     final transactionCards = find.byType(Card);
-    final cardsLoaded = await _waitForWidget(tester, transactionCards);
+    var cardsLoaded = await _waitForWidget(tester, transactionCards, timeout: const Duration(seconds: 8));
+    if (!cardsLoaded) {
+      final refreshIcon = find.byIcon(Icons.refresh);
+      if (refreshIcon.evaluate().isNotEmpty) {
+        await tester.tap(refreshIcon.first);
+        await tester.pumpAndSettle(const Duration(seconds: 2));
+      }
+      cardsLoaded = await _waitForWidget(tester, transactionCards, timeout: const Duration(seconds: 8));
+    }
     expect(cardsLoaded, isTrue, reason: 'No transaction cards found in history');
 
     // Tap the first (most recent) transaction card
