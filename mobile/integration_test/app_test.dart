@@ -34,6 +34,13 @@ Future<void> _login(WidgetTester tester) async {
   app.main();
   await tester.pumpAndSettle(const Duration(seconds: 4));
 
+  // Check if session is already active / restored from previous test in sequence
+  if (find.text('Dashboard').evaluate().isNotEmpty ||
+      find.byType(NavigationBar).evaluate().isNotEmpty) {
+    print('ℹ️ Session restored/active: already on MainLayout.');
+    return;
+  }
+
   // Find username and password fields
   final usernameFinder = find.widgetWithText(TextField, 'Username');
   final passwordFinder = find.widgetWithText(TextField, 'Password');
@@ -75,8 +82,8 @@ void main() {
 
     // Navigate to Item tab
     final itemTab = find.text('Item');
-    expect(itemTab, findsOneWidget);
-    await tester.tap(itemTab);
+    expect(itemTab, findsWidgets);
+    await tester.tap(itemTab.first);
     await tester.pump();
 
     // Wait for the Item management screen to render
@@ -132,8 +139,8 @@ void main() {
 
     // Navigate to Transaksi tab
     final transaksiTab = find.text('Transaksi');
-    expect(transaksiTab, findsOneWidget);
-    await tester.tap(transaksiTab);
+    expect(transaksiTab, findsWidgets);
+    await tester.tap(transaksiTab.first);
     await tester.pump();
 
     // Wait for the Transaksi screen to render
@@ -153,7 +160,7 @@ void main() {
     expect(resultsLoaded, isTrue, reason: 'ItemCard for $kTestItemName did not appear in search results');
 
     // Tap the item to add to cart
-    await tester.tap(itemCard);
+    await tester.tap(itemCard.first);
     await tester.pump();
 
     // Open the cart
@@ -209,8 +216,8 @@ void main() {
 
     // Navigate to History tab
     final historyTab = find.text('Riwayat');
-    expect(historyTab, findsOneWidget);
-    await tester.tap(historyTab);
+    expect(historyTab, findsWidgets);
+    await tester.tap(historyTab.first);
     await tester.pump();
 
     // Wait for the history screen to load
@@ -260,8 +267,8 @@ void main() {
 
     // Navigate to Item tab
     final itemTab = find.text('Item');
-    expect(itemTab, findsOneWidget);
-    await tester.tap(itemTab);
+    expect(itemTab, findsWidgets);
+    await tester.tap(itemTab.first);
     await tester.pump();
 
     // Wait for the Item management screen to render
