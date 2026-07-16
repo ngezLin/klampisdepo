@@ -80,8 +80,11 @@ jobs:
           flutter drive \
             --driver=test_driver/integration_test.dart \
             --target=integration_test/app_test.dart \
-            -d chrome \
-            --headless \
+            -d web-server \
+            --web-browser-flag=--headless=new \
+            --web-browser-flag=--no-sandbox \
+            --web-browser-flag=--disable-dev-shm-usage \
+            --web-browser-flag=--disable-gpu \
             --dart-define=API_BASE_URL=http://localhost:8080 \
             --dart-define=TEST_USERNAME=${{ secrets.TEST_USERNAME }} \
             --dart-define=TEST_PASSWORD=${{ secrets.TEST_PASSWORD }}
