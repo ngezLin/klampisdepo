@@ -67,6 +67,9 @@ func ConnectDatabase() {
 	// Forcibly update users role ENUM to include 'dev' because GORM AutoMigrate doesn't modify existing ENUMs
 	db.Exec("ALTER TABLE users MODIFY COLUMN role ENUM('admin','cashier','owner','dev') DEFAULT 'cashier';")
 
+	// CI-only: seed test user (only when SEED_TEST_USER=true)
+	SeedTestUser(db)
+
 	DB = db
 	fmt.Println("✅ Database connected & migrated successfully")
 }

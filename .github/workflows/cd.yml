@@ -1,81 +1,61 @@
-name: CD - Deploy & Verify
+name: CD - Test & Deploy
 
 on:
   push:
-    branches: [main]
+    branches: [main, develop]
 
 jobs:
-  deploy-and-test:
-    name: Deploy → E2E Test → Rollback if Failed
+  e2e-test:
+    name: Run E2E Tests
     runs-on: ubuntu-latest
 
     steps:
       # ─────────────────────────────────────────────────────────────
-      # STEP 1: Checkout the code (needed for SCP upload)
+      # PHASE 1: LOCAL E2E TESTING
       # ─────────────────────────────────────────────────────────────
+
+      # STEP 1: Checkout
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # ─────────────────────────────────────────────────────────────
-      # STEP 2: Setup SSH key for VPS access
-      # ─────────────────────────────────────────────────────────────
-      - name: Setup SSH key
+      # STEP 2: Create .env for Docker Compose (throwaway CI credentials)
+      - name: Create CI environment file
         run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/id_ed25519
-          chmod 600 ~/.ssh/id_ed25519
-          ssh-keyscan -H ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts
-
-      # ─────────────────────────────────────────────────────────────
-      # STEP 3: Save current VPS state for rollback
-      # ─────────────────────────────────────────────────────────────
-      - name: Save rollback snapshot on VPS
-        run: |
-          ssh -i ~/.ssh/id_ed25519 ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} \
-            "cd /var/www/klampisdepo && ls -la api/src > /tmp/kd_prev_state.txt && echo 'Snapshot saved'"
-
-      # ─────────────────────────────────────────────────────────────
-      # STEP 4: Upload API source files via SCP
-      # ─────────────────────────────────────────────────────────────
-      - name: Upload API source to VPS
-        run: |
-          scp -r -o StrictHostKeyChecking=no -i ~/.ssh/id_ed25519 \
-            api/src \
-            ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/var/www/klampisdepo/api/
-
-          scp -o StrictHostKeyChecking=no -i ~/.ssh/id_ed25519 \
-            api/main.go api/go.mod api/go.sum api/Dockerfile \
-            ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/var/www/klampisdepo/api/
-
-      # ─────────────────────────────────────────────────────────────
-      # STEP 5: Rebuild Docker containers on VPS
-      # ─────────────────────────────────────────────────────────────
-      - name: Rebuild and restart backend on VPS
-        run: |
-          ssh -i ~/.ssh/id_ed25519 ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} \
-            "cd /var/www/klampisdepo && docker compose up -d --build backend"
-
-      # ─────────────────────────────────────────────────────────────
-      # STEP 6: Wait for backend health check
-      # ─────────────────────────────────────────────────────────────
-      - name: Wait for backend to be healthy
-        run: |
-          ssh -i ~/.ssh/id_ed25519 ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} << 'EOF'
-            for i in $(seq 1 12); do
-              if curl -sf http://localhost:8080/health > /dev/null 2>&1; then
-                echo "✅ Backend is up after ${i}x5s"
-                exit 0
-              fi
-              echo "⏳ Waiting... attempt $i/12"
-              sleep 5
-            done
-            echo "❌ Backend did not respond after 60s"
-            exit 1
+          cat > .env << EOF
+          DB_ROOT_PASSWORD=ci_root_pass_123
+          DB_NAME=kd_db
+          DB_USER=kd_user
+          DB_PASS=ci_user_pass_123
+          JWT_SECRET=ci_jwt_secret_for_testing_only
+          TEST_USERNAME=${{ secrets.TEST_USERNAME }}
+          TEST_PASSWORD=${{ secrets.TEST_PASSWORD }}
           EOF
 
-      # ─────────────────────────────────────────────────────────────
-      # STEP 7: Setup Flutter for E2E tests
-      # ─────────────────────────────────────────────────────────────
+      # STEP 3: Start local Docker stack (DB + Backend only)
+      - name: Start local API + MySQL stack
+        run: |
+          docker compose -f docker-compose.yml -f docker-compose.ci.yml up -d --build db backend
+          echo "🐳 Local stack starting (db + backend)..."
+
+      # STEP 4: Wait for API to be healthy
+      - name: Wait for API health check
+        run: |
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:8080/ping > /dev/null 2>&1; then
+              echo "✅ API is healthy after ${i}x5s"
+              exit 0
+            fi
+            echo "⏳ Waiting for API... attempt $i/30"
+            sleep 5
+          done
+          echo "❌ API did not start within 150 seconds"
+          echo "--- Backend logs ---"
+          docker compose logs backend
+          echo "--- DB logs ---"
+          docker compose logs db
+          exit 1
+
+      # STEP 5: Setup Flutter
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
@@ -87,53 +67,72 @@ jobs:
         run: flutter pub get
         working-directory: mobile
 
-      # ─────────────────────────────────────────────────────────────
-      # STEP 8: Setup Chrome + ChromeDriver for headless E2E
-      # ─────────────────────────────────────────────────────────────
-      - name: Setup Chrome
-        uses: browser-actions/setup-chrome@v1
-
+      # STEP 6: Start ChromeDriver for E2E tests
       - name: Start ChromeDriver
         run: |
           chromedriver --port=4444 &
           sleep 3
           echo "ChromeDriver started on port 4444"
 
-      # ─────────────────────────────────────────────────────────────
-      # STEP 9: Run Flutter Web E2E tests against live VPS
-      # ─────────────────────────────────────────────────────────────
-      - name: Run Flutter E2E integration tests
-        id: e2e_tests
+      # STEP 7: Run Flutter E2E integration tests against local stack
+      - name: Run E2E integration tests
         run: |
           flutter drive \
             --driver=test_driver/integration_test.dart \
             --target=integration_test/app_test.dart \
             -d chrome \
             --headless \
+            --dart-define=API_BASE_URL=http://localhost:8080 \
             --dart-define=TEST_USERNAME=${{ secrets.TEST_USERNAME }} \
             --dart-define=TEST_PASSWORD=${{ secrets.TEST_PASSWORD }}
         working-directory: mobile
 
-      # ─────────────────────────────────────────────────────────────
-      # STEP 10: Rollback VPS if E2E tests failed
-      # ─────────────────────────────────────────────────────────────
-      - name: Rollback VPS on test failure
-        if: failure()
-        run: |
-          echo "🔄 Tests failed — rolling back VPS to previous version..."
-          ssh -i ~/.ssh/id_ed25519 ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} << 'EOF'
-            cd /var/www/klampisdepo
-            # Restore from git stash (we stashed before deploying)
-            git stash pop 2>/dev/null || echo "No stash found, using git reset"
-            docker compose up -d --build backend
-            echo "✅ Rollback complete"
-          EOF
+      # STEP 8: Teardown local stack (always, even on failure)
+      - name: Teardown local stack
+        if: always()
+        run: docker compose -f docker-compose.yml -f docker-compose.ci.yml down -v
+
+  deploy:
+    name: Deploy to VPS
+    needs: e2e-test
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
 
       # ─────────────────────────────────────────────────────────────
-      # STEP 11: Notify result
+      # PHASE 2: DEPLOY TO VPS
       # ─────────────────────────────────────────────────────────────
-      - name: Deployment summary
-        if: success()
+
+      # STEP 9: Setup SSH key for VPS access
+      - name: Setup SSH key
         run: |
-          echo "🎉 Deployment successful! All E2E tests passed."
+          mkdir -p ~/.ssh
+          echo "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts
+
+      # STEP 10: Upload API source files to VPS
+      - name: Upload API source to VPS
+        run: |
+          scp -r -o StrictHostKeyChecking=no -i ~/.ssh/id_ed25519 \
+            api/src \
+            ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/var/www/klampisdepo/api/
+
+          scp -o StrictHostKeyChecking=no -i ~/.ssh/id_ed25519 \
+            api/main.go api/go.mod api/go.sum api/Dockerfile \
+            ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/var/www/klampisdepo/api/
+
+      # STEP 11: Rebuild backend on VPS
+      - name: Rebuild and restart backend on VPS
+        run: |
+          ssh -i ~/.ssh/id_ed25519 ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} \
+            "cd /var/www/klampisdepo && docker compose up -d --build backend"
+
+      # STEP 12: Deployment summary
+      - name: Deployment summary
+        run: |
+          echo "🎉 All E2E tests passed and deployment successful!"
           echo "🌐 Live at https://api.klampisdepo.com"

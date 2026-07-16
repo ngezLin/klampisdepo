@@ -10,6 +10,11 @@ import (
 )
 
 func RegisterRoutes(r *gin.Engine) {
+	// Public health check — no auth, no debounce (used by CI/CD)
+	r.GET("/ping", func(c *gin.Context) {
+		c.JSON(200, gin.H{"status": "ok"})
+	})
+
 	r.Use(middlewares.DebounceMiddleware(1 * time.Second))
 
 	r.POST("/login", middlewares.LoginRateLimiter(), controllers.Login)

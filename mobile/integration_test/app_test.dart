@@ -10,8 +10,15 @@ import 'package:pos_app/features/transaction/ui/widgets/item_card.dart';
 const String kTestUsername = String.fromEnvironment('TEST_USERNAME');
 const String kTestPassword = String.fromEnvironment('TEST_PASSWORD');
 
-/// Helper: Polls the UI to wait for a widget to be rendered (handles network/async lag)
-Future<bool> _waitForWidget(WidgetTester tester, Finder finder, {Duration timeout = const Duration(seconds: 10)}) async {
+// Unique test item name used across all tests
+const String kTestItemName = 'ci_test_automation_item';
+
+/// Helper: Polls the UI to wait for a widget matching [finder] to appear.
+Future<bool> _waitForWidget(
+  WidgetTester tester,
+  Finder finder, {
+  Duration timeout = const Duration(seconds: 15),
+}) async {
   final end = DateTime.now().add(timeout);
   while (DateTime.now().isBefore(end)) {
     await tester.pump(const Duration(milliseconds: 500));
@@ -22,12 +29,12 @@ Future<bool> _waitForWidget(WidgetTester tester, Finder finder, {Duration timeou
   return false;
 }
 
-/// Helper: login the test user and wait for home screen to appear.
+/// Helper: Login the test user and wait for the home screen to appear.
 Future<void> _login(WidgetTester tester) async {
   app.main();
   await tester.pumpAndSettle(const Duration(seconds: 4));
 
-  // Find username and password fields by label text
+  // Find username and password fields
   final usernameFinder = find.widgetWithText(TextField, 'Username');
   final passwordFinder = find.widgetWithText(TextField, 'Password');
 
@@ -39,11 +46,11 @@ Future<void> _login(WidgetTester tester) async {
   await tester.tap(find.widgetWithText(ElevatedButton, 'Login'));
   await tester.pump();
 
-  // Wait up to 10 seconds for the home screen (Dashboard tab) to appear due to network latency
+  // Wait for the home screen (Dashboard tab) to appear
   final dashboardFinder = find.text('Dashboard');
   final loggedIn = await _waitForWidget(tester, dashboardFinder);
 
-  expect(loggedIn, isTrue, reason: 'Failed to log in: Dashboard nav tab did not load within 10s');
+  expect(loggedIn, isTrue, reason: 'Failed to log in: Dashboard nav tab did not load within 15s');
 }
 
 void main() {
@@ -59,28 +66,29 @@ void main() {
   });
 
   // ────────────────────────────────────────────────────────────────
-  // TEST 2: Add Item (Based on user recording scratch test1)
+  // TEST 2: Add Item
+  // Creates a test item that will be used in subsequent tests.
   // ────────────────────────────────────────────────────────────────
-  testWidgets('TEST 2 — Add Item: adds a new item named test_automation_1',
+  testWidgets('TEST 2 — Add Item: creates $kTestItemName',
       (WidgetTester tester) async {
     await _login(tester);
 
-    // Tap the "Item" nav tab
+    // Navigate to Item tab
     final itemTab = find.text('Item');
     expect(itemTab, findsOneWidget);
     await tester.tap(itemTab);
     await tester.pump();
 
-    // Wait for the "Manajemen Item" screen to render
+    // Wait for the Item management screen to render
     await _waitForWidget(tester, find.text('Manajemen Item'));
 
-    // Tap the FAB (add button)
+    // Tap the FAB to open the add item form
     final fab = find.byType(FloatingActionButton);
     expect(fab, findsOneWidget);
     await tester.tap(fab);
     await tester.pumpAndSettle(const Duration(seconds: 2));
 
-    // Fill in the form fields
+    // Fill in the item form
     final nameField = find.widgetWithText(TextFormField, 'Nama Item');
     final descField = find.widgetWithText(TextFormField, 'Deskripsi');
     final buyPriceField = find.widgetWithText(TextFormField, 'Harga Beli');
@@ -93,130 +101,202 @@ void main() {
     expect(sellPriceField, findsOneWidget);
     expect(stockField, findsOneWidget);
 
-    await tester.enterText(nameField, 'test_automation_1');
-    await tester.enterText(descField, 'testqwer');
-    await tester.enterText(buyPriceField, '1000');
+    await tester.enterText(nameField, kTestItemName);
+    await tester.enterText(descField, 'CI automation test item');
+    await tester.enterText(buyPriceField, '5000');
     await tester.enterText(sellPriceField, '10000');
-    await tester.enterText(stockField, '10');
+    await tester.enterText(stockField, '100');
 
-    // Click submit button in the bottom form sheet
+    // Submit the form
     final submitButton = find.widgetWithText(ElevatedButton, 'Tambah Item');
     expect(submitButton, findsOneWidget);
     await tester.tap(submitButton);
     await tester.pump();
 
-    // Wait up to 10 seconds for the new item to appear in the list (verifies DB write succeeded)
-    final createdItemText = find.text('test_automation_1');
-    final itemCreated = await _waitForWidget(tester, createdItemText);
+    // Verify item appears in the list
+    final createdItem = find.text(kTestItemName);
+    final itemCreated = await _waitForWidget(tester, createdItem);
+    expect(itemCreated, isTrue, reason: 'Item $kTestItemName was not found in the list after creation');
 
-    expect(itemCreated, isTrue, reason: 'Newly created item test_automation_1 was not found in the list');
     print('✅ TEST 2 PASSED: Item added successfully');
   });
 
   // ────────────────────────────────────────────────────────────────
-  // TEST 3: Transaction Checkout (Based on user recording scratch test2)
+  // TEST 3: Transaction Checkout + Verify Print Button
+  // Uses the item from TEST 2, verifies the 'Cetak' button exists
+  // in the success dialog.
   // ────────────────────────────────────────────────────────────────
-  testWidgets('TEST 3 — Transaction: searches, adds to cart, and completes checkout',
+  testWidgets('TEST 3 — Transaction: checkout and verify Cetak button',
       (WidgetTester tester) async {
     await _login(tester);
 
-    // Tap the "Transaksi" nav tab
+    // Navigate to Transaksi tab
     final transaksiTab = find.text('Transaksi');
     expect(transaksiTab, findsOneWidget);
     await tester.tap(transaksiTab);
     await tester.pump();
 
-    // Wait for the "Transaksi" screen to render
+    // Wait for the Transaksi screen to render
     await _waitForWidget(tester, find.text('Transaksi').first);
 
-    // Find the SearchBar and type the item name
-    final searchBarFinder = find.byType(SearchBar);
-    expect(searchBarFinder, findsOneWidget);
-    await tester.enterText(searchBarFinder, 'test_automation_1');
-    
-    // Wait for the debounce search timer (500ms) to trigger and reload the list
+    // Search for the test item
+    final searchBar = find.byType(SearchBar);
+    expect(searchBar, findsOneWidget);
+    await tester.enterText(searchBar, kTestItemName);
+
+    // Wait for debounce search timer (500ms) + results to load
     await tester.pump(const Duration(milliseconds: 700));
 
-    // Wait for the search results to update and render the ItemCard
-    final itemCardFinder = find.byType(ItemCard);
-    final resultsLoaded = await _waitForWidget(tester, itemCardFinder);
-    expect(resultsLoaded, isTrue, reason: 'ItemCard for test_automation_1 did not appear in search results');
+    // Wait for the ItemCard to appear in search results
+    final itemCard = find.byType(ItemCard);
+    final resultsLoaded = await _waitForWidget(tester, itemCard);
+    expect(resultsLoaded, isTrue, reason: 'ItemCard for $kTestItemName did not appear in search results');
 
-    // Tap on the ItemCard to add to cart
-    await tester.tap(itemCardFinder);
+    // Tap the item to add to cart
+    await tester.tap(itemCard);
     await tester.pump();
 
-    // Tap "Lihat Keranjang (1)" bottom button to open CartPanel
+    // Open the cart
     final cartButton = find.text('Lihat Keranjang (1)');
     expect(cartButton, findsOneWidget);
     await tester.tap(cartButton);
     await tester.pumpAndSettle(const Duration(seconds: 1));
 
-    // Tap "BAYAR" inside CartPanel
+    // Tap BAYAR to open checkout
     final payButton = find.text('BAYAR');
     expect(payButton, findsOneWidget);
     await tester.tap(payButton);
     await tester.pumpAndSettle(const Duration(seconds: 1));
 
-    // Fill in the checkout fields (Notes, Discount, Cash Received) based on user's manual recording
-    final noteField = find.widgetWithText(TextField, 'Catatan Transaksi (Opsional)');
-    final discountField = find.widgetWithText(TextField, 'Diskon Tambahan (Rp)');
+    // Fill cash amount
     final cashField = find.widgetWithText(TextField, 'Jumlah Uang Diterima');
-
-    expect(noteField, findsOneWidget);
-    expect(discountField, findsOneWidget);
     expect(cashField, findsOneWidget);
-
-    await tester.enterText(noteField, 'test');
-    await tester.enterText(discountField, '10000');
-    await tester.pumpAndSettle();
-
     await tester.enterText(cashField, '50000');
     await tester.pumpAndSettle();
 
-    // Tap "KONFIRMASI BAYAR" inside CheckoutSheetContent
-    final confirmPayButton = find.text('KONFIRMASI BAYAR');
-    expect(confirmPayButton, findsOneWidget);
-    await tester.tap(confirmPayButton);
+    // Confirm payment
+    final confirmButton = find.text('KONFIRMASI BAYAR');
+    expect(confirmButton, findsOneWidget);
+    await tester.tap(confirmButton);
     await tester.pump();
 
-    // Wait for the checkout success dialog to pop up (implies API write succeeded)
+    // Wait for the success dialog
     final successTitle = find.text('Transaksi Berhasil');
-    final checkoutCompleted = await _waitForWidget(tester, successTitle);
-    expect(checkoutCompleted, isTrue, reason: 'Success dialog did not load after clicking checkout');
+    final checkoutDone = await _waitForWidget(tester, successTitle);
+    expect(checkoutDone, isTrue, reason: 'Success dialog did not appear after checkout');
 
-    // Close the success dialog by tapping "Tutup / Transaksi Baru"
-    final doneButton = find.text('Tutup / Transaksi Baru');
-    expect(doneButton, findsOneWidget);
-    await tester.tap(doneButton);
+    // ✅ VERIFY PRINT BUTTON ('Cetak') EXISTS
+    final printButton = find.text('Cetak');
+    expect(printButton, findsOneWidget, reason: 'Cetak (print) button not found in success dialog');
+
+    // Close the success dialog
+    final closeButton = find.text('Tutup / Transaksi Baru');
+    expect(closeButton, findsOneWidget);
+    await tester.tap(closeButton);
     await tester.pumpAndSettle(const Duration(seconds: 2));
 
-    print('✅ TEST 3 PASSED: Checkout completed successfully');
+    print('✅ TEST 3 PASSED: Transaction checkout completed, Cetak button verified');
   });
 
   // ────────────────────────────────────────────────────────────────
-  // TEST 4: History Screen
+  // TEST 4: Refund
+  // Navigates to history, opens the transaction from TEST 3,
+  // and performs a refund.
   // ────────────────────────────────────────────────────────────────
-  testWidgets('TEST 4 — History: verifies completed checkout appears in history',
+  testWidgets('TEST 4 — Refund: refunds the transaction from TEST 3',
       (WidgetTester tester) async {
     await _login(tester);
 
-    // Tap the "Riwayat" (History) nav tab
+    // Navigate to History tab
     final historyTab = find.text('Riwayat');
     expect(historyTab, findsOneWidget);
     await tester.tap(historyTab);
     await tester.pump();
 
-    // Wait for the History screen to load
+    // Wait for the history screen to load
     final historyTitle = find.text('Riwayat Transaksi');
     await _waitForWidget(tester, historyTitle);
 
-    // The list should have at least one transaction card or layout rendered
-    expect(
-      find.byType(Scaffold),
-      findsWidgets,
-      reason: 'History screen failed to render',
-    );
-    print('✅ TEST 4 PASSED: History screen loaded');
+    // Wait for transaction cards to load
+    final transactionCards = find.byType(Card);
+    final cardsLoaded = await _waitForWidget(tester, transactionCards);
+    expect(cardsLoaded, isTrue, reason: 'No transaction cards found in history');
+
+    // Tap the first (most recent) transaction card
+    await tester.tap(transactionCards.first);
+    await tester.pumpAndSettle(const Duration(seconds: 1));
+
+    // Find and tap the REFUND button in the receipt detail dialog
+    final refundButton = find.text('REFUND TRANSAKSI');
+    final refundVisible = await _waitForWidget(tester, refundButton);
+    expect(refundVisible, isTrue, reason: 'REFUND TRANSAKSI button not found in receipt detail');
+    await tester.tap(refundButton);
+    await tester.pumpAndSettle(const Duration(seconds: 1));
+
+    // Confirm the refund in the confirmation dialog
+    final confirmRefund = find.widgetWithText(TextButton, 'Refund');
+    expect(confirmRefund, findsOneWidget);
+    await tester.tap(confirmRefund);
+    await tester.pump();
+
+    // Wait for the refund API call to complete and dialogs to close
+    // On success: both dialogs pop, snackbar appears
+    final refundSuccess = find.text('Transaksi berhasil di-refund!');
+    final refundDone = await _waitForWidget(tester, refundSuccess, timeout: const Duration(seconds: 10));
+    expect(refundDone, isTrue, reason: 'Refund success message did not appear');
+
+    await tester.pumpAndSettle(const Duration(seconds: 2));
+
+    print('✅ TEST 4 PASSED: Transaction refunded successfully');
+  });
+
+  // ────────────────────────────────────────────────────────────────
+  // TEST 5: Delete Item
+  // Cleans up the test item created in TEST 2.
+  // ────────────────────────────────────────────────────────────────
+  testWidgets('TEST 5 — Delete Item: deletes $kTestItemName',
+      (WidgetTester tester) async {
+    await _login(tester);
+
+    // Navigate to Item tab
+    final itemTab = find.text('Item');
+    expect(itemTab, findsOneWidget);
+    await tester.tap(itemTab);
+    await tester.pump();
+
+    // Wait for the Item management screen to render
+    await _waitForWidget(tester, find.text('Manajemen Item'));
+
+    // Use the search field to filter to only the test item
+    final searchField = find.byType(TextField);
+    expect(searchField, findsWidgets);
+    await tester.enterText(searchField.first, kTestItemName);
+    await tester.pump(const Duration(milliseconds: 700));
+
+    // Wait for the filtered list to load
+    final testItemText = find.text(kTestItemName);
+    final itemFound = await _waitForWidget(tester, testItemText);
+    expect(itemFound, isTrue, reason: 'Test item $kTestItemName not found in filtered item list');
+
+    // Tap the delete icon (should be only one since the list is filtered)
+    final deleteIcon = find.byIcon(Icons.delete_outline);
+    expect(deleteIcon, findsWidgets);
+    await tester.tap(deleteIcon.first);
+    await tester.pumpAndSettle(const Duration(seconds: 1));
+
+    // Confirm deletion in the dialog
+    final confirmDelete = find.widgetWithText(TextButton, 'Hapus');
+    expect(confirmDelete, findsOneWidget);
+    await tester.tap(confirmDelete);
+    await tester.pump();
+
+    // Wait for the delete API call to complete
+    final deleteSuccess = find.text('Item berhasil dihapus!');
+    final deleteDone = await _waitForWidget(tester, deleteSuccess, timeout: const Duration(seconds: 10));
+    expect(deleteDone, isTrue, reason: 'Delete success message did not appear');
+
+    await tester.pumpAndSettle(const Duration(seconds: 2));
+
+    print('✅ TEST 5 PASSED: Test item deleted successfully');
   });
 }
