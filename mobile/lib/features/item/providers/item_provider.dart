@@ -128,6 +128,7 @@ class PaginatedItemsNotifier extends StateNotifier<PaginatedItemsState> {
         // Silently catch cache save errors
       }
 
+      if (!mounted) return;
       state = state.copyWith(
         items: [...state.items, ...newItems],
         page: state.page + 1,
@@ -135,11 +136,13 @@ class PaginatedItemsNotifier extends StateNotifier<PaginatedItemsState> {
         isLoading: false,
       );
     } catch (e) {
+      if (!mounted) return;
       // Offline fallback: load cached items from Drift on first page load
       if (state.page == 1) {
         try {
           final appDb = ref.read(appDatabaseProvider);
           final localItems = await appDb.getItemsOffline(search);
+          if (!mounted) return;
           final models = localItems.map((item) => ItemModel(
             id: item.id,
             name: item.name,
@@ -159,6 +162,7 @@ class PaginatedItemsNotifier extends StateNotifier<PaginatedItemsState> {
           return;
         } catch (_) {}
       }
+      if (!mounted) return;
       state = state.copyWith(isLoading: false, hasMore: false);
     }
   }

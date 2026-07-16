@@ -186,7 +186,29 @@ void main() {
     final confirmButton = find.text('KONFIRMASI BAYAR');
     expect(confirmButton, findsWidgets);
     await tester.tap(confirmButton.first);
-    await tester.pump();
+    await tester.pumpAndSettle(const Duration(seconds: 1));
+
+    // Handle "Buka Shift Kasir" dialog if the cashier shift has not been opened yet in this CI session
+    final openShiftDialog = find.textContaining('Buka Shift');
+    if (openShiftDialog.evaluate().isNotEmpty) {
+      print('Buka Shift Kasir dialog detected, entering starting cash modal...');
+      final modalAwalField = find.byType(TextFormField);
+      if (modalAwalField.evaluate().isNotEmpty) {
+        await tester.enterText(modalAwalField.first, '100000');
+        await tester.pumpAndSettle();
+      }
+      final bukaShiftBtn = find.widgetWithText(ElevatedButton, 'Buka Shift');
+      if (bukaShiftBtn.evaluate().isNotEmpty) {
+        await tester.tap(bukaShiftBtn.first);
+        await tester.pumpAndSettle(const Duration(seconds: 2));
+      } else {
+        final anyBukaBtn = find.textContaining('Buka Shift');
+        if (anyBukaBtn.evaluate().isNotEmpty) {
+          await tester.tap(anyBukaBtn.first);
+          await tester.pumpAndSettle(const Duration(seconds: 2));
+        }
+      }
+    }
 
     // Wait for the success dialog
     final successTitle = find.text('Transaksi Berhasil');

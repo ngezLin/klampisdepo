@@ -220,6 +220,7 @@ class PaginatedHistoryNotifier extends StateNotifier<PaginatedHistoryState> {
       final List data = response.data['data'] ?? [];
       final List<dynamic> newHistory = data;
 
+      if (!mounted) return;
       state = state.copyWith(
         history: [...state.history, ...newHistory],
         page: state.page + 1,
@@ -227,6 +228,7 @@ class PaginatedHistoryNotifier extends StateNotifier<PaginatedHistoryState> {
         isLoading: false,
       );
     } catch (e) {
+      if (!mounted) return;
       state = state.copyWith(isLoading: false, hasMore: false);
     }
   }
