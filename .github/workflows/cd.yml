@@ -67,28 +67,70 @@ jobs:
         run: flutter pub get
         working-directory: mobile
 
-      # STEP 6: Start ChromeDriver for E2E tests
+      # STEP 6: Setup Chrome wrapper & Start ChromeDriver for E2E tests
       - name: Start ChromeDriver
         run: |
-          chromedriver --port=4444 &
+          cat << 'EOF' > /tmp/chrome-wrapper
+          #!/bin/bash
+          exec google-chrome --headless=new --no-sandbox --disable-dev-shm-usage --disable-gpu "$@"
+          EOF
+          chmod +x /tmp/chrome-wrapper
+          echo "Created Chrome wrapper at /tmp/chrome-wrapper"
+
+          chromedriver --port=4444 --verbose > /tmp/chromedriver.log 2>&1 &
           sleep 3
           echo "ChromeDriver started on port 4444"
 
       # STEP 7: Run Flutter E2E integration tests against local stack
       - name: Run E2E integration tests
         run: |
-          flutter drive \
+          if ! flutter drive \
             --driver=test_driver/integration_test.dart \
             --target=integration_test/app_test.dart \
             -d web-server \
+            --chrome-binary=/tmp/chrome-wrapper \
             --web-browser-flag=--headless=new \
             --web-browser-flag=--no-sandbox \
             --web-browser-flag=--disable-dev-shm-usage \
             --web-browser-flag=--disable-gpu \
             --dart-define=API_BASE_URL=http://localhost:8080 \
             --dart-define=TEST_USERNAME=${{ secrets.TEST_USERNAME }} \
-            --dart-define=TEST_PASSWORD=${{ secrets.TEST_PASSWORD }}
+            --dart-define=TEST_PASSWORD=${{ secrets.TEST_PASSWORD }} > /tmp/flutter_drive.log 2>&1; then
+            
+            echo "❌ E2E integration tests failed!"
+            echo "=========================================="
+            echo "       FLUTTER DRIVE OUTPUT               "
+            echo "=========================================="
+            cat /tmp/flutter_drive.log || true
+            echo "=========================================="
+            echo "       CHROMEDRIVER LOGS                  "
+            echo "=========================================="
+            cat /tmp/chromedriver.log || true
+            echo "=========================================="
+            echo "       BACKEND API LOGS                   "
+            echo "=========================================="
+            docker compose logs backend || true
+            echo "=========================================="
+            echo "       DATABASE LOGS                      "
+            echo "=========================================="
+            docker compose logs db || true
+            exit 1
+          else
+            echo "✅ E2E integration tests passed!"
+            cat /tmp/flutter_drive.log
+          fi
         working-directory: mobile
+
+      # STEP 7.5: Upload failure logs if E2E test step failed
+      - name: Upload debug logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-debug-logs
+          path: |
+            /tmp/flutter_drive.log
+            /tmp/chromedriver.log
+          retention-days: 7
 
       # STEP 8: Teardown local stack (always, even on failure)
       - name: Teardown local stack
