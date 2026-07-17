@@ -114,11 +114,40 @@ func getDiskUsage() (total, used, free, pct float64) {
 }
 
 func getServiceStatus(service string) string {
-	out, err := exec.Command("systemctl", "is-active", service).Output()
-	if err != nil {
+	// Check if systemctl exists
+	_, err := exec.LookPath("systemctl")
+	if err == nil {
+		out, err := exec.Command("systemctl", "is-active", service).Output()
+		if err == nil {
+			return strings.TrimSpace(string(out))
+		}
+	}
+
+	// Containerized/docker fallback logic
+	if service == "kd-api" || service == "api" {
+		return "active" // The API is serving this request, so it is active
+	}
+
+	if service == "mysql" || service == "db" {
+		// Ping database connection to check active status
+		var dbPing int
+		if config.DB != nil && config.DB.Raw("SELECT 1").Scan(&dbPing).Error == nil {
+			return "active"
+		}
 		return "inactive"
 	}
-	return strings.TrimSpace(string(out))
+
+	if service == "nginx" {
+		// Try a quick local request
+		client := http.Client{Timeout: 500 * time.Millisecond}
+		_, err80 := client.Get("http://localhost")
+		if err80 == nil {
+			return "active"
+		}
+		return "inactive"
+	}
+
+	return "unknown"
 }
 
 func RestartAPI(c *gin.Context) {
@@ -160,15 +189,37 @@ func GetSystemLogs(c *gin.Context) {
 	var err error
 
 	if logType == "mysql" {
+		_, lookErr := exec.LookPath("tail")
+		if lookErr != nil {
+			c.JSON(http.StatusOK, gin.H{
+				"logs": "System log reader 'tail' not available in this container environment. Logs are routed to container stdout/stderr.",
+			})
+			return
+		}
+		
+		if _, statErr := os.Stat("/var/log/mysql/error.log"); os.IsNotExist(statErr) {
+			c.JSON(http.StatusOK, gin.H{
+				"logs": "MySQL log file /var/log/mysql/error.log not found. Database is likely running in a separate container.",
+			})
+			return
+		}
+
 		out, err = exec.Command("tail", "-n", "200", "/var/log/mysql/error.log").CombinedOutput()
 	} else {
+		_, lookErr := exec.LookPath("journalctl")
+		if lookErr != nil {
+			c.JSON(http.StatusOK, gin.H{
+				"logs": "System log reader 'journalctl' not available in this container environment. Logs are routed to container stdout/stderr.",
+			})
+			return
+		}
+
 		out, err = exec.Command("journalctl", "-u", "kd-api", "-n", "200", "--no-pager").CombinedOutput()
 	}
 
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error":  "Failed to fetch logs: " + err.Error(),
-			"output": string(out),
+		c.JSON(http.StatusOK, gin.H{
+			"logs": "Failed to read logs: " + err.Error() + "\nOutput: " + string(out),
 		})
 		return
 	}
