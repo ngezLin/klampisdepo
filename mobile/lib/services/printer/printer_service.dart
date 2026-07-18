@@ -810,7 +810,7 @@ DateTime _parseDateTime(dynamic raw) {
   }
   try {
     if (!str.contains('Z') && !str.contains('+') && !RegExp(r'-\d{2}:\d{2}$').hasMatch(str)) {
-      final formatted = str.replaceAll(' ', 'T') + 'Z';
+      final formatted = '${str.replaceAll(' ', 'T')}Z';
       return DateTime.parse(formatted).toLocal();
     }
     return DateTime.parse(str).toLocal();
