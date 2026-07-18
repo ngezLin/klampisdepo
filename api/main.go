@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -20,6 +21,13 @@ import (
 )
 
 func main() {
+	// Log to both file and stdout
+	logFile, err := os.OpenFile("api.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	if err == nil {
+		gin.DefaultWriter = io.MultiWriter(logFile, os.Stdout)
+		log.SetOutput(io.MultiWriter(logFile, os.Stdout))
+	}
+
 	// Load env FIRST, ignore error if file doesn't exist
 	_ = godotenv.Load()
 
