@@ -116,7 +116,7 @@ class _PrinterSetupDialogState extends ConsumerState<PrinterSetupDialog> {
                           address: ip.contains(':') ? ip : '$ip:9100',
                           type: PrinterConnectionType.network,
                         );
-                        final success = await printer.connectToPrinter(device);
+                        final success = await printer.designatePrinter(device, 'receipt');
                         if (!context.mounted) return;
                         if (success) {
                           showTopSnackBar(
@@ -161,7 +161,7 @@ class _PrinterSetupDialogState extends ConsumerState<PrinterSetupDialog> {
                 title: Text(device.name),
                 subtitle: Text(device.address),
                 onTap: () async {
-                  final success = await printer.connectToPrinter(device);
+                  final success = await printer.designatePrinter(device, 'receipt');
                   if (!context.mounted) return;
                   if (success) {
                     showTopSnackBar(

@@ -141,7 +141,10 @@ class ReceiptFormatter {
 
     // ─── ITEMS ───────────────────────────
     for (final item in items) {
-      final name = item['item_name'] as String? ?? item['name'] as String? ?? '-';
+      final name = item['item_name'] as String? ??
+          item['item']?['name'] as String? ??
+          item['name'] as String? ??
+          '-';
       final qty = (item['quantity'] as num?)?.toInt() ?? 1;
       final price = (item['price'] as num).toDouble();
       final itemSubtotal = (item['subtotal'] as num?)?.toDouble() ?? (qty * price);
@@ -316,10 +319,10 @@ class PrinterService extends ChangeNotifier {
   String? get lastError => _lastError;
   bool get isConnected => _status == PrinterStatus.connected;
 
-  void designatePrinter(PrinterDevice device, String role) {
+  Future<bool> designatePrinter(PrinterDevice device, String role) async {
     if (role == 'receipt') {
       _receiptPrinter = device;
-      _storage.write(
+      await _storage.write(
         key: 'designated_receipt_printer',
         value: jsonEncode({
           'name': device.name,
@@ -327,10 +330,12 @@ class PrinterService extends ChangeNotifier {
           'type': device.type.name,
         }),
       );
-      connectToPrinter(device);
+      final result = await connectToPrinter(device);
+      notifyListeners();
+      return result;
     } else if (role == 'kitchen') {
       _kitchenPrinter = device;
-      _storage.write(
+      await _storage.write(
         key: 'designated_kitchen_printer',
         value: jsonEncode({
           'name': device.name,
@@ -338,8 +343,10 @@ class PrinterService extends ChangeNotifier {
           'type': device.type.name,
         }),
       );
+      notifyListeners();
+      return true;
     }
-    notifyListeners();
+    return false;
   }
 
   /// Fetch store information from public store.json
@@ -547,7 +554,7 @@ class PrinterService extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final items = (transaction['items'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+      final items = _parseItems(transaction['items']);
       final DateTime date = _parseDateTime(transaction['created_at']);
 
       final receipt = ReceiptFormatter.formatReceipt(
@@ -680,7 +687,7 @@ class PrinterService extends ChangeNotifier {
 
   /// Share digital receipt via WhatsApp/Telegram
   Future<void> shareReceipt(Map<String, dynamic> transaction) async {
-    final items = (transaction['items'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+    final items = _parseItems(transaction['items']);
     final DateTime date = _parseDateTime(transaction['created_at']);
 
     final receipt = ReceiptFormatter.formatReceipt(
@@ -733,7 +740,7 @@ class PrinterService extends ChangeNotifier {
 
   /// Get the formatted receipt text (for preview)
   String getReceiptPreview(Map<String, dynamic> transaction) {
-    final items = (transaction['items'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+    final items = _parseItems(transaction['items']);
     return ReceiptFormatter.formatReceipt(
       storeName: storeName,
       transactionId: (transaction['id'] as num?)?.toInt() ?? 0,
@@ -759,6 +766,18 @@ class PrinterService extends ChangeNotifier {
     if (value is int) return value.toDouble();
     if (value is num) return value.toDouble();
     return double.tryParse(value.toString()) ?? 0;
+  }
+
+  List<Map<String, dynamic>> _parseItems(dynamic rawItems) {
+    final List<Map<String, dynamic>> result = [];
+    if (rawItems != null && rawItems is List) {
+      for (final it in rawItems) {
+        if (it is Map) {
+          result.add(Map<String, dynamic>.from(it));
+        }
+      }
+    }
+    return result;
   }
 }
 
