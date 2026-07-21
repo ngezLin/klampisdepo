@@ -101,6 +101,30 @@ class ReceiptFormatter {
   static final _currencyFormat = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
   static final _dateFormat = DateFormat('dd/MM/yyyy HH:mm');
 
+  static double _toDouble(dynamic value) {
+    if (value == null) return 0.0;
+    if (value is double) return value;
+    if (value is int) return value.toDouble();
+    if (value is num) return value.toDouble();
+    return double.tryParse(value.toString()) ?? 0.0;
+  }
+
+  static String _getItemName(Map<String, dynamic> item) {
+    if (item['item_name'] != null) {
+      return item['item_name'].toString();
+    }
+    if (item['item'] != null) {
+      final nested = item['item'];
+      if (nested is Map && nested['name'] != null) {
+        return nested['name'].toString();
+      }
+    }
+    if (item['name'] != null) {
+      return item['name'].toString();
+    }
+    return '-';
+  }
+
   /// Generate a full receipt from transaction data
   static String formatReceipt({
     required String storeName,
@@ -141,13 +165,10 @@ class ReceiptFormatter {
 
     // ─── ITEMS ───────────────────────────
     for (final item in items) {
-      final name = item['item_name'] as String? ??
-          item['item']?['name'] as String? ??
-          item['name'] as String? ??
-          '-';
+      final name = _getItemName(item);
       final qty = (item['quantity'] as num?)?.toInt() ?? 1;
-      final price = (item['price'] as num).toDouble();
-      final itemSubtotal = (item['subtotal'] as num?)?.toDouble() ?? (qty * price);
+      final price = _toDouble(item['price']);
+      final itemSubtotal = _toDouble(item['subtotal'] ?? (qty * price));
 
       buffer.writeln(name);
       buffer.writeln(_columns(
@@ -565,10 +586,10 @@ class PrinterService extends ChangeNotifier {
         subtotal: _toDouble(transaction['subtotal'] ?? transaction['total']),
         discount: _toDouble(transaction['discount'] ?? 0),
         total: _toDouble(transaction['total'] ?? 0),
-        paymentType: transaction['payment_type'] as String? ?? 'cash',
+        paymentType: transaction['payment_type']?.toString() ?? 'cash',
         paymentAmount: _toDouble(transaction['payment'] ?? transaction['total'] ?? 0),
         change: _toDouble(transaction['change'] ?? 0),
-        note: transaction['note'] as String?,
+        note: transaction['note']?.toString(),
         cashierName: cashierName,
         storeAddress: storeAddress,
         storePhone: storePhone,
@@ -698,10 +719,10 @@ class PrinterService extends ChangeNotifier {
       subtotal: _toDouble(transaction['subtotal'] ?? transaction['total']),
       discount: _toDouble(transaction['discount'] ?? 0),
       total: _toDouble(transaction['total'] ?? 0),
-      paymentType: transaction['payment_type'] as String? ?? 'cash',
+      paymentType: transaction['payment_type']?.toString() ?? 'cash',
       paymentAmount: _toDouble(transaction['payment'] ?? transaction['total'] ?? 0),
       change: _toDouble(transaction['change'] ?? 0),
-      note: transaction['note'] as String?,
+      note: transaction['note']?.toString(),
       cashierName: cashierName,
       storeAddress: storeAddress,
       storePhone: storePhone,
@@ -749,10 +770,10 @@ class PrinterService extends ChangeNotifier {
       subtotal: _toDouble(transaction['subtotal'] ?? transaction['total']),
       discount: _toDouble(transaction['discount'] ?? 0),
       total: _toDouble(transaction['total'] ?? 0),
-      paymentType: transaction['payment_type'] as String? ?? 'cash',
+      paymentType: transaction['payment_type']?.toString() ?? 'cash',
       paymentAmount: _toDouble(transaction['payment'] ?? transaction['total'] ?? 0),
       change: _toDouble(transaction['change'] ?? 0),
-      note: transaction['note'] as String?,
+      note: transaction['note']?.toString(),
       cashierName: cashierName,
       storeAddress: storeAddress,
       storePhone: storePhone,

@@ -53,25 +53,6 @@ func GetHealthStatus(c *gin.Context) {
 		}
 	}
 
-	// Fallback to MySQL performance statistics when host OS command fails (e.g. running in separate Docker container)
-	if mysqlMemoryMB == 0 {
-		var memoryBytes int64
-		err := config.DB.Raw("SELECT SUM(current_number_of_bytes_used) FROM performance_schema.memory_summary_global_by_event_name").Scan(&memoryBytes).Error
-		if err == nil && memoryBytes > 0 {
-			mysqlMemoryMB = float64(memoryBytes) / (1024.0 * 1024.0)
-		} else {
-			// Second fallback: retrieve buffer pool size
-			var variableName string
-			var variableValue string
-			err := config.DB.Raw("SHOW GLOBAL STATUS LIKE 'Innodb_buffer_pool_bytes_data'").Row().Scan(&variableName, &variableValue)
-			if err == nil {
-				if bytesVal, err2 := strconv.ParseInt(variableValue, 10, 64); err2 == nil {
-					mysqlMemoryMB = float64(bytesVal) / (1024.0 * 1024.0)
-				}
-			}
-		}
-	}
-
 	// Build monitoring payload
 	diskTotal, diskUsed, diskFree, diskPct := getDiskUsage()
 	
@@ -225,21 +206,10 @@ func GetSystemLogs(c *gin.Context) {
 
 		out, err = exec.Command("tail", "-n", "200", "/var/log/mysql/error.log").CombinedOutput()
 	} else {
-		// Try to read from local api.log file (Docker container mode)
-		if _, statErr := os.Stat("api.log"); statErr == nil {
-			out, err = exec.Command("tail", "-n", "200", "api.log").CombinedOutput()
-			if err == nil {
-				c.JSON(http.StatusOK, gin.H{
-					"logs": string(out),
-				})
-				return
-			}
-		}
-
 		_, lookErr := exec.LookPath("journalctl")
 		if lookErr != nil {
 			c.JSON(http.StatusOK, gin.H{
-				"logs": "System log reader 'journalctl' not available in this container environment. No api.log found, and logs are routed to container stdout/stderr.",
+				"logs": "System log reader 'journalctl' not available in this container environment. Logs are routed to container stdout/stderr.",
 			})
 			return
 		}

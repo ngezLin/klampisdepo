@@ -326,13 +326,6 @@ class AkunScreen extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 24),
-          const Center(
-            child: Text(
-              'KlampisDepo POS v1.0.1 (Build 2)',
-              style: TextStyle(color: Colors.grey, fontSize: 12),
-            ),
-          ),
-          const SizedBox(height: 24),
         ],
       ),
     );
@@ -498,14 +491,6 @@ class AkunScreen extends ConsumerWidget {
               },
             ),
           ),
-          const SizedBox(height: 24),
-          const Center(
-            child: Text(
-              'KlampisDepo POS Developer Edition v1.0.1 (Build 2)',
-              style: TextStyle(color: Colors.grey, fontSize: 12),
-            ),
-          ),
-          const SizedBox(height: 24),
         ],
       ),
     );

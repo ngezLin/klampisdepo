@@ -188,6 +188,18 @@ class _TransactionScreenState extends ConsumerState<TransactionScreen> {
                     controller: _searchController,
                     hintText: 'Cari item...',
                     leading: const Icon(Icons.search),
+                    trailing: searchQuery.isNotEmpty
+                        ? [
+                            IconButton(
+                              icon: const Icon(Icons.clear),
+                              onPressed: () {
+                                _searchController.clear();
+                                ref.read(transactionSearchQueryProvider.notifier).state = '';
+                                _searchFocusNode.requestFocus();
+                              },
+                            )
+                          ]
+                        : null,
                     onChanged: (val) {
                       if (_debounce?.isActive ?? false) _debounce!.cancel();
                       _debounce = Timer(const Duration(milliseconds: 500), () {

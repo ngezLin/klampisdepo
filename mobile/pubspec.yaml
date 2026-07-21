@@ -1,6 +1,6 @@
 name: pos_app
 description: A new Flutter project for KlampisDepo POS.
-version: 1.0.1+2
+version: 1.0.0+1
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
