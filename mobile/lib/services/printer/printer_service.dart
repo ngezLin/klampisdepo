@@ -563,7 +563,7 @@ class PrinterService extends ChangeNotifier {
     }
 
     // Connect to target printer if needed
-    if (_connectedPrinter?.address != targetPrinter.address) {
+    if (_connectedPrinter?.address != targetPrinter.address || _status != PrinterStatus.connected) {
       final success = await connectToPrinter(targetPrinter);
       if (!success) {
         _addToQueue(transaction, role);

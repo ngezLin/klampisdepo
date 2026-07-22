@@ -405,7 +405,7 @@ class _ReceiptDetailDialog extends ConsumerWidget {
                         label: const Text('CETAK STRUK (REPRINT)'),
                         onPressed: () async {
                           final printer = ref.read(printerServiceProvider);
-                          if (printer.isConnected) {
+                          if (printer.connectedPrinter != null || printer.receiptPrinter != null) {
                             final success = await printer.printReceipt(tx);
                             if (context.mounted) {
                               showTopSnackBar(

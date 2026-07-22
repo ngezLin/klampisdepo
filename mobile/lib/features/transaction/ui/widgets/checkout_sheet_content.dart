@@ -422,6 +422,30 @@ class _CheckoutSheetContentState extends ConsumerState<CheckoutSheetContent> {
               ],
               const SizedBox(height: 8),
               const Divider(),
+              const SizedBox(height: 8),
+              const Text('Pratinjau Struk:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.grey)),
+              const SizedBox(height: 8),
+              Container(
+                width: double.infinity,
+                maxHeight: 200,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFAF8F5),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.grey[300]!),
+                ),
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(12),
+                  child: Text(
+                    ref.read(printerServiceProvider).getReceiptPreview(txData),
+                    style: const TextStyle(
+                      fontFamily: 'monospace',
+                      fontSize: 12,
+                      color: Colors.black87,
+                      height: 1.2,
+                    ),
+                  ),
+                ),
+              ),
             ],
           ),
           actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
@@ -454,7 +478,7 @@ class _CheckoutSheetContentState extends ConsumerState<CheckoutSheetContent> {
                     label: const Text('Cetak'),
                     onPressed: () async {
                       final printer = ref.read(printerServiceProvider);
-                      if (printer.isConnected) {
+                      if (printer.connectedPrinter != null || printer.receiptPrinter != null) {
                         final success = await printer.printReceipt(txData);
                         if (dialogContext.mounted) {
                           showTopSnackBar(
