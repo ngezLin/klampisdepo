@@ -131,6 +131,44 @@ class CartPanel extends ConsumerWidget {
     );
   }
 
+  Future<void> _editQuantity(BuildContext context, WidgetRef ref, CartItem item) async {
+    final textController = TextEditingController(text: item.quantity.toString());
+    final int? newQty = await showDialog<int>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Setel Jumlah ${item.item.name}'),
+        content: TextField(
+          controller: textController,
+          keyboardType: TextInputType.number,
+          autofocus: true,
+          decoration: const InputDecoration(
+            labelText: 'Jumlah',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Batal'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final val = int.tryParse(textController.text);
+              if (val != null && val > 0) {
+                Navigator.pop(context, val);
+              }
+            },
+            child: const Text('Simpan'),
+          ),
+        ],
+      ),
+    );
+
+    if (newQty != null) {
+      final difference = newQty - item.quantity;
+      ref.read(transactionProvider.notifier).updateQuantity(item.item.id, difference);
+    }
+  }
+
   Future<void> _editCustomPrice(BuildContext context, WidgetRef ref, CartItem item) async {
     final textController = TextEditingController(
       text: item.customPrice != null 
@@ -362,7 +400,21 @@ class CartPanel extends ConsumerWidget {
                         icon: const Icon(Icons.remove_circle_outline),
                         onPressed: () => ref.read(transactionProvider.notifier).updateQuantity(item.item.id, -1),
                       ),
-                      Text('${item.quantity}', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                      InkWell(
+                        onTap: () => _editQuantity(context, ref, item),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            border: Border.all(color: Colors.grey[300]!),
+                            borderRadius: BorderRadius.circular(6),
+                            color: Colors.grey[50],
+                          ),
+                          child: Text(
+                            '${item.quantity}',
+                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      ),
                       IconButton(
                         icon: const Icon(Icons.add_circle_outline),
                         onPressed: () => ref.read(transactionProvider.notifier).updateQuantity(item.item.id, 1),

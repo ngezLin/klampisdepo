@@ -427,7 +427,7 @@ class _CheckoutSheetContentState extends ConsumerState<CheckoutSheetContent> {
               const SizedBox(height: 8),
               Container(
                 width: double.infinity,
-                maxHeight: 200,
+                constraints: const BoxConstraints(maxHeight: 200),
                 decoration: BoxDecoration(
                   color: const Color(0xFFFAF8F5),
                   borderRadius: BorderRadius.circular(8),
